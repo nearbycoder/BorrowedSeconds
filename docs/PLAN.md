@@ -121,7 +121,7 @@ Each level is a single screen (at most 16×12 tiles). This section lists the lev
 | 4-2 | Refinance | Chained loans | Three mostly-lit laser lanes in a snake; three loans, each repaid in the pocket before the next lane | B, ≥3 loans | 20.75 s | 4 |
 | 4-3 | Crystal Bar | A frozen lit beam is a wall | Freeze a blinking laser while lit; its crystal bar shadows the always-on beam you need to walk | B | 8.05 s | 4 |
 | 4-4 | Long Term | Long term (8 s) | Freeze a laser lane early, run a two-slider gauntlet, arrive on the dial in a slider's column as the debt lands | B, D | 13.60 s | 4 |
-| 4-5 | Settlement | Finale: two loans, two dials | Remote-latch the island dial; the first debt carries you through a shuttle corridor; the second lands on a dial where two blinking beams cross | B, D | 17.65 s | 4 |
+| 4-5 | Settlement | Finale: two loans, two dials | Remote-latch the island dial; the first debt carries you through a shuttle corridor; the second lands on a dial that a blinking beam and a rotor arm both cross; all three obstacle types together | B, D | 17.65 s | 4 |
 
 **Difficulty curve:** a single new idea per level within a chapter. Levels 1–3 are under 30 s and gentle, and 5 is the first aha (within roughly 5 minutes of starting). The middle chapters alternate "learn" and "twist" levels. Chapter capstones combine two ideas. The finale combines four. Solver margins (§10) make sure timing demands stay humane.
 

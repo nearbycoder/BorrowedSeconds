@@ -70,7 +70,7 @@ Menus work with the keyboard, mouse or gamepad.
 | 4-2 | Refinance | 3 lasers (3 s term) | B, needs ≥ 3 loans |
 | 4-3 | Crystal Bar | 2 lasers | B |
 | 4-4 | Long Term | 2 sliders, laser, dial (8 s term) | B, D |
-| 4-5 | Settlement | 2 sliders, 2 lasers, 2 dials | B, D |
+| 4-5 | Settlement | 2 sliders, laser, rotor, 2 dials | B, D |
 
 *B* means the level is unsolvable without borrowing. *D* means the debt is a tool: the level is unsolvable even with unlimited debt-free loans, so your own freeze has to be part of the solution. Every level has a timing safety margin of at least ±3 ticks (150 ms). All but 2-4 have ±4.
 
@@ -155,7 +155,6 @@ Known gaps and differences from `docs/PLAN.md`, stated plainly:
 - **Audio is unheard.** It is fully procedural and checked only numerically and with spectrograms (levels, clipping, loop seams); nobody has listened to it on speakers during development. The mix balance between SFX and music may need tuning.
 - **No human playtesting.** Difficulty and the margins come from the solver, not from people.
 - **Levels were reworked against the solver**, so names and order differ from the plan's original draft (*Hold Still*, *Out of Phase* and *Leverage* became *Crossfire*, *Second Hand* and *Gnomon*). `docs/PLAN.md` §6 now lists the levels as shipped.
-- **The finale (4-5) has no rotors**, so it doesn't combine all three obstacle types as planned. Rotors are combined with lasers in 3-4 and 3-5.
 - **Linux only.** Only the Linux standalone was built and tested.
 
 ## Credits
