@@ -222,7 +222,12 @@ namespace BorrowedSeconds.UI
             wasFrozen = false;
         }
 
-        public static string Roman(int n) => n switch { 1 => "I", 2 => "II", 3 => "III", 4 => "IV", 5 => "V", _ => n.ToString() };
+        public static string Roman(int n)
+        {
+            if (n <= 0 || n >= 40) return n.ToString();
+            string[] tens = { "", "X", "XX", "XXX" }, ones = { "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX" };
+            return tens[n / 10] + ones[n % 10];
+        }
 
         public void Banner(string title, string sub, Color color, float duration)
         {

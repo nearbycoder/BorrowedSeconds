@@ -441,11 +441,22 @@ namespace BorrowedSeconds.UI
             public TextMeshProUGUI Num, Name, Best;
             public Spring Lift = Spring.Make(0f, 260f, 20f);
             public float Hl, Sheen = 2f, CoinSpin = 10f;
-            public int Row, Col;
+            public int Row, Col, Page, Chapter;
+        }
+
+        sealed class Tab
+        {
+            public Panel Panel;
+            public TextMeshProUGUI Label;
+            public float Hl;
         }
 
         readonly List<Card> cards = new List<Card>();
         readonly List<RectTransform> chapterLabels = new List<RectTransform>();
+        readonly List<Tab> tabs = new List<Tab>();
+        const int PerPage = 4;
+        int page, oldPage = -1, pageDir = 1, pages = 1;
+        float pageAge;
         readonly LevelCatalog catalog;
         readonly SaveData save;
         readonly Action<int> onPick;
@@ -482,10 +493,13 @@ namespace BorrowedSeconds.UI
 
             const float cw = 252, ch = 124, gx = 20, gy = 22;
             float x0 = -(Cols - 1) * (cw + gx) * 0.5f + 96;
-            for (int c = 0; c < LevelCatalog.Chapters.Length; c++)
+            int chapters = 1;
+            foreach (var l in catalog.Levels) chapters = Mathf.Max(chapters, l.Chapter);
+            pages = (chapters + PerPage - 1) / PerPage;
+            for (int c = 0; c < chapters; c++)
             {
-                float y = 228 - c * (ch + gy);
-                var info = LevelCatalog.Chapters[c];
+                float y = 228 - (c % PerPage) * (ch + gy);
+                var info = LevelCatalog.Chapters[Mathf.Min(c, LevelCatalog.Chapters.Length - 1)];
                 var grp = Ui.Rect("Chapter" + c, Root, new Vector2(0.5f, 0.5f), new Vector2(1, 0.5f), new Vector2(x0 - cw * 0.5f - 30, y), new Vector2(200, ch));
                 var numeral = Ui.Text("Numeral", grp, Hud.Roman(c + 1), Ui.Heavy, 64, Palette.Gold, TextAlignmentOptions.Right);
                 Ui.Place(numeral.rectTransform, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(0, 14), new Vector2(200, 70));
@@ -497,10 +511,10 @@ namespace BorrowedSeconds.UI
             for (int i = 0; i < catalog.Levels.Count; i++)
             {
                 var d = catalog.Levels[i];
-                int row = Mathf.Clamp(d.Chapter - 1, 0, 3);
+                int row = (d.Chapter - 1) % PerPage;
                 int col = 0;
                 for (int k = 0; k < i; k++) if (catalog.Levels[k].Chapter == d.Chapter) col++;
-                var card = new Card { Row = row, Col = col };
+                var card = new Card { Row = row, Col = col, Page = (d.Chapter - 1) / PerPage, Chapter = d.Chapter };
                 card.Rt = Ui.Rect("Card " + d.Id, Root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(x0 + col * (cw + gx), 228 - row * (ch + gy)), new Vector2(cw, ch));
                 card.Body = Ui.Stretch("Body", card.Rt);
                 card.Panel = new Panel("Panel", card.Body, new Vector2(cw, ch), Panel.Style.Card);
@@ -516,6 +530,20 @@ namespace BorrowedSeconds.UI
                 card.LockImg = Ui.Img("Lock", card.Body, Kit.Lock, Color.white);
                 Ui.Place(card.LockImg.rectTransform, new Vector2(1, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-44, -8), new Vector2(64, 64));
                 cards.Add(card);
+            }
+
+            // volume tabs: one per page of four chapters
+            for (int pg = 0; pg < pages; pg++)
+            {
+                var tab = new Tab();
+                tab.Panel = new Panel("Tab" + pg, Root, new Vector2(170, 40), Panel.Style.Tag);
+                tab.Panel.Rt.anchorMin = tab.Panel.Rt.anchorMax = new Vector2(0.5f, 1);
+                tab.Panel.Rt.anchoredPosition = new Vector2((pg - (pages - 1) * 0.5f) * 190f, -196);
+                int first = pg * PerPage + 1, last = Mathf.Min(chapters, first + PerPage - 1);
+                tab.Label = Ui.Text("Label", tab.Panel.Rt, $"{Hud.Roman(first)} – {Hud.Roman(last)}", Ui.Heavy, 19, Palette.Paper, TextAlignmentOptions.Center);
+                Ui.Fill(tab.Label.rectTransform);
+                tab.Label.characterSpacing = 8;
+                tabs.Add(tab);
             }
 
             // info bar for the selected level
@@ -547,6 +575,9 @@ namespace BorrowedSeconds.UI
         {
             sel = Mathf.Clamp(focus, 0, cards.Count - 1);
             shownInfo = -1;
+            page = cards.Count > 0 ? cards[sel].Page : 0;
+            oldPage = -1;
+            pageAge = 0f;
             Show();
         }
 
@@ -556,15 +587,28 @@ namespace BorrowedSeconds.UI
             titleFx.Age = a - 0.05f;
             rule.localScale = new Vector3(Ease.OutExpo((a - 0.25f) / 0.6f), 1, 1);
             totalsFx.Age = a - 0.4f;
+            pageAge += dt;
             for (int c = 0; c < chapterLabels.Count; c++)
             {
-                float t = Ease.Stagger(a, c, 0.2f, 0.07f, 0.5f);
-                chapterLabels[c].localScale = Vector3.one;
                 var g = chapterLabels[c];
-                g.anchoredPosition = new Vector2(g.anchoredPosition.x, g.anchoredPosition.y);
+                float t = PageIntro(c / PerPage, c % PerPage, 0.2f, 0.07f, 0.5f, out float dx, out bool live);
+                if (g.gameObject.activeSelf != live) g.gameObject.SetActive(live);
+                if (!live) continue;
                 foreach (var t2 in g.GetComponentsInChildren<TextMeshProUGUI>()) t2.alpha = Ease.OutCubic(t);
-                g.localPosition = new Vector3(g.localPosition.x, g.localPosition.y, 0);
-                g.pivot = new Vector2(1 + (1 - Ease.OutCubic(t)) * 0.4f, 0.5f);
+                g.pivot = new Vector2(1 + (1 - Ease.OutCubic(t)) * 0.4f - dx / 200f, 0.5f);
+            }
+            for (int pg = 0; pg < tabs.Count; pg++)
+            {
+                var tab = tabs[pg];
+                tab.Hl = Mathf.MoveTowards(tab.Hl, pg == page ? 1f : 0f, dt * 6f);
+                float tin = Ease.OutCubic((a - 0.35f - pg * 0.06f) / 0.4f);
+                tab.Panel.Glow = 0.6f * tab.Hl;
+                tab.Panel.RimBoost = tab.Hl;
+                tab.Panel.SetRim(Color.Lerp(new Color(0.42f, 0.4f, 0.5f), Palette.Gold, tab.Hl));
+                tab.Panel.Apply();
+                tab.Panel.Image.color = new Color(1, 1, 1, tin * (0.55f + 0.45f * tab.Hl));
+                tab.Label.color = Color.Lerp(new Color(0.62f, 0.66f, 0.8f, tin * 0.8f), new Color(Palette.Gold.r, Palette.Gold.g, Palette.Gold.b, tin), tab.Hl);
+                tab.Panel.Rt.localScale = Vector3.one * (1f + 0.06f * tab.Hl);
             }
 
             int cleared = 0, gold = 0, totalBest = 0, totalPar = 0;
@@ -582,9 +626,11 @@ namespace BorrowedSeconds.UI
                 bool isSel = i == sel;
                 if (isSel && c.Hl < 0.05f) { c.Sheen = -0.6f; c.CoinSpin = 0f; c.Rt.SetAsLastSibling(); info.SetAsLastSibling(); }
                 c.Hl = Mathf.MoveTowards(c.Hl, isSel ? 1f : 0f, dt * 8f);
-                float intro = Ease.Stagger(a, c.Row * 2 + c.Col, 0.3f, 0.035f, 0.55f);
+                float intro = PageIntro(c.Page, c.Row * 2 + c.Col, 0.3f, 0.035f, 0.55f, out float cdx, out bool live);
+                if (c.Rt.gameObject.activeSelf != live) c.Rt.gameObject.SetActive(live);
+                if (!live) continue;
                 float lift = c.Lift.Step(isSel ? 1f : 0f, dt);
-                c.Body.anchoredPosition = new Vector2(0, (1f - Ease.OutCubic(intro)) * -34f + lift * 6f);
+                c.Body.anchoredPosition = new Vector2(cdx, (1f - Ease.OutCubic(intro)) * -34f + lift * 6f);
                 c.Body.localScale = Vector3.one * (Mathf.Lerp(0.84f, 1f, Ease.OutBack(intro, 1.6f)) * (1f + 0.06f * lift));
                 c.Sheen = Mathf.Min(c.Sheen + dt * 2.2f, 2f);
                 c.Panel.Glow = 0.85f * c.Hl;
@@ -617,15 +663,34 @@ namespace BorrowedSeconds.UI
 
             if (!hasInput) return;
             int prev = sel;
-            int col = sel % Cols, row = sel / Cols, rows = (cards.Count + Cols - 1) / Cols;
-            if (input.PressedDir == Dirs.E) col = (col + 1) % Cols;
-            if (input.PressedDir == Dirs.W) col = (col + Cols - 1) % Cols;
-            if (input.PressedDir == Dirs.S) row = (row + 1) % rows;
-            if (input.PressedDir == Dirs.N) row = (row + rows - 1) % rows;
-            sel = Mathf.Min(row * Cols + col, cards.Count - 1);
+            var cur = cards[sel];
+            int chap = cur.Chapter, col = cur.Col, maxChap = cards[cards.Count - 1].Chapter, dir = 0;
+            if (input.PressedDir == Dirs.E) col++;
+            if (input.PressedDir == Dirs.W) col--;
+            if (input.PressedDir == Dirs.S) { chap = chap % maxChap + 1; dir = 1; }
+            if (input.PressedDir == Dirs.N) { chap = (chap + maxChap - 2) % maxChap + 1; dir = -1; }
+            int flip = (input.CycleNext ? 1 : 0) - (input.CyclePrev ? 1 : 0) + (input.Scroll < 0 ? 1 : 0) - (input.Scroll > 0 ? 1 : 0);
+            for (int pg = 0; pg < tabs.Count; pg++)
+                if (input.Click && pg != page && RectTransformUtility.RectangleContainsScreenPoint(tabs[pg].Panel.Rt, input.Pointer, null))
+                    flip = pg - page;
+            if (flip != 0)
+            {
+                int np = ((cur.Page + flip) % pages + pages) % pages;
+                chap = Mathf.Min(np * PerPage + (chap - 1) % PerPage + 1, maxChap);
+                dir = flip > 0 ? 1 : -1;
+            }
+            sel = Find(chap, col);
+            if (cards[sel].Page != page)
+            {
+                oldPage = page;
+                page = cards[sel].Page;
+                pageDir = dir >= 0 ? 1 : -1;
+                pageAge = 0f;
+                Sfx.Play("rotor_whoosh");
+            }
             int hover = -1;
             for (int i = 0; i < cards.Count; i++)
-                if (RectTransformUtility.RectangleContainsScreenPoint(cards[i].Rt, input.Pointer, null)) hover = i;
+                if (cards[i].Page == page && cards[i].Rt.gameObject.activeSelf && RectTransformUtility.RectangleContainsScreenPoint(cards[i].Rt, input.Pointer, null)) hover = i;
             if (hover >= 0 && input.PointerMoved) sel = hover;
             if (sel != prev) Sfx.Play("ui_hover");
             bool click = input.Click && hover >= 0 && hover == sel;
@@ -635,6 +700,40 @@ namespace BorrowedSeconds.UI
                 else { Sfx.Play("bump"); cards[sel].Lift.Kick(-10f); }
             }
             else if (input.Back) { Sfx.Play("ui_back"); onBack(); }
+        }
+
+        /// <summary>Intro factor for an element on page <paramref name="pg"/>: staggered entry on the
+        /// current page (sliding in from the side after a page turn), a quick slide-out on the page
+        /// being left, and hidden otherwise.</summary>
+        float PageIntro(int pg, int order, float delay, float step, float dur, out float dx, out bool live)
+        {
+            dx = 0f;
+            live = true;
+            if (pg == page)
+            {
+                bool turned = oldPage >= 0;
+                float t = Ease.Stagger(pageAge, order, turned ? 0.1f : delay, turned ? 0.025f : step, turned ? 0.4f : dur);
+                if (turned) dx = (1f - Ease.OutCubic(t)) * 160f * pageDir;
+                return t;
+            }
+            if (pg == oldPage)
+            {
+                float o = Ease.Clamp(pageAge / 0.2f);
+                dx = -Ease.InCubic(o) * 160f * pageDir;
+                live = o < 1f;
+                return 1f - o;
+            }
+            live = false;
+            return 0f;
+        }
+
+        int Find(int chapter, int col)
+        {
+            int first = -1, n = 0;
+            for (int i = 0; i < cards.Count; i++)
+                if (cards[i].Chapter == chapter) { if (first < 0) first = i; n++; }
+            if (first < 0) return sel;
+            return first + ((col % n) + n) % n;
         }
 
         void UpdateInfo(float dt, float a)
@@ -653,7 +752,7 @@ namespace BorrowedSeconds.UI
                 infoAge = 0f;
                 int inCh = 1;
                 foreach (var l in catalog.Levels) { if (l == d) break; if (l.Chapter == d.Chapter) inCh++; }
-                var ch = LevelCatalog.Chapters[Mathf.Clamp(d.Chapter - 1, 0, 3)];
+                var ch = LevelCatalog.Chapters[Mathf.Clamp(d.Chapter - 1, 0, LevelCatalog.Chapters.Length - 1)];
                 infoNum.text = $"{d.Chapter}-{inCh}   ·   {ch.Title.ToUpperInvariant()}";
                 infoName.text = open ? d.Name : "Sealed";
                 infoHint.text = open ? (string.IsNullOrEmpty(d.Hint) ? "" : d.Hint) : "Settle the previous level to break the seal.";
@@ -665,7 +764,8 @@ namespace BorrowedSeconds.UI
                 infoStats.richText = true;
                 if (open != lastOpen || infoKeys.childCount == 0)
                 {
-                    float w = Kit.Keycaps(infoKeys, open ? "<b>Space</b> play <b>Esc</b> back" : "<b>Esc</b> back");
+                    string turn = pages > 1 ? "<b>Q E</b> page " : "";
+                    float w = Kit.Keycaps(infoKeys, turn + (open ? "<b>Space</b> play <b>Esc</b> back" : "<b>Esc</b> back"));
                     foreach (RectTransform c in infoKeys) c.anchoredPosition += new Vector2(330 - w, 0);
                     lastOpen = open;
                 }

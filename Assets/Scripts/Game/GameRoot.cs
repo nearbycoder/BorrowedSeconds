@@ -278,8 +278,11 @@ namespace BorrowedSeconds.Game
 
         string MusicFor(int chapter, int index)
         {
+            // each volume of four chapters: two on loop A, two on loop B, its last level on the finale loop
             if (index == Catalog.Levels.Count - 1) return "music_finale";
-            return chapter <= 2 ? "music_a" : "music_b";
+            bool lastOfVolume = chapter % 4 == 0 && (index + 1 >= Catalog.Levels.Count || Catalog.Levels[index + 1].Chapter != chapter);
+            if (lastOfVolume) return "music_finale";
+            return (chapter - 1) % 4 < 2 ? "music_a" : "music_b";
         }
 
         void Pause()

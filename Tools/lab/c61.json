@@ -1,0 +1,50 @@
+{
+ "id": "6-1",
+ "name": "Lockout",
+ "chapter": 6,
+ "term": 100,
+ "loans": 1,
+ "hint": "A closed gate is a wall to blocks too. Let it through, then shut it.",
+ "map": [
+  "  ...         ",
+  "  .S.         ",
+  "  ...         ",
+  "   .          ",
+  "#.a........A..",
+  "          .   ",
+  "          X   "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     1,
+     4
+    ],
+    [
+     13,
+     4
+    ]
+   ],
+   "loop": false,
+   "speed": 2,
+   "phase": 4
+  }
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    4
+   ],
+   "dir": "E",
+   "on": 30,
+   "off": 10
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 3,
+  "startDelay": 20
+ }
+}

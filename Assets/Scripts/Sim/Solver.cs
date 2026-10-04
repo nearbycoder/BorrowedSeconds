@@ -293,6 +293,9 @@ namespace BorrowedSeconds.Sim
             public int MaxStates = 30_000_000;
             /// <summary>Optional: only allow loans on these obstacle indices (null = any).</summary>
             public bool[] BorrowMask;
+            /// <summary>No action other than waiting before this tick: the player's reaction time at the
+            /// start of a level, so par and replays never need a move on the very first frames.</summary>
+            public int StartDelay;
         }
 
         public static SolveResult Solve(LevelDef d, Config cfg)
@@ -304,9 +307,12 @@ namespace BorrowedSeconds.Sim
             var buckets = new List<int>[cfg.MaxTicks + 1];
 
             var root = Simulation.Create(d);
-            // Advance from the very start until the player can act (they can, immediately).
-            int rootIdx = nodes.Add(packer.Pack(root), -1, Act.None, 0, 0);
-            Push(0, rootIdx);
+            // The player idles through the start delay (reaction time), so the search begins there.
+            // Doing it here rather than by restricting actions keeps deduplication time-invariant.
+            for (int k = 0; k < cfg.StartDelay && !root.Dead; k++) Simulation.Step(d, root, Act.None, cfg.Options);
+            if (root.Dead) { res.Seconds = sw.Elapsed.TotalSeconds; res.Exhausted = true; return res; }
+            int rootIdx = nodes.Add(packer.Pack(root), -1, Act.None, 0, root.Tick);
+            Push(root.Tick, rootIdx);
 
             var cur = new SimState(d);
             var next = new SimState(d);

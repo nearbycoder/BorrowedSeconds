@@ -1,0 +1,36 @@
+{
+ "id": "9-2",
+ "name": "Short Notice",
+ "chapter": 9,
+ "term": 30,
+ "loans": 2,
+ "hint": "Freeze the block on one dial and its weight holds it. A term this short lands you on the other.",
+ "map": [
+  "...             ",
+  ".S.             ",
+  "...             ",
+  " ......L...L...X"
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     2,
+     3
+    ],
+    [
+     14,
+     3
+    ]
+   ],
+   "loop": false,
+   "speed": 3
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 3,
+  "startDelay": 20
+ }
+}

@@ -1,0 +1,68 @@
+{
+ "id": "5-3",
+ "name": "Crossbar",
+ "chapter": 5,
+ "term": 100,
+ "loans": 1,
+ "hint": "A beam frozen while lit leaves a crystal bar, and crystal turns blocks back.",
+ "map": [
+  "  #          ",
+  "             ",
+  "             ",
+  "............S",
+  "   .         ",
+  "   .         ",
+  "   .         ",
+  "............X"
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     0,
+     3
+    ],
+    [
+     11,
+     3
+    ]
+   ],
+   "loop": false,
+   "speed": 2,
+   "phase": 6
+  },
+  {
+   "path": [
+    [
+     0,
+     7
+    ],
+    [
+     11,
+     7
+    ]
+   ],
+   "loop": false,
+   "speed": 2,
+   "phase": 9
+  }
+ ],
+ "lasers": [
+  {
+   "at": [
+    2,
+    0
+   ],
+   "dir": "S",
+   "on": 30,
+   "off": 20,
+   "phase": 15
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": false,
+  "margin": 3,
+  "startDelay": 20
+ }
+}

@@ -1,0 +1,62 @@
+{
+ "id": "6-5",
+ "name": "Escrow",
+ "chapter": 6,
+ "term": 80,
+ "loans": 1,
+ "hint": "Leave the block holding the dial, let the debt carry you through the lane, and meet the gate as the loop opens it.",
+ "map": [
+  "          .... ",
+  "...       .##a ",
+  ".S.       .... ",
+  "...           X",
+  " ....L......A.."
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     10,
+     0
+    ],
+    [
+     13,
+     0
+    ],
+    [
+     13,
+     2
+    ],
+    [
+     10,
+     2
+    ]
+   ],
+   "loop": true,
+   "speed": 2,
+   "phase": 10
+  },
+  {
+   "path": [
+    [
+     2,
+     4
+    ],
+    [
+     14,
+     4
+    ]
+   ],
+   "loop": false,
+   "speed": 3,
+   "phase": 2
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 3,
+  "startDelay": 20,
+  "debt": true
+ },
+ "notes": "from d63: g170 term=80 loans=1 {'gates': [(12, 'a')], 'ring': (10, 'n', 2, 10, 1, [(4, 'a')]), 'lane': (2, 14, 3, 2), 'pockets': [], 'dial': 5, 'exit': 'n'}"
+}

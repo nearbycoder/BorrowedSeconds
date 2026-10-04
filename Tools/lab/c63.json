@@ -1,0 +1,66 @@
+{
+ "id": "6-3",
+ "name": "Doorstop",
+ "chapter": 6,
+ "term": 60,
+ "loans": 1,
+ "hint": "A gate can't close on anything standing in it. Neither can a dial let go of a frozen block.",
+ "map": [
+  "...             ",
+  ".S.             ",
+  "...             ",
+  " .....AL.......X",
+  "                ",
+  "      ...a      ",
+  "      .##.      ",
+  "      .a..      "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     6,
+     5
+    ],
+    [
+     9,
+     5
+    ],
+    [
+     9,
+     7
+    ],
+    [
+     6,
+     7
+    ]
+   ],
+   "loop": true,
+   "speed": 4,
+   "dir": -1,
+   "phase": 18
+  },
+  {
+   "path": [
+    [
+     3,
+     3
+    ],
+    [
+     8,
+     3
+    ]
+   ],
+   "loop": false,
+   "speed": 4,
+   "phase": 13
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 3,
+  "debt": true,
+  "startDelay": 20
+ },
+ "notes": "from d62: g110 term=60 loans=1 {'gates': [(6, 'a')], 'ring': (6, 's', 4, 18, -1, [(3, 'a'), (7, 'a')]), 'lane': (3, 8, 4, 13), 'pockets': [], 'dial': 7, 'exit': 'e'}"
+}

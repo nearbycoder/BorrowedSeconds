@@ -15,6 +15,8 @@ namespace BorrowedSeconds.Game
         public int PressedDir = -1;   // direction newly pressed this frame
         public bool Borrow, Focus, Rewind, Restart, Pause, Confirm, Back, CycleNext, CyclePrev, Hint;
         public bool PointerMoved, Click;
+        /// <summary>Mouse wheel this frame: +1 up, -1 down, 0 none.</summary>
+        public int Scroll;
         public Vector2 Pointer;
         public bool AnyKey;
         public bool UsingGamepad;
@@ -30,6 +32,7 @@ namespace BorrowedSeconds.Game
             PressedDir = -1;
             Borrow = Focus = Rewind = Restart = Pause = Confirm = Back = CycleNext = CyclePrev = Hint = Click = false;
             AnyKey = false;
+            Scroll = 0;
 
             bool[] held = new bool[4];
             bool[] down = new bool[4];
@@ -61,6 +64,8 @@ namespace BorrowedSeconds.Game
                 Borrow |= mouse.leftButton.wasPressedThisFrame;
                 Click = mouse.leftButton.wasPressedThisFrame;
                 Focus |= mouse.rightButton.isPressed;
+                float wheel = mouse.scroll.ReadValue().y;
+                Scroll = wheel > 0.01f ? 1 : wheel < -0.01f ? -1 : 0;
                 AnyKey |= mouse.leftButton.wasPressedThisFrame;
             }
             if (pad != null)

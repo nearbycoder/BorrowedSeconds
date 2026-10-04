@@ -53,7 +53,7 @@ static class Program
         if (trace != null)
         {
             var lv = levels.First(l => l.Id == trace);
-            var r = Solver.Solve(lv, new Solver.Config { MaxStates = maxStates });
+            var r = Solver.Solve(lv, new Solver.Config { MaxStates = maxStates, StartDelay = lv.StartDelay });
             Console.WriteLine($"{lv.Id} solved={r.Solved} ticks={r.Ticks} states={r.States}");
             if (r.Solved) Trace(lv, r.Actions);
             return 0;
@@ -87,7 +87,7 @@ static class Program
             int budget = Math.Max(maxStates, lv.SearchBudget);
             var sb = new StringBuilder();
             bool ok = true;
-            var main = Solver.Solve(lv, new Solver.Config { MaxStates = budget });
+            var main = Solver.Solve(lv, new Solver.Config { MaxStates = budget, StartDelay = lv.StartDelay });
             sb.Append($"{lv.Id,-5} {Trunc(lv.Name, 16),-16} ");
             if (!main.Solved)
             {
@@ -99,6 +99,7 @@ static class Program
             main.Actions = Simplify(lv, main.Actions, main.Ticks);
             var replay = Solver.Replay(lv, main.Actions, main.Ticks + 5);
             if (!replay.Won) { ok = false; sb.Append("[REPLAY MISMATCH] "); }
+            else main.Ticks = replay.Tick; // simplifying can shave a few ticks: par is what the replay achieves
             sb.Append($"{main.Seconds,7:F1}s {Rules.Seconds(main.Ticks),6:F2}s {main.Loans,5} ");
 
             string nb = "-", fg = "-";
@@ -120,7 +121,7 @@ static class Program
                 margin = 0;
                 for (int k = 1; k <= marginMax; k++)
                 {
-                    var r = Solver.Solve(lv, new Solver.Config { MaxStates = budget, Margin = k });
+                    var r = Solver.Solve(lv, new Solver.Config { MaxStates = budget, Margin = k, StartDelay = lv.StartDelay });
                     if (!r.Solved) break;
                     margin = k;
                 }

@@ -1,0 +1,34 @@
+{
+ "id": "9-1",
+ "name": "Same Day",
+ "chapter": 9,
+ "term": 40,
+ "loans": 2,
+ "hint": "A two-second term: borrow where you want to be standing.",
+ "map": [
+  "...            ",
+  ".S.            ",
+  "...            ",
+  "#....L....L....",
+  "              .",
+  "              X"
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    3
+   ],
+   "dir": "E",
+   "on": 20,
+   "off": 20,
+   "phase": 5
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 3,
+  "startDelay": 20
+ }
+}

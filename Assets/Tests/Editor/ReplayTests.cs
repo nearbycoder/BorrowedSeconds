@@ -44,7 +44,8 @@ namespace BorrowedSeconds.Tests
         public void EveryLevelHasASolution()
         {
             Load();
-            Assert.AreEqual(20, levels.Count, "level count");
+            Assert.GreaterOrEqual(levels.Count, 20, "level count");
+            Assert.AreEqual(levels.Count, solutions.Count, "one solution per level");
             foreach (var l in levels) Assert.IsTrue(solutions.ContainsKey(l.Id), "no solution for " + l.Id);
         }
 

@@ -1,0 +1,32 @@
+{
+ "id": "9-5",
+ "name": "Payroll",
+ "chapter": 9,
+ "term": 40,
+ "loans": 3,
+ "hint": "Three dials, two-second terms. Borrow, step, settle, and again.",
+ "map": [
+  "...            ",
+  ".S.           X",
+  "...           .",
+  "#...L...L...L.."
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    3
+   ],
+   "dir": "E",
+   "on": 20,
+   "off": 20,
+   "phase": 5
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 3,
+  "startDelay": 20
+ }
+}

@@ -1,0 +1,53 @@
+{
+ "id": "5-5",
+ "name": "Fulcrum",
+ "chapter": 5,
+ "term": 120,
+ "loans": 1,
+ "hint": "One loan opens the way. The debt has to hold the dial.",
+ "map": [
+  " ...          ",
+  " .S.          ",
+  " ...          ",
+  "   .          ",
+  "   ..         ",
+  "........L....X"
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     3,
+     2
+    ],
+    [
+     3,
+     5
+    ]
+   ],
+   "loop": false,
+   "speed": 2
+  },
+  {
+   "path": [
+    [
+     0,
+     5
+    ],
+    [
+     12,
+     5
+    ]
+   ],
+   "loop": false,
+   "speed": 2
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 3,
+  "debt": true,
+  "startDelay": 20
+ },
+ "notes": "from d55: chute=12 dial=8 side=0 sa=2 da=0 pa=0 sb=2 pb=0 term=120"
+}

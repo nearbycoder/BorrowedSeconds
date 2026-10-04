@@ -1,0 +1,59 @@
+{
+ "id": "6-2",
+ "name": "Gatekeeper",
+ "chapter": 6,
+ "term": 100,
+ "loans": 1,
+ "hint": "A shut gate is a shield. Every time the block steps on the plate, the light gets through.",
+ "map": [
+  "     ....      ",
+  "     a##a      ",
+  "     ....      ",
+  "             X ",
+  "#....A........#",
+  "       .       ",
+  "      .S.      ",
+  "      ...      "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     5,
+     0
+    ],
+    [
+     8,
+     0
+    ],
+    [
+     8,
+     2
+    ],
+    [
+     5,
+     2
+    ]
+   ],
+   "loop": true,
+   "speed": 4,
+   "phase": 9
+  }
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    4
+   ],
+   "dir": "E",
+   "on": 20,
+   "off": 0
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 3,
+  "startDelay": 20
+ }
+}

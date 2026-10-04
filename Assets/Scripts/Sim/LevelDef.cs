@@ -74,6 +74,8 @@ namespace BorrowedSeconds.Sim
         public int MinLoans;
         /// <summary>Solver state cap for this level's proofs (0 = solver default).</summary>
         public int SearchBudget;
+        /// <summary>Ticks at the start where the par solution may only wait (reaction time).</summary>
+        public int StartDelay;
         public string Notes = "";
 
         public int ObstacleCount => Sliders.Length + Lasers.Length + Rotors.Length;
@@ -269,6 +271,7 @@ namespace BorrowedSeconds.Sim
                 lv.ExpectMargin = MiniJson.Int(exd, "margin", 0);
                 lv.MinLoans = MiniJson.Int(exd, "minLoans", 0);
                 lv.SearchBudget = MiniJson.Int(exd, "budget", 0);
+                lv.StartDelay = MiniJson.Int(exd, "startDelay", 0);
             }
             return lv;
         }

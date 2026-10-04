@@ -1,0 +1,53 @@
+{
+ "id": "5-2",
+ "name": "Backswing",
+ "chapter": 5,
+ "term": 100,
+ "loans": 1,
+ "hint": "A hand that meets crystal swings back the way it came.",
+ "map": [
+  "...         ",
+  ".S.         ",
+  "...         ",
+  " .          ",
+  " .  .       ",
+  " .....      ",
+  "    .......X"
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     4,
+     6
+    ],
+    [
+     10,
+     6
+    ]
+   ],
+   "loop": false,
+   "speed": 3,
+   "phase": 5
+  }
+ ],
+ "rotors": [
+  {
+   "at": [
+    4,
+    4
+   ],
+   "arms": "W",
+   "len": 2,
+   "cw": false,
+   "turn": 3,
+   "hold": 10
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": false,
+  "margin": 3,
+  "startDelay": 20
+ }
+}

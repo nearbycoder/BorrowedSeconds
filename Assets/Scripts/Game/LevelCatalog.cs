@@ -29,6 +29,14 @@ namespace BorrowedSeconds.Game
             new ChapterInfo { Title = "Interest", Epigraph = "Light keeps no promises.", Mechanic = "Lasers" },
             new ChapterInfo { Title = "Momentum", Epigraph = "What goes around comes around.", Mechanic = "Rotors" },
             new ChapterInfo { Title = "Compound", Epigraph = "Pay it all back.", Mechanic = "Everything" },
+            new ChapterInfo { Title = "Leverage", Epigraph = "Crystal turns everything back.", Mechanic = "Pens" },
+            new ChapterInfo { Title = "Escrow", Epigraph = "Leave something behind to hold the door.", Mechanic = "Plates and gates" },
+            new ChapterInfo { Title = "Exposure", Epigraph = "Every light casts a shadow.", Mechanic = "Lasers" },
+            new ChapterInfo { Title = "Amortize", Epigraph = "Pay it back a little at a time.", Mechanic = "Two loans" },
+            new ChapterInfo { Title = "Overdraft", Epigraph = "Due sooner than you think.", Mechanic = "Short terms" },
+            new ChapterInfo { Title = "Maturity", Epigraph = "Some debts take their time.", Mechanic = "Long terms" },
+            new ChapterInfo { Title = "Arbitrage", Epigraph = "Make the machine pay for itself.", Mechanic = "Rotors" },
+            new ChapterInfo { Title = "Solvency", Epigraph = "Every account comes due.", Mechanic = "Everything" },
         };
 
         public LevelCatalog()

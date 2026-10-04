@@ -1,0 +1,32 @@
+{
+ "id": "8-1",
+ "name": "Instalments",
+ "chapter": 8,
+ "term": 100,
+ "loans": 2,
+ "hint": "Two dials in the light, two loans, two debts. Each debt has to land on a dial.",
+ "map": [
+  "...            ",
+  ".S.           X",
+  "...           .",
+  "#....L....L...."
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    3
+   ],
+   "dir": "E",
+   "on": 20,
+   "off": 20,
+   "phase": 5
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 3,
+  "startDelay": 20
+ }
+}

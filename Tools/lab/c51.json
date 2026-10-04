@@ -1,0 +1,53 @@
+{
+ "id": "5-1",
+ "name": "Rebound",
+ "chapter": 5,
+ "term": 100,
+ "loans": 1,
+ "hint": "Crystal is solid to everything. A frozen block turns other blocks back.",
+ "map": [
+  "...           ",
+  ".S.           ",
+  "...           ",
+  "  .           ",
+  "  ..          ",
+  ".............X"
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     5
+    ]
+   ],
+   "loop": false,
+   "speed": 3
+  },
+  {
+   "path": [
+    [
+     0,
+     5
+    ],
+    [
+     12,
+     5
+    ]
+   ],
+   "loop": false,
+   "speed": 2,
+   "phase": 7
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": false,
+  "margin": 3,
+  "startDelay": 20
+ }
+}

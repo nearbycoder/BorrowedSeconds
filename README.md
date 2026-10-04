@@ -4,7 +4,7 @@
 
 Freeze any moving obstacle for three seconds, but every second you borrow comes due: a few seconds later *you* freeze for three seconds, wherever you happen to be standing. While frozen, hazards pass straight through you. Thawing inside one is what kills. The best solutions turn the debt into the plan: pay it back standing on a dial, or exactly as a laser sweeps over you.
 
-A Unity 6 (6000.6.2f1, URP) puzzle game with 20 handmade levels across four chapters. The simulation is fully deterministic, and an exhaustive solver proves every level solvable. Where a level is designed around it, the solver also proves the debt is required.
+A Unity 6 (6000.6.2f1, URP) puzzle game with 30 levels across six chapters. The simulation is fully deterministic, and an exhaustive solver proves every level solvable. Where a level is designed around it, the solver also proves the debt is required.
 
 ![](ArtSource/previews/_contact_sheet.png)
 
@@ -71,6 +71,16 @@ Menus work with the keyboard, mouse or gamepad.
 | 4-3 | Crystal Bar | 2 lasers | B |
 | 4-4 | Long Term | 2 sliders, laser, dial (8 s term) | B, D |
 | 4-5 | Settlement | 2 sliders, laser, rotor, 2 dials | B, D |
+| 5-1 | Rebound | 2 sliders (a frozen block pens the other) | B |
+| 5-2 | Backswing | slider, rotor (the hand swings back off crystal) | B |
+| 5-3 | Crossbar | 2 sliders, laser (one crystal bar pens both) | B |
+| 5-4 | Pendulum | slider, laser, rotor (a frozen hand shades and walls) | B |
+| 5-5 | Fulcrum | 2 sliders, dial | B, D |
+| 6-1 | Lockout | slider, laser, plate + gate (shut a block in a pen) | B |
+| 6-2 | Gatekeeper | loop slider, laser, plates + gate (a shut gate stops light) | B |
+| 6-3 | Doorstop | 2 sliders, plates + gate, dial | B, D |
+| 6-4 | Two Keys | 2 sliders, 2 plates + 2 gates, dial | B |
+| 6-5 | Escrow | 2 sliders, plate + gate, dial | B, D |
 
 *B* means the level is unsolvable without borrowing. *D* means the debt is a tool: the level is unsolvable even with unlimited debt-free loans, so your own freeze has to be part of the solution. Every level has a timing safety margin of at least ±3 ticks (150 ms). All but 2-4 have ±4.
 
@@ -135,8 +145,8 @@ All commands are run from the project root.
 | Proofs and replays | `Tools/validate.sh` (or `--level 4-5`, or `--quick`) | Proves B/D and margins and writes `solutions.json`. 4-5 is the slow one: it searches up to 150M states and needs a lot of RAM. |
 | Materials / scene | `Tools/unity.sh batch BorrowedSeconds.EditorTools.ProjectSetup.Apply` | |
 | Linux build | `Tools/unity.sh build-linux` | Writes `Builds/Linux/BorrowedSeconds.x86_64`. |
-| Self-test | `Tools/devcap.sh /tmp/bs-cap` | Development build, then autoplays all 20 levels and prints PASS/FAIL per level, saving screenshots. |
-| Unity tests | `unity test . --mode EditMode` | 42 EditMode tests: each saved solution replayed under Mono must win at exactly its par tick; idling never wins; state keys round-trip. |
+| Self-test | `Tools/devcap.sh /tmp/bs-cap` | Development build, then autoplays every level and prints PASS/FAIL per level, saving screenshots. |
+| Unity tests | `unity test . --mode EditMode` | 62 EditMode tests (two per level plus two): each saved solution replayed under Mono must win at exactly its par tick; idling never wins; state keys round-trip. |
 | Controls test | `Tools/inputbot.sh` | Release build plays 1-1 through virtual keyboard + mouse: taps, a held key, Shift-focus aiming, hover and click-to-borrow, repayment, win. |
 | Frame rate | `Tools/play.sh -bsFps /tmp/fps.txt -bsNoVsync` | Plays the three busiest levels and logs average fps and worst-1% frame time. |
 | Demo reel | `Tools/demo/record.sh` | Needs the Linux build. Records a 1:45 reel frame-locked at 60 fps to `Builds/Demo/BorrowedSeconds_demo.mp4` and mixes its soundtrack offline from the game's audio event log. |
@@ -144,10 +154,10 @@ All commands are run from the project root.
 ## Status
 
 What has been verified:
-- The latest build autoplays all 20 levels from the solver's saved replays, and every one passes (`Tools/capture.sh`). This checks that the in-game loop matches the solver tick for tick.
+- The latest build autoplays all 30 levels from the solver's saved replays, and every one passes (`Tools/capture.sh`). This checks that the in-game loop matches the solver tick for tick.
 - The solver proves every level solvable and proves each B/D claim in the table above.
 - A scripted menu tour (`Tools/play.sh dev -bsMenus DIR`) captures frame-locked bursts at 30 fps of every screen's intro animation. It covers the title, level select, chapter card, play, pause, settings, level complete and ending screens with no console errors.
-- 42 EditMode tests pass in Unity, so the .NET 8 solver and the game's Mono runtime agree tick for tick.
+- 62 EditMode tests pass in Unity, so the .NET 8 solver and the game's Mono runtime agree tick for tick.
 - The input bot wins 1-1 through the real input path (3 of 3 runs) using virtual keyboard and mouse devices.
 - Frame rate on this machine (AMD Radeon 8060S iGPU, 1600×900, vsync off): 316–428 fps average and 6.5–7.9 ms worst-1% frame time on 4-5, 3-5 and 2-4. With vsync on, a window that isn't visible is throttled by the Wayland compositor (to about 11 fps here); that's the compositor, not the game.
 
@@ -156,6 +166,7 @@ Known gaps and differences from `docs/PLAN.md`, stated plainly:
 - **No human playtesting.** Difficulty and the margins come from the solver, not from people.
 - **Levels were reworked against the solver**, so names and order differ from the plan's original draft (*Hold Still*, *Out of Phase* and *Leverage* became *Crossfire*, *Second Hand* and *Gnomon*). `docs/PLAN.md` §6 now lists the levels as shipped.
 - **Linux only.** Only the Linux standalone was built and tested.
+- **Expansion in progress.** Chapters V–VI (Leverage, Escrow) shipped. Chapters VII–XII are planned for a 60-level total, but aren't designed yet. Four finished levels for them (8-1, 9-1, 9-2, 9-5) sit in `Tools/lab/`, and `assemble.py` leaves a chapter out until all five of its levels exist. New levels use a 1 s start delay, so par never needs a move in the first second. The design sweeps are in `Tools/lab/sweep.py` and `Tools/lab/designs/`.
 
 ## Credits
 
