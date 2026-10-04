@@ -1,0 +1,22 @@
+{
+    "name": "BorrowedSeconds.Editor",
+    "rootNamespace": "BorrowedSeconds.EditorTools",
+    "references": [
+        "BorrowedSeconds",
+        "BorrowedSeconds.Sim",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Universal.Editor",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.TextMeshPro",
+        "Unity.TextMeshPro.Editor"
+    ],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

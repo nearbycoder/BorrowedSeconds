@@ -1,0 +1,165 @@
+using System.Collections.Generic;
+using BorrowedSeconds.Sim;
+using UnityEngine;
+
+namespace BorrowedSeconds.View
+{
+    /// <summary>Marks a collider as a clickable obstacle.</summary>
+    public sealed class ObstaclePick : MonoBehaviour
+    {
+        public int Index;
+    }
+
+    /// <summary>
+    /// Builds the level diorama and renders interpolated simulation states onto it.
+    /// World layout: tile (x,row) sits at (x - (W-1)/2, 0, (H-1)/2 - row); floor top is y = 0.
+    /// </summary>
+    public sealed class BoardView : MonoBehaviour
+    {
+        public LevelDef Def;
+        public PlayerView Player;
+        public readonly List<SliderView> Sliders = new List<SliderView>();
+        public readonly List<LaserView> Lasers = new List<LaserView>();
+        public readonly List<RotorView> Rotors = new List<RotorView>();
+        public readonly List<PlateView> Plates = new List<PlateView>();
+        public readonly List<GateView> Gates = new List<GateView>();
+        public readonly List<LockView> Locks = new List<LockView>();
+        public ExitView Exit;
+        public Bounds Bounds;
+        Transform statics;
+
+        public Vector3 Pos(float x, float y, float h = 0f) => new Vector3(x - (Def.W - 1) * 0.5f, h, (Def.H - 1) * 0.5f - y);
+        public Vector3 At(int idx, float h = 0f) => Pos(Def.X(idx), Def.Y(idx), h);
+        public Vector3 Pos(Vector2 tile, float h = 0f) => Pos(tile.x, tile.y, h);
+
+        public static Vector3 DirVec(int dir) => new Vector3(Dirs.DX[dir], 0, -Dirs.DY[dir]);
+
+        public void Build(LevelDef d)
+        {
+            Def = d;
+            statics = Shapes.Group("Statics", transform).transform;
+            BuildTerrain();
+            for (int i = 0; i < d.Plates.Length; i++) Plates.Add(new PlateView(this, i));
+            for (int i = 0; i < d.Gates.Length; i++) Gates.Add(new GateView(this, i));
+            for (int i = 0; i < d.Locks.Length; i++) Locks.Add(new LockView(this, i));
+            Exit = new ExitView(this);
+            for (int i = 0; i < d.Sliders.Length; i++) Sliders.Add(new SliderView(this, i));
+            for (int i = 0; i < d.Lasers.Length; i++) Lasers.Add(new LaserView(this, i));
+            for (int i = 0; i < d.Rotors.Length; i++) Rotors.Add(new RotorView(this, i));
+            Player = new PlayerView(this);
+        }
+
+        void BuildTerrain()
+        {
+            var floorA = Mats.Lit(Palette.FloorA, 0.55f);
+            var floorB = Mats.Lit(Palette.FloorB, 0.55f);
+            var plinth = Mats.Lit(Palette.Plinth, 0.25f);
+            var wall = Mats.Lit(Palette.Wall, 0.3f);
+            var wallTop = Mats.Lit(Palette.WallTop, 0.4f);
+            var min = new Vector3(float.MaxValue, 0, float.MaxValue);
+            var max = new Vector3(float.MinValue, 0, float.MinValue);
+            for (int y = 0; y < Def.H; y++)
+            for (int x = 0; x < Def.W; x++)
+            {
+                var t = Def.Tiles[Def.Idx(x, y)];
+                if (t == Tile.Void) continue;
+                var p = Pos(x, y);
+                min = Vector3.Min(min, p);
+                max = Vector3.Max(max, p);
+                Shapes.Box("Plinth", statics, p + new Vector3(0, -0.85f, 0), new Vector3(1f, 1.4f, 1f), plinth, false);
+                if (t == Tile.Floor)
+                {
+                    var m = model("FloorTile", p);
+                    if (m == null) Shapes.Box("Floor", statics, p + new Vector3(0, -0.075f, 0), new Vector3(0.97f, 0.15f, 0.97f), (x + y) % 2 == 0 ? floorA : floorB);
+                    else foreach (var r in m.GetComponentsInChildren<Renderer>()) r.sharedMaterial = (x + y) % 2 == 0 ? floorA : floorB;
+                }
+                else
+                {
+                    Shapes.Box("Wall", statics, p + new Vector3(0, 0.22f, 0), new Vector3(1f, 0.6f, 1f), wall);
+                    Shapes.Box("WallTop", statics, p + new Vector3(0, 0.53f, 0), new Vector3(0.9f, 0.04f, 0.9f), wallTop);
+                }
+            }
+            Bounds = new Bounds((min + max) * 0.5f, max - min + new Vector3(1, 1, 1));
+
+            GameObject model(string name, Vector3 p)
+            {
+                var m = Shapes.Model(name, statics);
+                if (m != null) m.transform.localPosition = p;
+                return m;
+            }
+        }
+
+        public void Render(SimState a, SimState b, float t, float dt)
+        {
+            float time = Time.time;
+            Player.Render(a, b, t, dt, time);
+            foreach (var v in Sliders) v.Render(a, b, t, dt, time);
+            foreach (var v in Lasers) v.Render(a, b, t, dt, time);
+            foreach (var v in Rotors) v.Render(a, b, t, dt, time);
+            foreach (var v in Plates) v.Render(a, b, t, dt, time);
+            foreach (var v in Gates) v.Render(a, b, t, dt, time);
+            foreach (var v in Locks) v.Render(a, b, t, dt, time);
+            Exit.Render(a, b, t, dt, time);
+        }
+
+        public int Pick(Ray ray)
+        {
+            var hits = Physics.RaycastAll(ray, 200f);
+            int best = -1;
+            float bestDist = float.MaxValue;
+            foreach (var h in hits)
+            {
+                var p = h.collider.GetComponent<ObstaclePick>();
+                if (p == null || h.distance >= bestDist) continue;
+                best = p.Index;
+                bestDist = h.distance;
+            }
+            return best;
+        }
+
+        /// <summary>World-space centre of an obstacle right now (for tethers and labels).</summary>
+        public Vector3 ObstacleCenter(int obstacle)
+        {
+            switch (Def.KindOf(obstacle, out int i))
+            {
+                case LevelDef.Kind.Slider: return Sliders[i].Root.transform.position + Vector3.up * 0.45f;
+                case LevelDef.Kind.Laser: return Lasers[i].Root.transform.position + Vector3.up * 0.45f;
+                default: return Rotors[i].Root.transform.position + Vector3.up * 0.5f;
+            }
+        }
+
+        public void SetHighlight(int obstacle)
+        {
+            for (int i = 0; i < Sliders.Count; i++) Sliders[i].Highlight = Def.ObstacleIndex(LevelDef.Kind.Slider, i) == obstacle;
+            for (int i = 0; i < Lasers.Count; i++) Lasers[i].Highlight = Def.ObstacleIndex(LevelDef.Kind.Laser, i) == obstacle;
+            for (int i = 0; i < Rotors.Count; i++) Rotors[i].Highlight = Def.ObstacleIndex(LevelDef.Kind.Rotor, i) == obstacle;
+        }
+
+        // ---------------------------------------------------------------- shared interpolation
+
+        public static Vector2 TileOf(LevelDef d, int idx) => new Vector2(d.X(idx), d.Y(idx));
+
+        public static Vector2 PlayerTile(LevelDef d, SimState s)
+        {
+            if (!s.Moving) return TileOf(d, s.P);
+            return Vector2.Lerp(TileOf(d, s.F), TileOf(d, s.P), s.MoveProg / (float)Rules.MoveTicks);
+        }
+
+        public static Vector2 SliderTile(LevelDef d, SimState s, int i)
+        {
+            var sd = d.Sliders[i];
+            var a = TileOf(d, sd.Path[s.SIdx[i]]);
+            if (s.SProg[i] == 0) return a;
+            int n = Simulation.SliderNext(sd, s.SIdx[i], s.SDir[i]);
+            if (n < 0) return a;
+            return Vector2.Lerp(a, TileOf(d, sd.Path[n]), s.SProg[i] / (float)sd.Speed);
+        }
+
+        public static float RotorAngle(LevelDef d, SimState s, int i)
+        {
+            float ang = s.ROrient[i] * 90f;
+            if (s.RProg[i] > 0) ang += s.RDir[i] * 90f * s.RProg[i] / d.Rotors[i].Turn;
+            return ang;
+        }
+    }
+}
