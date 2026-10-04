@@ -140,6 +140,24 @@ namespace BorrowedSeconds.View
             DangerAmount = 1f;
         }
 
+        // ---- full-screen time ripples (BS/TimeRipple, see ProjectSetup.AddRipplePass)
+        static readonly int RippleA = Shader.PropertyToID("_BS_RippleA");
+        static readonly int RippleB = Shader.PropertyToID("_BS_RippleB");
+        static readonly int TimeFx = Shader.PropertyToID("_BS_TimeFx");
+        readonly Vector4[] ripples = { new Vector4(0, 0, -1, 0), new Vector4(0, 0, -1, 0) };
+        int nextRipple;
+
+        /// <summary>Starts a radial distortion ripple centred on a world position.</summary>
+        public void Ripple(Vector3 world, float strength)
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+            var vp = cam.WorldToViewportPoint(world);
+            if (vp.z <= 0) return;
+            ripples[nextRipple] = new Vector4(vp.x, vp.y, 0f, ReduceFlashing ? strength * 0.3f : strength);
+            nextRipple = 1 - nextRipple;
+        }
+
         public void Flash(float amount) => flash = Mathf.Max(flash, ReduceFlashing ? amount * 0.3f : amount);
 
         void Update()
@@ -149,6 +167,12 @@ namespace BorrowedSeconds.View
             lensPulse = Mathf.MoveTowards(lensPulse, 0f, dt * 1.4f);
             flash = Mathf.MoveTowards(flash, 0f, dt * 3f);
             DangerAmount = Mathf.MoveTowards(DangerAmount, 0f, dt * 1.2f);
+            for (int i = 0; i < 2; i++)
+                if (ripples[i].z >= 0f) { ripples[i].z += dt; if (ripples[i].z > 0.8f) ripples[i].z = -1f; }
+            Shader.SetGlobalVector(RippleA, ripples[0]);
+            Shader.SetGlobalVector(RippleB, ripples[1]);
+            var c = Camera.main;
+            Shader.SetGlobalVector(TimeFx, new Vector4(ReduceFlashing ? RewindAmount * 0.3f : RewindAmount, c != null ? c.aspect : 1.78f, 0, 0));
             if (chroma == null) return;
 
             chroma.intensity.value = Mathf.Clamp01(0.04f + chromaPulse * 0.9f + RewindAmount * 0.55f + FrozenAmount * 0.12f + DangerAmount * 0.4f);

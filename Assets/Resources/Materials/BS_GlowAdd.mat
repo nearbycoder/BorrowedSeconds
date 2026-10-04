@@ -26,6 +26,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _DstBlend: 1
+    - _FadeV: 0
     - _Pulse: 0
     - _Scroll: 0
     - _SrcBlend: 5

@@ -27,6 +27,8 @@ namespace BorrowedSeconds.Game
         public LevelSession Session { get; private set; }
         public Fx Fx { get; private set; }
         public Hud Hud { get; private set; }
+        public Prompts Prompts { get; private set; }
+        bool diedSinceRewind, promptDemo;
         public AudioDirector Audio { get; private set; }
         public SaveData Save { get; private set; }
         public int LevelIndex { get; private set; }
@@ -77,6 +79,7 @@ namespace BorrowedSeconds.Game
             Fx.transform.SetParent(transform, false);
             Fx.Build();
             Hud = Hud.Create(transform);
+            Prompts = Prompts.Create(transform);
             Audio = AudioDirector.Create(transform);
             BuildMenus();
             ApplySettings();
@@ -120,6 +123,8 @@ namespace BorrowedSeconds.Game
             string menus = Arg(args, "-bsMenus");
             string demo = Arg(args, "-bsDemo");
             capturing = capture != null || menus != null || demo != null;
+            promptDemo = System.Array.IndexOf(args, "-bsPrompts") >= 0;
+            if (promptDemo) Save.learned = 0;
             Save.ReadOnly = capturing;
             if (demo != null)
             {
@@ -332,6 +337,7 @@ namespace BorrowedSeconds.Game
             Input.Poll();
             float dt = Clock.Dt;
             bool top(MenuScreen s) => s.Visible && TopScreen() == s;
+            Prompts.Tick(Session, Save, Input, State == Flow.Playing && Session != null && !Session.Muted && (promptDemo || (!capturing && Session.Autoplay == null)), dt);
             title.Update(Input, dt, top(title));
             levels.Update(Input, dt, top(levels));
             pause.Update(Input, dt, top(pause));
@@ -398,6 +404,14 @@ namespace BorrowedSeconds.Game
             Session = new GameObject("Level " + def.Id).AddComponent<LevelSession>();
             Session.Init(def, Input, Cam);
             Session.Events += OnSimEvents;
+            Prompts.ResetLevel();
+            Session.Events += (st, evs) => { if ((promptDemo || !capturing) && !Session.Muted) Prompts.OnEvents(Save, evs); };
+            Session.Died += _ => diedSinceRewind = true;
+            Session.RewindChanged += on =>
+            {
+                if (!on && diedSinceRewind) Prompts.OnAutoRewindDone();
+                if (!on) diedSinceRewind = false;
+            };
             Session.Died += _ =>
             {
                 Env.PulseDeath();
@@ -439,6 +453,7 @@ namespace BorrowedSeconds.Game
                         Rig.Punch(0.9f);
                         Session.Hitstop(0.08f);
                         Fx.Borrow(board.At(s.P, 0.7f), board.ObstacleCenter(e.A));
+                        Env.Ripple(board.ObstacleCenter(e.A), 1f);
                         if (loud) Sfx.Play("borrow");
                         break;
                     case Ev.Due:
@@ -446,6 +461,7 @@ namespace BorrowedSeconds.Game
                         Rig.Shake(0.18f);
                         Rig.Punch(0.5f);
                         Fx.Freeze(board.At(s.P));
+                        Env.Ripple(board.At(s.P, 0.5f), 0.7f);
                         if (loud) Sfx.Play("freeze");
                         break;
                     case Ev.PlayerThaw:

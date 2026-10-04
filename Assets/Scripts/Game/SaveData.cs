@@ -15,6 +15,7 @@ namespace BorrowedSeconds.Game
         public int[] best = new int[0];        // best clear in ticks per level id, 0 = never cleared
         public int lastLevel;
         public bool finished;
+        public int learned;                     // onboarding prompts retired (UI.Prompts bits)
 
         public float master = 0.8f, music = 0.7f, sfx = 0.9f, focus = 0.2f;
         public bool fullscreen = true, shake = true, reduceFlashing;

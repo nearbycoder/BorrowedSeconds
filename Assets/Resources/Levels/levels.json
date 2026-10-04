@@ -59,13 +59,14 @@
         "         ..... ",
         "           .   ",
         "...............",
-        "  .X.          "
+        "   X           "
       ],
       "sliders": [
-        {"path": [[0, 3], [14, 3]], "speed": 2},
-        {"path": [[0, 7], [14, 7]], "speed": 2, "phase": 13}
+        {"path": [[0, 3], [14, 3]], "speed": 2, "dwell": 2},
+        {"path": [[0, 7], [14, 7]], "speed": 2, "phase": 0, "dwell": 2}
       ],
-      "expect": {"borrow": true, "margin": 2}
+      "expect": {"borrow": true, "minLoans": 2, "margin": 2},
+      "notes": "Both shuttles cycle in exactly 60 ticks, so a 60-tick freeze is time-neutral in either lane: the debt can't stand in for a loan."
     },
     {
       "id": "1-4",

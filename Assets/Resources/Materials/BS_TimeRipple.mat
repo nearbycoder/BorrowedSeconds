@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: BS_Glow
-  m_Shader: {fileID: 4800000, guid: ee40a6690db7e45c6966debc490b067e, type: 3}
+  m_Name: BS_TimeRipple
+  m_Shader: {fileID: 4800000, guid: fd1b6048235c12417be6ed57c3acba68, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -24,14 +24,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs: []
     m_Ints: []
-    m_Floats:
-    - _DstBlend: 10
-    - _FadeV: 0
-    - _Pulse: 0
-    - _Scroll: 0
-    - _SrcBlend: 5
-    - _ZWrite: 0
-    m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    m_Floats: []
+    m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1

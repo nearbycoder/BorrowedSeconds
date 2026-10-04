@@ -13,7 +13,7 @@
   "         ..... ",
   "           .   ",
   "...............",
-  "  .X.          "
+  "   X           "
  ],
  "sliders": [
   {
@@ -27,7 +27,8 @@
      3
     ]
    ],
-   "speed": 2
+   "speed": 2,
+   "dwell": 2
   },
   {
    "path": [
@@ -41,12 +42,15 @@
     ]
    ],
    "speed": 2,
-   "phase": 13
+   "phase": 0,
+   "dwell": 2
   }
  ],
  "expect": {
   "borrow": true,
+  "minLoans": 2,
   "margin": 2
  },
- "hint": "One loan at a time. Settle your debt before you borrow again."
+ "hint": "One loan at a time. Settle your debt before you borrow again.",
+ "notes": "Both shuttles cycle in exactly 60 ticks, so a 60-tick freeze is time-neutral in either lane: the debt can't stand in for a loan."
 }

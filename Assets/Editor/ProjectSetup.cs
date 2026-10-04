@@ -48,7 +48,10 @@ namespace BorrowedSeconds.EditorTools
                 ok &= Mat("BS_Ring", "BS/Ring", null) != null;
                 ok &= Mat("BS_Backdrop", "BS/Backdrop", null) != null;
                 ok &= Mat("BS_Particle", "BS/Particle", null) != null;
+                var ripple = Mat("BS_TimeRipple", "BS/TimeRipple", null);
+                ok &= ripple != null;
                 ConfigureUrp();
+                if (ripple != null) AddRipplePass(ripple);
                 ConfigurePlayer();
                 BuildScene();
                 BuildFonts();
@@ -92,6 +95,41 @@ namespace BorrowedSeconds.EditorTools
             setup?.Invoke(m);
             EditorUtility.SetDirty(m);
             return m;
+        }
+
+        const string RippleName = "BS Time Ripple";
+
+        /// <summary>Adds (once) the full-screen time-distortion pass to every renderer.</summary>
+        static void AddRipplePass(Material mat)
+        {
+            foreach (var path in new[] { "Assets/Settings/PC_Renderer.asset", "Assets/Settings/Mobile_Renderer.asset" })
+            {
+                var data = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(path);
+                if (data == null) continue;
+                var feature = data.rendererFeatures.OfType<FullScreenPassRendererFeature>().FirstOrDefault(f => f.name == RippleName);
+                if (feature == null)
+                {
+                    feature = ScriptableObject.CreateInstance<FullScreenPassRendererFeature>();
+                    feature.name = RippleName;
+                    AssetDatabase.AddObjectToAsset(feature, data);
+                    AssetDatabase.TryGetGUIDAndLocalFileIdentifier(feature, out _, out long localId);
+                    var so = new SerializedObject(data);
+                    var features = so.FindProperty("m_RendererFeatures");
+                    var map = so.FindProperty("m_RendererFeatureMap");
+                    features.arraySize++;
+                    features.GetArrayElementAtIndex(features.arraySize - 1).objectReferenceValue = feature;
+                    map.arraySize++;
+                    map.GetArrayElementAtIndex(map.arraySize - 1).longValue = localId;
+                    so.ApplyModifiedProperties();
+                }
+                feature.passMaterial = mat;
+                feature.injectionPoint = FullScreenPassRendererFeature.InjectionPoint.AfterRenderingPostProcessing;
+                feature.requirements = ScriptableRenderPassInput.None;
+                feature.fetchColorBuffer = true;
+                feature.SetActive(true);
+                EditorUtility.SetDirty(feature);
+                EditorUtility.SetDirty(data);
+            }
         }
 
         static void ConfigureUrp()
