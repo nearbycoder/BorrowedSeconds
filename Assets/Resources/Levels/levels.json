@@ -278,6 +278,7 @@
       "chapter": 3,
       "term": 120,
       "loans": 1,
+      "hint": "One loan, two jobs: freeze the turnstile to get through, and let the debt hold the dial.",
       "map": [
         " ...          ",
         " .S.          ",
@@ -325,6 +326,7 @@
       "chapter": 3,
       "term": 140,
       "loans": 1,
+      "hint": "Freeze a hand across the beam to cast a shadow. The debt lands later: be on the dial when it does.",
       "map": [
         "     ...        ",
         "     .S.        ",

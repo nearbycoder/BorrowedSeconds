@@ -66,5 +66,6 @@
   "borrow": true,
   "debt": true,
   "margin": 2
- }
+ },
+ "hint": "Freeze a hand across the beam to cast a shadow. The debt lands later: be on the dial when it does."
 }

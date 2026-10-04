@@ -122,10 +122,24 @@ namespace BorrowedSeconds.Game
             string capture = Arg(args, "-bsCapture");
             string menus = Arg(args, "-bsMenus");
             string demo = Arg(args, "-bsDemo");
-            capturing = capture != null || menus != null || demo != null;
+            string bot = Arg(args, "-bsInputBot");
+            capturing = capture != null || menus != null || demo != null || bot != null;
             promptDemo = System.Array.IndexOf(args, "-bsPrompts") >= 0;
             if (promptDemo) Save.learned = 0;
             Save.ReadOnly = capturing;
+            string fps = Arg(args, "-bsFps");
+            if (fps != null)
+            {
+                capturing = true;
+                Save.ReadOnly = true;
+                StartCoroutine(FpsProbe(fps));
+                return;
+            }
+            if (bot != null)
+            {
+                StartCoroutine(InputBot(bot));
+                return;
+            }
             if (demo != null)
             {
                 StartCoroutine(DemoReel(demo));
