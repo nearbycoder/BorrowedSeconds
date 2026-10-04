@@ -81,6 +81,7 @@ The game also includes:
 - **Settings:** master/music/effects volume, fullscreen, screen shake, reduced flashing and Focus strength.
 - **Saves:** progress and settings are stored in PlayerPrefs (`bs.save.v1`).
 - **Onboarding:** key-cap prompts float in the world over the thing they refer to ("WASD move" over the pawn, "Hover + click, freeze it" over the nearest slider, "Hold Shift, slow time to aim", "Hold Z, rewind further" after a default). Each retires for good once you've done it (saved). Each level also has a one-line tip about its new idea, and level 1 is built so that the only thing to try is the slider.
+- **Interface:** every panel is drawn by one procedural shader (`BS/UIPanel`): chamfered watch-case corners, a lit brass rim, an enamel gradient, an outer glow, a sheen sweep and a clock-hand reveal. Screen changes use a clock-face wipe (`BS/UIWipe`). Menus blur and darken the board behind them. Motion is driven by springs and staggered easing, with per-letter text effects (drop, stamp, rise, spread, typewriter). A 3D pocket watch modelled in Blender and rendered live into the UI is the title emblem, the HUD's loan dial (its second hand counts the term down and frosts over while frozen) and the ending's centrepiece. The medal coins and padlock are Blender renders. Key hints are drawn as keycaps, and the mouse cursors are custom.
 - **Time distortion:** a custom full-screen pass (`BS/TimeRipple`) sends a radial ripple with a chromatic split out from whatever you freeze and from you when a debt lands, and smears the image while rewinding. It's layered on URP's bloom, vignette, colour grading, chromatic aberration and lens distortion.
 
 ## Project layout
@@ -95,13 +96,16 @@ Assets/
   Scripts/View/     BoardView, Pieces (per-obstacle views), GhostPreview, CameraRig, Fx,
                     WorldEnvironment (backdrop, gears, post-processing pulses), Mats, Shapes.
   Scripts/UI/       Runtime-built uGUI + TextMeshPro: Hud, Prompts (in-world onboarding), Menus (title,
-                    level select, pause, settings, complete, chapter card, ending).
+                    level select, pause, settings, complete, chapter card, ending), Kit (panels, sliders,
+                    toggles, keycaps, coins), Motion (springs, easing), TextFx (per-letter animation),
+                    WatchStage (3D watch rendered to a texture), Transition (clock wipe), Cursors.
   Scripts/Audio/    AudioDirector: pooled SFX with low-pass "muffle", crossfading music decks.
-  Shaders/          Backdrop, Crystal, Ghost, Glow (beams), Ring (watch), Particle, TimeRipple (full screen).
+  Shaders/          Backdrop, Crystal, Ghost, Glow (beams), Ring (watch), Particle, TimeRipple (full screen,
+                    also the menu blur), UIPanel and UIWipe (interface).
   Resources/        Levels/levels.json + solutions.json, Models/*.fbx, Audio/*.wav, Fonts, Materials.
   Editor/           ProjectSetup (URP assets, renderer features, materials, scene), BuildScript, import settings.
   Tests/Editor/     EditMode tests: every solver replay wins at par under Unity's Mono runtime.
-ArtSource/          build_assets.py (Blender bpy generator), generated .blend files, previews/.
+ArtSource/          build_assets.py and build_ui_assets.py (Blender bpy generators), generated .blend files, previews/.
 Tools/
   unity.sh          Run the editor / a batch method / the Linux build.
   play.sh           Run the built game (add `dev` for the development build).
@@ -125,6 +129,7 @@ All commands are run from the project root.
 | What | Command | Notes |
 |---|---|---|
 | 3D models | `blender -b --factory-startup -P ArtSource/build_assets.py` | Writes `Assets/Resources/Models/*.fbx`, `ArtSource/*.blend` and the preview renders. |
+| UI models | `blender -b --factory-startup -P ArtSource/build_ui_assets.py` (or `-- watch`, `coins` or `lock`) | Writes `Assets/Resources/Models/PocketWatch.fbx` and renders the medal coins and padlock to `Assets/Resources/UI/`. |
 | Audio | `Tools/audio/synth.sh` (or `sfx`, `music`, or a single name like `music_a`) | Runs `synth.py` with Blender's bundled Python, because it needs numpy. Writes `Assets/Resources/Audio/*.wav`. Takes about 2 minutes. |
 | Levels | Edit `Tools/lab/cXY.json`, check it with `python3 Tools/lab/lab.py Tools/lab/c15.json`, then run `python3 Tools/lab/assemble.py` | Writes `levels.json`. |
 | Proofs and replays | `Tools/validate.sh` (or `--level 4-5`, or `--quick`) | Proves B/D and margins and writes `solutions.json`. 4-5 is the slow one: it searches up to 150M states and needs a lot of RAM. |
@@ -141,7 +146,7 @@ All commands are run from the project root.
 What has been verified:
 - The latest build autoplays all 20 levels from the solver's saved replays, and every one passes (`Tools/capture.sh`). This checks that the in-game loop matches the solver tick for tick.
 - The solver proves every level solvable and proves each B/D claim in the table above.
-- A scripted menu tour (`-bsMenus DIR`) covers the title, level select, chapter card, play, pause, settings, level complete and ending screens with no console errors.
+- A scripted menu tour (`Tools/play.sh dev -bsMenus DIR`) captures frame-locked bursts at 30 fps of every screen's intro animation. It covers the title, level select, chapter card, play, pause, settings, level complete and ending screens with no console errors.
 - 42 EditMode tests pass in Unity, so the .NET 8 solver and the game's Mono runtime agree tick for tick.
 - The input bot wins 1-1 through the real input path (3 of 3 runs) using virtual keyboard and mouse devices.
 - Frame rate on this machine (AMD Radeon 8060S iGPU, 1600×900, vsync off): 316–428 fps average and 6.5–7.9 ms worst-1% frame time on 4-5, 3-5 and 2-4. With vsync on, a window that isn't visible is throttled by the Wayland compositor (to about 11 fps here); that's the compositor, not the game.
