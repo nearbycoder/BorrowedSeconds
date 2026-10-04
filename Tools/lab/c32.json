@@ -1,0 +1,49 @@
+{
+ "id": "3-2",
+ "name": "Clockwork",
+ "chapter": 3,
+ "term": 100,
+ "loans": 1,
+ "map": [
+  "    ...    ",
+  "    .S.    ",
+  "     .     ",
+  "  .......  ",
+  "  ...L...  ",
+  "  .......  ",
+  "     .     ",
+  "    .X.    ",
+  "           "
+ ],
+ "rotors": [
+  {
+   "at": [
+    3,
+    4
+   ],
+   "arms": "E",
+   "len": 2,
+   "cw": true,
+   "turn": 3,
+   "hold": 8
+  },
+  {
+   "at": [
+    7,
+    4
+   ],
+   "arms": "W",
+   "len": 2,
+   "cw": false,
+   "turn": 3,
+   "hold": 12,
+   "phase": 6
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 2
+ },
+ "hint": "Rotor arms sweep straight through a frozen you."
+}

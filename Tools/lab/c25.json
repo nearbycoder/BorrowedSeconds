@@ -1,0 +1,58 @@
+{
+ "id": "2-5",
+ "name": "Fine Print",
+ "chapter": 2,
+ "term": 60,
+ "loans": 1,
+ "map": [
+  " ...    .a..   ",
+  " .S.    .##.   ",
+  " ...    ....   ",
+  "  .            ",
+  "  ..A.....L#   ",
+  "          .    ",
+  "         .X.   "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     8,
+     0
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     11,
+     2
+    ],
+    [
+     8,
+     2
+    ]
+   ],
+   "loop": true,
+   "speed": 3
+  }
+ ],
+ "lasers": [
+  {
+   "at": [
+    11,
+    4
+   ],
+   "dir": "W",
+   "on": 20,
+   "off": 0,
+   "plate": "a"
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 2
+ },
+ "hint": "Short term: this debt lands almost as soon as the loan runs out."
+}

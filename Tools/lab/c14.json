@@ -1,0 +1,56 @@
+{
+ "id": "1-4",
+ "name": "Collateral",
+ "chapter": 1,
+ "term": 100,
+ "map": [
+  "  ...          ",
+  "  .S.    ...   ",
+  "   .     .L.   ",
+  "...............",
+  "           .   ",
+  "    L......X   "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     0,
+     3
+    ],
+    [
+     14,
+     3
+    ]
+   ],
+   "speed": 2
+  },
+  {
+   "path": [
+    [
+     9,
+     1
+    ],
+    [
+     11,
+     1
+    ],
+    [
+     11,
+     2
+    ],
+    [
+     9,
+     2
+    ]
+   ],
+   "loop": true,
+   "speed": 4
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 2
+ },
+ "hint": "Stand on a gold dial for 3 seconds to latch it. The exit opens once every dial is latched."
+}

@@ -1,0 +1,55 @@
+{
+ "id": "4-2",
+ "name": "Refinance",
+ "chapter": 4,
+ "term": 60,
+ "loans": 3,
+ "map": [
+  " S             ",
+  "#.........     ",
+  "         ..    ",
+  "         ..    ",
+  "  .........#   ",
+  "  ..           ",
+  "  ..           ",
+  "#..........    ",
+  "          X    "
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    1
+   ],
+   "dir": "E",
+   "on": 30,
+   "off": 6
+  },
+  {
+   "at": [
+    11,
+    4
+   ],
+   "dir": "W",
+   "on": 30,
+   "off": 6,
+   "phase": 12
+  },
+  {
+   "at": [
+    0,
+    7
+   ],
+   "dir": "E",
+   "on": 30,
+   "off": 6,
+   "phase": 24
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "minLoans": 3,
+  "margin": 2
+ },
+ "hint": "Three loans in a row. Each repayment spot sets up the next."
+}

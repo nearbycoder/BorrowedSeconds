@@ -5,7 +5,7 @@ namespace BorrowedSeconds.Sim
     {
         /// <summary>Borrowing is disabled entirely.</summary>
         public bool NoBorrow;
-        /// <summary>Loans never come due, there is no one-loan limit and no loan cap.
+        /// <summary>Loans never come due and may overlap (the level's loan cap still applies).
         /// A strict relaxation of the real rules except that the player never freezes.</summary>
         public bool ForgiveDebt;
     }
@@ -166,9 +166,9 @@ namespace BorrowedSeconds.Sim
             if (opt.NoBorrow || s.Dead || s.Won || s.Moving || s.PFrozen > 0) return false;
             if (target < 0 || target >= d.ObstacleCount) return false;
             if (s.IsObstacleFrozen(d, target)) return false;
+            if (d.LoanLimit >= 0 && s.Loans >= d.LoanLimit) return false;
             if (opt.ForgiveDebt) return true;
             if (s.Countdown > 0 || s.Pending) return false;
-            if (d.LoanLimit >= 0 && s.Loans >= d.LoanLimit) return false;
             return true;
         }
 
@@ -358,7 +358,7 @@ namespace BorrowedSeconds.Sim
             int o = s.ROrient[i];
             if (dir > 0 ? rd.WedgeCWOut[o] : rd.WedgeCCWOut[o]) return true;
             var wedge = dir > 0 ? rd.WedgeCW[o] : rd.WedgeCCW[o];
-            if (wedge.Intersects(d.StaticSolid)) return true;
+            if (wedge.Intersects(d.ArmBlock)) return true;
             if (isolated) return false;
             for (int g = 0; g < d.Gates.Length; g++)
                 if (!s.GateOpen[g] && wedge.Has(d.Gates[g].Tile)) return true;

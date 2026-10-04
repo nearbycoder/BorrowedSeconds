@@ -1,0 +1,39 @@
+{
+ "id": "4-3",
+ "name": "Crystal Bar",
+ "chapter": 4,
+ "term": 100,
+ "map": [
+  "  #   ...   ",
+  "      .S.   ",
+  "       .    ",
+  "#...........",
+  "          . ",
+  "         .X."
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    3
+   ],
+   "dir": "E",
+   "on": 20,
+   "off": 0
+  },
+  {
+   "at": [
+    2,
+    0
+   ],
+   "dir": "S",
+   "on": 30,
+   "off": 30
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 2
+ },
+ "hint": "Freeze a laser while it's lit and its beam becomes a crystal bar."
+}

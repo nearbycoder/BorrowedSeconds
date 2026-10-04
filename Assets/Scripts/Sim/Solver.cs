@@ -364,9 +364,9 @@ namespace BorrowedSeconds.Sim
         {
             if (opt.NoBorrow || s.Moving) return false;
             if (s.IsObstacleFrozen(d, target)) return false;
+            if (d.LoanLimit >= 0 && s.Loans >= d.LoanLimit) return false;
             if (opt.ForgiveDebt) return true;
             if (s.Countdown > 0 || s.Pending) return false;
-            if (d.LoanLimit >= 0 && s.Loans >= d.LoanLimit) return false;
             return true;
         }
 

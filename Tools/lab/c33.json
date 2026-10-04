@@ -1,0 +1,47 @@
+{
+ "id": "3-3",
+ "name": "Second Hand",
+ "chapter": 3,
+ "term": 120,
+ "loans": 1,
+ "map": [
+  " ...          ",
+  " .S.          ",
+  "  .           ",
+  "  .........   ",
+  "          .   ",
+  "        ....  ",
+  "        .L..  ",
+  "        ....  ",
+  "         .X   "
+ ],
+ "rotors": [
+  {
+   "at": [
+    6,
+    4
+   ],
+   "arms": "NS",
+   "len": 3,
+   "cw": true,
+   "turn": 3,
+   "hold": 4
+  },
+  {
+   "at": [
+    10,
+    6
+   ],
+   "arms": "W",
+   "len": 2,
+   "cw": true,
+   "turn": 3,
+   "hold": 5
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 2
+ }
+}

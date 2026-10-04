@@ -1,0 +1,45 @@
+{
+ "id": "3-4",
+ "name": "Gnomon",
+ "chapter": 3,
+ "term": 100,
+ "map": [
+  "    ...      ",
+  "    .S.      ",
+  "     .       ",
+  "#..........  ",
+  "  .       .  ",
+  "  .       .  ",
+  "  .      .X. ",
+  "             "
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    3
+   ],
+   "dir": "E",
+   "on": 20,
+   "off": 0
+  }
+ ],
+ "rotors": [
+  {
+   "at": [
+    2,
+    5
+   ],
+   "arms": "N",
+   "len": 2,
+   "cw": true,
+   "turn": 3,
+   "hold": 8
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 2
+ },
+ "hint": "A frozen rotor arm is a wall, and walls stop beams."
+}

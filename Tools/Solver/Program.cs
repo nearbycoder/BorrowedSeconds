@@ -16,9 +16,10 @@ static class Program
 {
     static int Main(string[] args)
     {
-        string levelsPath = null, outPath = null, only = null, trace = null;
+        string levelsPath = null, outPath = null, only = null, trace = null, frames = null;
         bool quick = false, write = true;
         int marginMax = 4;
+        int maxStates = new Solver.Config().MaxStates;
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -30,13 +31,29 @@ static class Program
                 case "--quick": quick = true; break;
                 case "--no-write": write = false; break;
                 case "--margin-max": marginMax = int.Parse(args[++i]); break;
+                case "--frames": frames = args[++i]; break;
+                case "--max-states": maxStates = int.Parse(args[++i]); break;
             }
         }
         var levels = LevelDef.LoadAll(File.ReadAllText(levelsPath));
+        if (frames != null)
+        {
+            // --frames id:t0-t1  dump idle-player frames (hazards '*', solids '%')
+            var parts = frames.Split(':');
+            var lv = levels.First(l => l.Id == parts[0]);
+            var range = parts[1].Split('-').Select(int.Parse).ToArray();
+            var st = Simulation.Create(lv);
+            while (st.Tick <= range[1])
+            {
+                if (st.Tick >= range[0]) Console.WriteLine($"t={st.Tick}\n" + Render(lv, st));
+                Simulation.Step(lv, st, Act.None);
+            }
+            return 0;
+        }
         if (trace != null)
         {
             var lv = levels.First(l => l.Id == trace);
-            var r = Solver.Solve(lv, new Solver.Config());
+            var r = Solver.Solve(lv, new Solver.Config { MaxStates = maxStates });
             Console.WriteLine($"{lv.Id} solved={r.Solved} ticks={r.Ticks} states={r.States}");
             if (r.Solved) Trace(lv, r.Actions);
             return 0;
@@ -67,9 +84,10 @@ static class Program
                 if (existing.TryGetValue(lv.Id, out var keep)) results.Add(keep);
                 continue;
             }
+            int budget = Math.Max(maxStates, lv.SearchBudget);
             var sb = new StringBuilder();
             bool ok = true;
-            var main = Solver.Solve(lv, new Solver.Config());
+            var main = Solver.Solve(lv, new Solver.Config { MaxStates = budget });
             sb.Append($"{lv.Id,-5} {Trunc(lv.Name, 16),-16} ");
             if (!main.Solved)
             {
@@ -78,6 +96,7 @@ static class Program
                 allOk = false;
                 continue;
             }
+            main.Actions = Simplify(lv, main.Actions, main.Ticks);
             var replay = Solver.Replay(lv, main.Actions, main.Ticks + 5);
             if (!replay.Won) { ok = false; sb.Append("[REPLAY MISMATCH] "); }
             sb.Append($"{main.Seconds,7:F1}s {Rules.Seconds(main.Ticks),6:F2}s {main.Loans,5} ");
@@ -88,20 +107,20 @@ static class Program
             {
                 if (lv.ExpectBorrow)
                 {
-                    var r = Solver.Solve(lv, new Solver.Config { Options = new SimOptions { NoBorrow = true } });
+                    var r = Solver.Solve(lv, new Solver.Config { MaxStates = budget, Options = new SimOptions { NoBorrow = true } });
                     nb = r.Solved ? "SOLVABLE" : r.Exhausted ? "proved" : "limit?";
                     if (r.Solved || !r.Exhausted) ok = false;
                 }
                 if (lv.ExpectDebt)
                 {
-                    var r = Solver.Solve(lv, new Solver.Config { Options = new SimOptions { ForgiveDebt = true } });
+                    var r = Solver.Solve(lv, new Solver.Config { MaxStates = budget, Options = new SimOptions { ForgiveDebt = true } });
                     fg = r.Solved ? "SOLVABLE" : r.Exhausted ? "proved" : "limit?";
                     if (r.Solved || !r.Exhausted) ok = false;
                 }
                 margin = 0;
                 for (int k = 1; k <= marginMax; k++)
                 {
-                    var r = Solver.Solve(lv, new Solver.Config { Margin = k });
+                    var r = Solver.Solve(lv, new Solver.Config { MaxStates = budget, Margin = k });
                     if (!r.Solved) break;
                     margin = k;
                 }
@@ -111,7 +130,7 @@ static class Program
                     // prove fewer loans can't do it: cap the loan count one below the design
                     int saved = lv.LoanLimit;
                     lv.LoanLimit = lv.MinLoans - 1;
-                    var r = Solver.Solve(lv, new Solver.Config());
+                    var r = Solver.Solve(lv, new Solver.Config { MaxStates = budget });
                     lv.LoanLimit = saved;
                     nb += r.Solved ? $" <{lv.MinLoans}:SOLVABLE" : r.Exhausted ? $" <{lv.MinLoans}:proved" : " <n:limit?";
                     if (r.Solved || !r.Exhausted) ok = false;
@@ -141,6 +160,35 @@ static class Program
     }
 
     static string Trunc(string s, int n) => s.Length <= n ? s : s.Substring(0, n);
+
+    /// <summary>Drops back-and-forth step pairs (the search's equivalent of waiting) when the
+    /// replay still wins just as fast, so replays shown to players look deliberate.</summary>
+    static List<TimedAction> Simplify(LevelDef lv, List<TimedAction> actions, int par)
+    {
+        var cur = new List<TimedAction>(actions);
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            for (int i = 0; i + 1 < cur.Count; i++)
+            {
+                var a = cur[i];
+                var b = cur[i + 1];
+                if (!Act.IsMove(a.Action) || !Act.IsMove(b.Action)) continue;
+                if ((Act.MoveDir(a.Action) + 2) % 4 != Act.MoveDir(b.Action)) continue;
+                var cand = new List<TimedAction>(cur);
+                cand.RemoveRange(i, 2);
+                var r = Solver.Replay(lv, cand, par + 5);
+                if (r.Won && r.Tick <= par)
+                {
+                    cur = cand;
+                    changed = true;
+                    break;
+                }
+            }
+        }
+        return cur;
+    }
 
     static void Trace(LevelDef lv, List<TimedAction> actions)
     {

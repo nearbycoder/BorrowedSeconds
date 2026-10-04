@@ -14,7 +14,7 @@ namespace BorrowedSeconds.Game
         public int HeldDir = -1;      // direction currently held (most recent wins)
         public int PressedDir = -1;   // direction newly pressed this frame
         public bool Borrow, Focus, Rewind, Restart, Pause, Confirm, Back, CycleNext, CyclePrev, Hint;
-        public bool PointerMoved;
+        public bool PointerMoved, Click;
         public Vector2 Pointer;
         public bool AnyKey;
         public bool UsingGamepad;
@@ -28,7 +28,7 @@ namespace BorrowedSeconds.Game
             var mouse = Mouse.current;
             var pad = Gamepad.current;
             PressedDir = -1;
-            Borrow = Focus = Rewind = Restart = Pause = Confirm = Back = CycleNext = CyclePrev = Hint = false;
+            Borrow = Focus = Rewind = Restart = Pause = Confirm = Back = CycleNext = CyclePrev = Hint = Click = false;
             AnyKey = false;
 
             bool[] held = new bool[4];
@@ -59,6 +59,7 @@ namespace BorrowedSeconds.Game
                 if (PointerMoved) UsingGamepad = false;
                 lastPointer = Pointer;
                 Borrow |= mouse.leftButton.wasPressedThisFrame;
+                Click = mouse.leftButton.wasPressedThisFrame;
                 Focus |= mouse.rightButton.isPressed;
                 AnyKey |= mouse.leftButton.wasPressedThisFrame;
             }

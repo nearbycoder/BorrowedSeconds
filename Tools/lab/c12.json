@@ -1,0 +1,38 @@
+{
+ "id": "1-2",
+ "name": "Pass-Through",
+ "chapter": 1,
+ "term": 100,
+ "map": [
+  " ...          ",
+  " .S.          ",
+  " ...          ",
+  "  .           ",
+  "  .........   ",
+  "          .   ",
+  "         ...  ",
+  "         .X.  "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     2,
+     4
+    ],
+    [
+     10,
+     4
+    ]
+   ],
+   "speed": 5,
+   "dwell": 8
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 2
+ },
+ "hint": "While you are frozen, hazards pass straight through you. Thawing inside one is what kills."
+}

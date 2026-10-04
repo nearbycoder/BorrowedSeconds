@@ -1,0 +1,37 @@
+{
+ "id": "1-1",
+ "name": "First Loan",
+ "chapter": 1,
+ "term": 100,
+ "map": [
+  "  ...          ",
+  "  .S.          ",
+  "  ...          ",
+  "   .           ",
+  "...............",
+  "           .   ",
+  "          ...  ",
+  "          .X.  ",
+  "          ...  "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     0,
+     4
+    ],
+    [
+     14,
+     4
+    ]
+   ],
+   "speed": 2
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 2
+ },
+ "hint": "<b>Hover</b> the moving block, then <b>click</b> to freeze it for 3 seconds. Five seconds later the debt comes due and <i>you</i> freeze."
+}

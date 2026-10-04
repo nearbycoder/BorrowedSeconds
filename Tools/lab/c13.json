@@ -1,0 +1,52 @@
+{
+ "id": "1-3",
+ "name": "Grace Period",
+ "chapter": 1,
+ "term": 60,
+ "loans": 2,
+ "map": [
+  "  ...          ",
+  "  .S.          ",
+  "   .           ",
+  "...............",
+  "           .   ",
+  "         ..... ",
+  "           .   ",
+  "...............",
+  "  .X.          "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     0,
+     3
+    ],
+    [
+     14,
+     3
+    ]
+   ],
+   "speed": 2
+  },
+  {
+   "path": [
+    [
+     0,
+     7
+    ],
+    [
+     14,
+     7
+    ]
+   ],
+   "speed": 2,
+   "phase": 13
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 2
+ },
+ "hint": "One loan at a time. Settle your debt before you borrow again."
+}

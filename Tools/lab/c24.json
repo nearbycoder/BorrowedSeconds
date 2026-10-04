@@ -1,0 +1,44 @@
+{
+ "id": "2-4",
+ "name": "Crossfire",
+ "chapter": 2,
+ "term": 100,
+ "loans": 1,
+ "map": [
+  "      #    ",
+  " ...       ",
+  " .S.       ",
+  "  .        ",
+  "#.....L....",
+  "      .    ",
+  "      ..X  "
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    4
+   ],
+   "dir": "E",
+   "on": 30,
+   "off": 24,
+   "phase": 0
+  },
+  {
+   "at": [
+    6,
+    0
+   ],
+   "dir": "S",
+   "on": 30,
+   "off": 24,
+   "phase": 12
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 2
+ },
+ "hint": "Lasers can't hurt a frozen you either."
+}

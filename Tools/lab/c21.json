@@ -1,0 +1,63 @@
+{
+ "id": "2-1",
+ "name": "Blink",
+ "chapter": 2,
+ "term": 100,
+ "map": [
+  "   #  #  #   ",
+  "S..........  ",
+  "          .  ",
+  "          .  ",
+  "          .  ",
+  "          .  ",
+  "          .X ",
+  "          #  "
+ ],
+ "lasers": [
+  {
+   "at": [
+    3,
+    0
+   ],
+   "dir": "S",
+   "on": 24,
+   "off": 20,
+   "phase": 0
+  },
+  {
+   "at": [
+    6,
+    0
+   ],
+   "dir": "S",
+   "on": 24,
+   "off": 20,
+   "phase": 14
+  },
+  {
+   "at": [
+    9,
+    0
+   ],
+   "dir": "S",
+   "on": 24,
+   "off": 20,
+   "phase": 28
+  },
+  {
+   "at": [
+    10,
+    7
+   ],
+   "dir": "N",
+   "on": 44,
+   "off": 10,
+   "phase": 0
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 2
+ },
+ "hint": "Lasers flicker before they fire. Freeze one while it's dark and its lane stays open."
+}

@@ -1,19 +1,480 @@
 {
   "levels": [
     {
-      "id": "1-1", "name": "First Loan", "chapter": 1, "term": 100,
+      "id": "1-1",
+      "name": "First Loan",
+      "chapter": 1,
+      "term": 100,
+      "hint": "<b>Hover</b> the moving block, then <b>click</b> to freeze it for 3 seconds. Five seconds later the debt comes due and <i>you</i> freeze.",
       "map": [
-        "################",
-        "#S.....#########",
-        "#......#########",
-        "###.############",
-        "#..............#",
-        "############.###",
-        "##########...X##",
-        "################"
+        "  ...          ",
+        "  .S.          ",
+        "  ...          ",
+        "   .           ",
+        "...............",
+        "           .   ",
+        "          ...  ",
+        "          .X.  ",
+        "          ...  "
       ],
-      "sliders": [ { "path": [[1,4],[14,4]], "speed": 2, "dwell": 0 } ],
-      "expect": { "borrow": true }
+      "sliders": [
+        {"path": [[0, 4], [14, 4]], "speed": 2}
+      ],
+      "expect": {"borrow": true, "margin": 2}
+    },
+    {
+      "id": "1-2",
+      "name": "Pass-Through",
+      "chapter": 1,
+      "term": 100,
+      "hint": "While you are frozen, hazards pass straight through you. Thawing inside one is what kills.",
+      "map": [
+        " ...          ",
+        " .S.          ",
+        " ...          ",
+        "  .           ",
+        "  .........   ",
+        "          .   ",
+        "         ...  ",
+        "         .X.  "
+      ],
+      "sliders": [
+        {"path": [[2, 4], [10, 4]], "speed": 5, "dwell": 8}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 2}
+    },
+    {
+      "id": "1-3",
+      "name": "Grace Period",
+      "chapter": 1,
+      "term": 60,
+      "loans": 2,
+      "hint": "One loan at a time. Settle your debt before you borrow again.",
+      "map": [
+        "  ...          ",
+        "  .S.          ",
+        "   .           ",
+        "...............",
+        "           .   ",
+        "         ..... ",
+        "           .   ",
+        "...............",
+        "  .X.          "
+      ],
+      "sliders": [
+        {"path": [[0, 3], [14, 3]], "speed": 2},
+        {"path": [[0, 7], [14, 7]], "speed": 2, "phase": 13}
+      ],
+      "expect": {"borrow": true, "margin": 2}
+    },
+    {
+      "id": "1-4",
+      "name": "Collateral",
+      "chapter": 1,
+      "term": 100,
+      "hint": "Stand on a gold dial for 3 seconds to latch it. The exit opens once every dial is latched.",
+      "map": [
+        "  ...          ",
+        "  .S.    ...   ",
+        "   .     .L.   ",
+        "...............",
+        "           .   ",
+        "    L......X   "
+      ],
+      "sliders": [
+        {"path": [[0, 3], [14, 3]], "speed": 2},
+        {"path": [[9, 1], [11, 1], [11, 2], [9, 2]], "loop": true, "speed": 4}
+      ],
+      "expect": {"borrow": true, "margin": 2}
+    },
+    {
+      "id": "1-5",
+      "name": "Exactly Now",
+      "chapter": 1,
+      "term": 120,
+      "loans": 1,
+      "hint": "Frozen, you still weigh on a dial.",
+      "map": [
+        "  ...          ",
+        "  .S.          ",
+        "   .           ",
+        "...............",
+        "           .   ",
+        "    ....   .   ",
+        "    .##L....X  ",
+        "    ....       "
+      ],
+      "sliders": [
+        {"path": [[0, 3], [14, 3]], "speed": 2},
+        {"path": [[4, 5], [7, 5], [7, 7], [4, 7]], "loop": true, "speed": 3}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 2}
+    },
+    {
+      "id": "2-1",
+      "name": "Blink",
+      "chapter": 2,
+      "term": 100,
+      "hint": "Lasers flicker before they fire. Freeze one while it's dark and its lane stays open.",
+      "map": [
+        "   #  #  #   ",
+        "S..........  ",
+        "          .  ",
+        "          .  ",
+        "          .  ",
+        "          .  ",
+        "          .X ",
+        "          #  "
+      ],
+      "lasers": [
+        {"at": [3, 0], "dir": "S", "on": 24, "off": 20, "phase": 0},
+        {"at": [6, 0], "dir": "S", "on": 24, "off": 20, "phase": 14},
+        {"at": [9, 0], "dir": "S", "on": 24, "off": 20, "phase": 28},
+        {"at": [10, 7], "dir": "N", "on": 44, "off": 10, "phase": 0}
+      ],
+      "expect": {"borrow": true, "margin": 2}
+    },
+    {
+      "id": "2-2",
+      "name": "Counterweight",
+      "chapter": 2,
+      "term": 100,
+      "hint": "A plate holds the gate of its colour open while anything rests on it, blocks included.",
+      "map": [
+        " ...    .a.   ",
+        " .S.    .#.   ",
+        " ...    ...   ",
+        "  .           ",
+        "  ..A......#  ",
+        "          .   ",
+        "         .X.  "
+      ],
+      "sliders": [
+        {"path": [[8, 0], [10, 0], [10, 2], [8, 2]], "loop": true, "speed": 3}
+      ],
+      "lasers": [
+        {"at": [11, 4], "dir": "W", "on": 20, "off": 0, "plate": "a"}
+      ],
+      "expect": {"borrow": true, "margin": 2}
+    },
+    {
+      "id": "2-3",
+      "name": "Eclipse",
+      "chapter": 2,
+      "term": 100,
+      "hint": "Anything frozen is solid. A frozen block casts a shadow in a beam.",
+      "map": [
+        "  .        ",
+        "  .  ...   ",
+        "  .  .S.   ",
+        "#......... ",
+        "  .      . ",
+        "  .     .X.",
+        "  .        "
+      ],
+      "sliders": [
+        {"path": [[2, 0], [2, 6]], "speed": 3}
+      ],
+      "lasers": [
+        {"at": [0, 3], "dir": "E", "on": 20, "off": 0}
+      ],
+      "expect": {"borrow": true, "margin": 2}
+    },
+    {
+      "id": "2-4",
+      "name": "Crossfire",
+      "chapter": 2,
+      "term": 100,
+      "loans": 1,
+      "hint": "Lasers can't hurt a frozen you either.",
+      "map": [
+        "      #    ",
+        " ...       ",
+        " .S.       ",
+        "  .        ",
+        "#.....L....",
+        "      .    ",
+        "      ..X  "
+      ],
+      "lasers": [
+        {"at": [0, 4], "dir": "E", "on": 30, "off": 24, "phase": 0},
+        {"at": [6, 0], "dir": "S", "on": 30, "off": 24, "phase": 12}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 2}
+    },
+    {
+      "id": "2-5",
+      "name": "Fine Print",
+      "chapter": 2,
+      "term": 60,
+      "loans": 1,
+      "hint": "Short term: this debt lands almost as soon as the loan runs out.",
+      "map": [
+        " ...    .a..   ",
+        " .S.    .##.   ",
+        " ...    ....   ",
+        "  .            ",
+        "  ..A.....L#   ",
+        "          .    ",
+        "         .X.   "
+      ],
+      "sliders": [
+        {"path": [[8, 0], [11, 0], [11, 2], [8, 2]], "loop": true, "speed": 3}
+      ],
+      "lasers": [
+        {"at": [11, 4], "dir": "W", "on": 20, "off": 0, "plate": "a"}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 2}
+    },
+    {
+      "id": "3-1",
+      "name": "Turnstile",
+      "chapter": 3,
+      "term": 100,
+      "hint": "Rotors turn in quarter steps. Freeze one with its arms out of your way.",
+      "map": [
+        " ...         ",
+        " .S.         ",
+        "  .          ",
+        "  .........  ",
+        "          .  ",
+        "          .  ",
+        "         .X. ",
+        "             "
+      ],
+      "rotors": [
+        {"at": [6, 4], "arms": "NS", "len": 3, "cw": true, "turn": 4, "hold": 4}
+      ],
+      "expect": {"borrow": true, "margin": 2}
+    },
+    {
+      "id": "3-2",
+      "name": "Clockwork",
+      "chapter": 3,
+      "term": 100,
+      "loans": 1,
+      "hint": "Rotor arms sweep straight through a frozen you.",
+      "map": [
+        "    ...    ",
+        "    .S.    ",
+        "     .     ",
+        "  .......  ",
+        "  ...L...  ",
+        "  .......  ",
+        "     .     ",
+        "    .X.    ",
+        "           "
+      ],
+      "rotors": [
+        {"at": [3, 4], "arms": "E", "len": 2, "cw": true, "turn": 3, "hold": 8},
+        {"at": [7, 4], "arms": "W", "len": 2, "cw": false, "turn": 3, "hold": 12, "phase": 6}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 2}
+    },
+    {
+      "id": "3-3",
+      "name": "Second Hand",
+      "chapter": 3,
+      "term": 120,
+      "loans": 1,
+      "map": [
+        " ...          ",
+        " .S.          ",
+        "  .           ",
+        "  .........   ",
+        "          .   ",
+        "        ....  ",
+        "        .L..  ",
+        "        ....  ",
+        "         .X   "
+      ],
+      "rotors": [
+        {"at": [6, 4], "arms": "NS", "len": 3, "cw": true, "turn": 3, "hold": 4},
+        {"at": [10, 6], "arms": "W", "len": 2, "cw": true, "turn": 3, "hold": 5}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 2}
+    },
+    {
+      "id": "3-4",
+      "name": "Gnomon",
+      "chapter": 3,
+      "term": 100,
+      "hint": "A frozen rotor arm is a wall, and walls stop beams.",
+      "map": [
+        "    ...      ",
+        "    .S.      ",
+        "     .       ",
+        "#..........  ",
+        "  .       .  ",
+        "  .       .  ",
+        "  .      .X. ",
+        "             "
+      ],
+      "lasers": [
+        {"at": [0, 3], "dir": "E", "on": 20, "off": 0}
+      ],
+      "rotors": [
+        {"at": [2, 5], "arms": "N", "len": 2, "cw": true, "turn": 3, "hold": 8}
+      ],
+      "expect": {"borrow": true, "margin": 2}
+    },
+    {
+      "id": "3-5",
+      "name": "Escapement",
+      "chapter": 3,
+      "term": 140,
+      "loans": 1,
+      "map": [
+        "     ...        ",
+        "     .S.        ",
+        "      .         ",
+        "#............   ",
+        "  .      .....  ",
+        "  .      ..L..  ",
+        "  .      .....  ",
+        "         .....  ",
+        "          .     ",
+        "         .X.    ",
+        "           #    "
+      ],
+      "lasers": [
+        {"at": [0, 3], "dir": "E", "on": 20, "off": 0},
+        {"at": [11, 10], "dir": "N", "on": 20, "off": 24, "phase": 10}
+      ],
+      "rotors": [
+        {"at": [2, 5], "arms": "N", "len": 2, "cw": true, "turn": 3, "hold": 8},
+        {"at": [13, 5], "arms": "W", "len": 2, "cw": true, "turn": 3, "hold": 5}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 2}
+    },
+    {
+      "id": "4-1",
+      "name": "Double Entry",
+      "chapter": 4,
+      "term": 100,
+      "loans": 1,
+      "hint": "One loan can pay twice: a frozen block weighs on a dial too.",
+      "map": [
+        " ...     .L.   ",
+        " .S.     .#.   ",
+        " ...     ...   ",
+        "  .            ",
+        "  .....L....   ",
+        "       .   .   ",
+        "       .   .X  ",
+        "       #       "
+      ],
+      "sliders": [
+        {"path": [[9, 0], [11, 0], [11, 2], [9, 2]], "loop": true, "speed": 4}
+      ],
+      "lasers": [
+        {"at": [7, 7], "dir": "N", "on": 40, "off": 20}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 2}
+    },
+    {
+      "id": "4-2",
+      "name": "Refinance",
+      "chapter": 4,
+      "term": 60,
+      "loans": 3,
+      "hint": "Three loans in a row. Each repayment spot sets up the next.",
+      "map": [
+        " S             ",
+        "#.........     ",
+        "         ..    ",
+        "         ..    ",
+        "  .........#   ",
+        "  ..           ",
+        "  ..           ",
+        "#..........    ",
+        "          X    "
+      ],
+      "lasers": [
+        {"at": [0, 1], "dir": "E", "on": 30, "off": 6},
+        {"at": [11, 4], "dir": "W", "on": 30, "off": 6, "phase": 12},
+        {"at": [0, 7], "dir": "E", "on": 30, "off": 6, "phase": 24}
+      ],
+      "expect": {"borrow": true, "minLoans": 3, "margin": 2}
+    },
+    {
+      "id": "4-3",
+      "name": "Crystal Bar",
+      "chapter": 4,
+      "term": 100,
+      "hint": "Freeze a laser while it's lit and its beam becomes a crystal bar.",
+      "map": [
+        "  #   ...   ",
+        "      .S.   ",
+        "       .    ",
+        "#...........",
+        "          . ",
+        "         .X."
+      ],
+      "lasers": [
+        {"at": [0, 3], "dir": "E", "on": 20, "off": 0},
+        {"at": [2, 0], "dir": "S", "on": 30, "off": 30}
+      ],
+      "expect": {"borrow": true, "margin": 2}
+    },
+    {
+      "id": "4-4",
+      "name": "Long Term",
+      "chapter": 4,
+      "term": 160,
+      "loans": 1,
+      "hint": "Long term: eight seconds to reach the place your debt should land.",
+      "map": [
+        " ...           ",
+        " .S.           ",
+        "  .            ",
+        "#...........   ",
+        "           .   ",
+        "      .  . .   ",
+        "      .  . .   ",
+        "      .  . .   ",
+        "   ...L......  ",
+        "   .  .  .     ",
+        "   .  .  .     ",
+        "  .X. .  .     "
+      ],
+      "sliders": [
+        {"path": [[6, 5], [6, 11]], "speed": 3},
+        {"path": [[9, 5], [9, 11]], "speed": 2, "phase": 7}
+      ],
+      "lasers": [
+        {"at": [0, 3], "dir": "E", "on": 30, "off": 6}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 2}
+    },
+    {
+      "id": "4-5",
+      "name": "Settlement",
+      "chapter": 4,
+      "term": 100,
+      "loans": 2,
+      "hint": "Two loans, two dials. Settle up before you leave.",
+      "map": [
+        " ...     .L..  ",
+        " .S.     .##.  ",
+        "  .      ....  ",
+        "  .            ",
+        "  .........    ",
+        "          .    ",
+        "        #..    ",
+        "#.......L.     ",
+        "      ..       ",
+        "      X        "
+      ],
+      "sliders": [
+        {"path": [[9, 0], [12, 0], [12, 2], [9, 2]], "loop": true, "speed": 6},
+        {"path": [[2, 4], [10, 4]], "speed": 5, "dwell": 8}
+      ],
+      "lasers": [
+        {"at": [0, 7], "dir": "E", "on": 36, "off": 24},
+        {"at": [8, 6], "dir": "S", "on": 30, "off": 30, "phase": 10}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 2, "budget": 150000000}
     }
   ]
 }

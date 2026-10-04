@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using BorrowedSeconds.Sim;
 using UnityEngine;
 
@@ -31,10 +32,19 @@ namespace BorrowedSeconds.View
         float pop;
         readonly Vector3 baseScale;
 
-        public FrozenShell(Transform parent, Vector3 center, Vector3 size, float ringSize)
+        /// <param name="model">Optional faceted crystal model, sitting on z = 0 with footprint <paramref name="modelSize"/>.</param>
+        public FrozenShell(Transform parent, Vector3 center, Vector3 size, float ringSize, string model = "CrystalBox", Vector3 modelSize = default)
         {
             shellMat = Mats.Instance("BS_Crystal");
-            shell = Shapes.Box("Crystal", parent, center, size, shellMat, false);
+            shell = Shapes.Group("Crystal", parent, center);
+            var m = model != null ? Shapes.Model(model, shell.transform, (_, __) => shellMat, false) : null;
+            if (m != null)
+            {
+                if (modelSize == default) modelSize = Vector3.one;
+                m.transform.localScale = new Vector3(1f / modelSize.x, 1f / modelSize.y, 1f / modelSize.z);
+                m.transform.localPosition = new Vector3(0, -0.5f, 0);
+            }
+            else Shapes.Box("Box", shell.transform, Vector3.zero, Vector3.one, shellMat, false);
             baseScale = size;
             ringMat = Mats.Instance("BS_Ring");
             ring = Shapes.Flat("FrozenRing", parent, new Vector3(0, 0.025f, 0), ringSize, ringMat);
@@ -97,7 +107,7 @@ namespace BorrowedSeconds.View
                 Shapes.Ball("EyeR", body, new Vector3(0.075f, 0.83f, 0.16f), 0.065f, eye);
             }
             bodyRenderers = body.GetComponentsInChildren<Renderer>();
-            shell = new FrozenShell(Root.transform, new Vector3(0, 0.52f, 0), new Vector3(0.72f, 1.08f, 0.72f), 1.15f);
+            shell = new FrozenShell(Root.transform, new Vector3(0, 0.52f, 0), new Vector3(0.8f, 1.12f, 0.8f), 1.15f, "CrystalPawn", new Vector3(0.72f, 1.08f, 0.72f));
             countdownMat = Mats.Instance("BS_Ring");
             countdownMat.SetColor("_Color", Palette.Ice * 2.2f);
             countdown = Shapes.Flat("Countdown", Root.transform, new Vector3(0, 1.45f, 0), 0.62f, countdownMat);
@@ -329,8 +339,11 @@ namespace BorrowedSeconds.View
             Root = Shapes.Group("Rotor" + i, board.transform, board.At(rd.Tile));
             var graphite = Mats.Lit(Palette.Graphite, 0.45f, 0.2f);
             var glow = Mats.Emissive(Palette.Coral, Palette.Coral * 3f, 0.6f);
-            Shapes.Cyl("Hub", Root.transform, new Vector3(0, 0.36f, 0), 0.64f, 0.72f, graphite);
-            Shapes.Cyl("HubRing", Root.transform, new Vector3(0, 0.56f, 0), 0.68f, 0.07f, glow, false);
+            if (Shapes.Model("RotorHub", Root.transform) == null)
+            {
+                Shapes.Cyl("Hub", Root.transform, new Vector3(0, 0.36f, 0), 0.64f, 0.72f, graphite);
+                Shapes.Cyl("HubRing", Root.transform, new Vector3(0, 0.56f, 0), 0.68f, 0.07f, glow, false);
+            }
             arms = Shapes.Group("Arms", Root.transform, new Vector3(0, 0.46f, 0)).transform;
             int count = 0;
             for (int d = 0; d < 4; d++) if ((rd.ArmMask & (1 << d)) != 0) count++;
@@ -343,9 +356,12 @@ namespace BorrowedSeconds.View
                 if ((rd.ArmMask & (1 << d)) == 0) continue;
                 var armRoot = Shapes.Group("Arm" + d, arms).transform;
                 armRoot.localRotation = Quaternion.Euler(0, d * 90f, 0);
-                Shapes.Box("Bar", armRoot, new Vector3(0, 0, len * 0.5f + 0.1f), new Vector3(0.2f, 0.22f, len), graphite);
-                Shapes.Box("Edge", armRoot, new Vector3(0, 0.12f, len * 0.5f + 0.1f), new Vector3(0.08f, 0.03f, len - 0.1f), glow, false);
-                Shapes.Box("Tip", armRoot, new Vector3(0, 0, len + 0.12f), new Vector3(0.24f, 0.26f, 0.1f), glow, false);
+                if (Shapes.Model("RotorArm" + rd.Length, armRoot) == null)
+                {
+                    Shapes.Box("Bar", armRoot, new Vector3(0, 0, len * 0.5f + 0.1f), new Vector3(0.2f, 0.22f, len), graphite);
+                    Shapes.Box("Edge", armRoot, new Vector3(0, 0.12f, len * 0.5f + 0.1f), new Vector3(0.08f, 0.03f, len - 0.1f), glow, false);
+                    Shapes.Box("Tip", armRoot, new Vector3(0, 0, len + 0.12f), new Vector3(0.24f, 0.26f, 0.1f), glow, false);
+                }
                 crystalMats[k] = Inst("BS_Crystal");
                 crystals[k] = Shapes.Box("Crystal", armRoot, new Vector3(0, 0, len * 0.5f + 0.1f), new Vector3(0.42f, 0.44f, len + 0.25f), crystalMats[k], false);
                 crystals[k].SetActive(false);
@@ -397,16 +413,29 @@ namespace BorrowedSeconds.View
             index = i;
             var pd = board.Def.Plates[i];
             Root = Shapes.Group("Plate" + i, board.transform, board.At(pd.Tile));
-            Shapes.Box("Rim", Root.transform, new Vector3(0, 0.005f, 0), new Vector3(0.86f, 0.02f, 0.86f), Mats.Lit(Palette.Brass, 0.6f, 0.6f));
             mat = new Material(Mats.Emissive(Palette.Mint * 0.6f, Palette.Mint * 0.4f, 0.6f));
-            pad = Shapes.Box("Pad", Root.transform, new Vector3(0, 0.04f, 0), new Vector3(0.72f, 0.06f, 0.72f), mat).transform;
+            var model = Shapes.Model("Plate", Root.transform, (part, m) => m == "Pad" ? mat : null);
+            if (model != null)
+            {
+                pad = Shapes.Part(model, "Pad");
+                padUp = pad.localPosition.y;
+            }
+            else
+            {
+                Shapes.Box("Rim", Root.transform, new Vector3(0, 0.005f, 0), new Vector3(0.86f, 0.02f, 0.86f), Mats.Lit(Palette.Brass, 0.6f, 0.6f));
+                pad = Shapes.Box("Pad", Root.transform, new Vector3(0, 0.04f, 0), new Vector3(0.72f, 0.06f, 0.72f), mat).transform;
+                padUp = 0.04f;
+            }
         }
+
+        readonly float padUp;
 
         public override void Render(SimState a, SimState b, float t, float dt, float time)
         {
             bool pressed = b.PlatePressed[index];
             press = Smooth(press, pressed ? 1f : 0f, 20f, dt);
-            pad.localPosition = new Vector3(0, Mathf.Lerp(0.04f, 0.012f, press), 0);
+            var lp = pad.localPosition;
+            pad.localPosition = new Vector3(lp.x, padUp - 0.028f * press, lp.z);
             Mats.SetEmission(mat, Palette.Mint * Mathf.Lerp(0.35f, 2.6f, press));
         }
     }
@@ -427,18 +456,31 @@ namespace BorrowedSeconds.View
             int e = board.Def.Neighbor(gd.Tile, Dirs.E), w = board.Def.Neighbor(gd.Tile, Dirs.W);
             bool ewWalls = (e < 0 || board.Def.Tiles[e] != Tile.Floor) && (w < 0 || board.Def.Tiles[w] != Tile.Floor);
             Root.transform.localRotation = Quaternion.Euler(0, ewWalls ? 0 : 90, 0);
-            var brass = Mats.Lit(Palette.Brass, 0.6f, 0.7f);
-            Shapes.Box("PostL", Root.transform, new Vector3(-0.47f, 0.4f, 0), new Vector3(0.08f, 0.8f, 0.28f), brass);
-            Shapes.Box("PostR", Root.transform, new Vector3(0.47f, 0.4f, 0), new Vector3(0.08f, 0.8f, 0.28f), brass);
             mat = new Material(Mats.Emissive(Palette.Mint * 0.5f, Palette.Mint * 0.8f, 0.7f));
-            slab = Shapes.Box("Slab", Root.transform, new Vector3(0, 0.38f, 0), new Vector3(0.86f, 0.76f, 0.16f), mat).transform;
+            var slabModel = Shapes.Model("GateSlab", Root.transform, (part, m) => m == "MintGlass" ? mat : null);
+            if (slabModel != null && Shapes.Model("GatePosts", Root.transform) != null)
+            {
+                slab = slabModel.transform;
+                slabUp = 0f;
+            }
+            else
+            {
+                if (slabModel != null) Object.Destroy(slabModel);
+                var brass = Mats.Lit(Palette.Brass, 0.6f, 0.7f);
+                Shapes.Box("PostL", Root.transform, new Vector3(-0.47f, 0.4f, 0), new Vector3(0.08f, 0.8f, 0.28f), brass);
+                Shapes.Box("PostR", Root.transform, new Vector3(0.47f, 0.4f, 0), new Vector3(0.08f, 0.8f, 0.28f), brass);
+                slab = Shapes.Box("Slab", Root.transform, new Vector3(0, 0.38f, 0), new Vector3(0.86f, 0.76f, 0.16f), mat).transform;
+                slabUp = 0.38f;
+            }
         }
+
+        readonly float slabUp;
 
         public override void Render(SimState a, SimState b, float t, float dt, float time)
         {
             bool isOpen = b.GateOpen[index];
             open = Smooth(open, isOpen ? 1f : 0f, 14f, dt);
-            slab.localPosition = new Vector3(0, Mathf.Lerp(0.38f, -0.42f, open), 0);
+            slab.localPosition = new Vector3(0, slabUp - 0.8f * open, 0);
             Mats.SetEmission(mat, Palette.Mint * Mathf.Lerp(0.8f, 0.2f, open));
         }
     }
@@ -455,17 +497,40 @@ namespace BorrowedSeconds.View
         {
             index = i;
             Root = Shapes.Group("Lock" + i, board.transform, board.At(board.Def.Locks[i]));
+            gemMat = new Material(Mats.Emissive(Palette.Gold * 0.5f, Color.black, 0.9f));
+            for (int k = 0; k < 12; k++) segMats[k] = new Material(Mats.Emissive(Palette.Gold * 0.4f, Color.black, 0.7f));
+            var segs = new List<Renderer>();
+            var model = Shapes.Model("Lock", Root.transform, (part, m) => part == "Gem" ? gemMat : null);
+            if (model != null)
+            {
+                foreach (var r in model.GetComponentsInChildren<Renderer>())
+                    if (r.name.StartsWith("Seg")) segs.Add(r);
+                // fill clockwise from twelve o'clock as seen by the camera, whatever the export's handedness
+                segs.Sort((p, q) => SegAngle(p).CompareTo(SegAngle(q)));
+                for (int k = 0; k < segs.Count && k < 12; k++) segs[k].sharedMaterial = segMats[k];
+                gem = Shapes.Part(model, "Gem");
+                gemScale = Vector3.one;
+                return;
+            }
             Shapes.Cyl("Dial", Root.transform, new Vector3(0, 0.025f, 0), 0.86f, 0.05f, Mats.Lit(Palette.Brass * 0.75f, 0.6f, 0.8f));
             Shapes.Cyl("Face", Root.transform, new Vector3(0, 0.05f, 0), 0.7f, 0.02f, Mats.Lit(Palette.Ink, 0.7f));
             for (int k = 0; k < 12; k++)
             {
                 var segRoot = Shapes.Group("Seg" + k, Root.transform, new Vector3(0, 0.065f, 0)).transform;
                 segRoot.localRotation = Quaternion.Euler(0, k * 30f + 15f, 0);
-                segMats[k] = new Material(Mats.Emissive(Palette.Gold * 0.4f, Color.black, 0.7f));
                 Shapes.Box("S", segRoot, new Vector3(0, 0, 0.27f), new Vector3(0.11f, 0.03f, 0.1f), segMats[k], false);
             }
-            gemMat = new Material(Mats.Emissive(Palette.Gold * 0.5f, Color.black, 0.9f));
             gem = Shapes.Cyl("Gem", Root.transform, new Vector3(0, 0.08f, 0), 0.22f, 0.05f, gemMat).transform;
+            gemScale = new Vector3(0.22f, 0.025f, 0.22f);
+        }
+
+        readonly Vector3 gemScale;
+
+        float SegAngle(Renderer r)
+        {
+            var c = Root.transform.InverseTransformPoint(r.bounds.center);
+            float a = Mathf.Atan2(c.x, c.z) * Mathf.Rad2Deg;
+            return a < 0 ? a + 360f : a;
         }
 
         public override void Render(SimState a, SimState b, float t, float dt, float time)
@@ -481,7 +546,8 @@ namespace BorrowedSeconds.View
             if (latched && a.LockCharge[index] < Rules.LockTicks) latchPop = 1f;
             latchPop = Mathf.MoveTowards(latchPop, 0f, dt * 2f);
             Mats.SetEmission(gemMat, Palette.Gold * (latched ? 4f + 6f * latchPop : 0.2f + 0.1f * Mathf.Sin(time * 3f)));
-            gem.localScale = new Vector3(0.22f, 0.025f, 0.22f) * (1f + latchPop * 0.6f);
+            gem.localScale = gemScale * (1f + latchPop * 0.6f);
+            if (latched) gem.localRotation = Quaternion.Euler(0, time * 40f, 0);
         }
     }
 
@@ -489,16 +555,26 @@ namespace BorrowedSeconds.View
     {
         readonly Material baseMat, beamMat;
         readonly GameObject beam;
-        readonly Transform ring;
-        float open;
+        readonly Transform ring, hourglass;
+        float open, flip;
 
         public ExitView(BoardView board) : base(board)
         {
             Root = Shapes.Group("Exit", board.transform, board.At(board.Def.Exit));
             baseMat = new Material(Mats.Emissive(Palette.Gold, Palette.Gold * 0.5f, 0.8f));
-            Shapes.Cyl("Base", Root.transform, new Vector3(0, 0.03f, 0), 0.86f, 0.06f, Mats.Lit(Palette.Brass, 0.7f, 0.8f));
-            Shapes.Cyl("Disc", Root.transform, new Vector3(0, 0.065f, 0), 0.66f, 0.02f, baseMat);
+            if (Shapes.Model("Exit", Root.transform, (part, m) => part == "Disc" ? baseMat : null) == null)
+            {
+                Shapes.Cyl("Base", Root.transform, new Vector3(0, 0.03f, 0), 0.86f, 0.06f, Mats.Lit(Palette.Brass, 0.7f, 0.8f));
+                Shapes.Cyl("Disc", Root.transform, new Vector3(0, 0.065f, 0), 0.66f, 0.02f, baseMat);
+            }
             ring = Shapes.Group("Ring", Root.transform, new Vector3(0, 0.6f, 0)).transform;
+            var glass = Shapes.Model("Hourglass", ring, null, false);
+            if (glass != null)
+            {
+                hourglass = glass.transform;
+                hourglass.localPosition = new Vector3(0, -0.2f, 0);
+                hourglass.localScale = Vector3.one * 0.85f;
+            }
             var ringMat = Mats.Emissive(Palette.Gold, Palette.Gold * 2f, 0.8f);
             for (int k = 0; k < 8; k++)
             {
@@ -507,17 +583,26 @@ namespace BorrowedSeconds.View
                 Shapes.Box("Seg", r, new Vector3(0, 0, 0.36f), new Vector3(0.2f, 0.04f, 0.05f), ringMat, false);
             }
             beamMat = Inst("BS_GlowAdd");
-            beam = Shapes.Cyl("Light", Root.transform, new Vector3(0, 1.2f, 0), 0.6f, 2.4f, beamMat, false);
+            beamMat.SetFloat("_FadeV", 2.2f);
+            beam = Shapes.Make("Light", Root.transform, Shapes.OpenTube, beamMat, new Vector3(0, 0.05f, 0), new Vector3(0.5f, 3.2f, 0.5f), false);
         }
 
         public override void Render(SimState a, SimState b, float t, float dt, float time)
         {
             open = Smooth(open, b.ExitOpen ? 1f : 0f, 6f, dt);
             ring.localRotation = Quaternion.Euler(0, time * Mathf.Lerp(15f, 70f, open), 0);
+            if (hourglass != null)
+            {
+                // the hourglass flips over once the vault unseals
+                flip = Mathf.MoveTowards(flip, open > 0.5f ? 1f : 0f, dt * 1.6f);
+                float e = flip * flip * (3f - 2f * flip);
+                hourglass.localRotation = Quaternion.Euler(0, 0, e * 180f);
+                hourglass.localPosition = new Vector3(0, -0.2f + e * 0.42f, 0);
+            }
             ring.localPosition = new Vector3(0, 0.45f + 0.08f * Mathf.Sin(time * 2f) + open * 0.2f, 0);
             Mats.SetEmission(baseMat, Palette.Gold * Mathf.Lerp(0.25f, 2.8f, open));
             beam.SetActive(open > 0.02f);
-            SetGlow(beamMat, new Color(Palette.Gold.r, Palette.Gold.g, Palette.Gold.b, 0.18f * open), 2.2f);
+            SetGlow(beamMat, new Color(Palette.Gold.r, Palette.Gold.g, Palette.Gold.b, (0.22f + 0.05f * Mathf.Sin(time * 3f)) * open), 1.6f);
             ring.gameObject.SetActive(true);
         }
     }

@@ -66,11 +66,14 @@ namespace BorrowedSeconds.Sim
         public LaserDef[] Lasers = Array.Empty<LaserDef>();
         public RotorDef[] Rotors = Array.Empty<RotorDef>();
         public TileMask StaticSolid;   // walls, void, pivots, emitters
+        public TileMask ArmBlock;      // what stops a rotor arm: walls, pivots, emitters (arms pass over void)
 
         // validation expectations (checked by the solver)
         public bool ExpectBorrow, ExpectDebt;
         public int ExpectMargin;
         public int MinLoans;
+        /// <summary>Solver state cap for this level's proofs (0 = solver default).</summary>
+        public int SearchBudget;
         public string Notes = "";
 
         public int ObstacleCount => Sliders.Length + Lasers.Length + Rotors.Length;
@@ -253,6 +256,10 @@ namespace BorrowedSeconds.Sim
                 if (lv.Tiles[i] != Tile.Floor) lv.StaticSolid.Set(i);
             foreach (var l in lv.Lasers) lv.StaticSolid.Set(l.Tile);
             foreach (var r in lv.Rotors) lv.StaticSolid.Set(r.Tile);
+            for (int i = 0; i < lv.Tiles.Length; i++)
+                if (lv.Tiles[i] == Tile.Wall) lv.ArmBlock.Set(i);
+            foreach (var l in lv.Lasers) lv.ArmBlock.Set(l.Tile);
+            foreach (var r in lv.Rotors) lv.ArmBlock.Set(r.Tile);
             foreach (var r in lv.Rotors) BuildRotorMasks(lv, r);
 
             if (d.TryGetValue("expect", out var ex) && ex is Dictionary<string, object> exd)
@@ -261,6 +268,7 @@ namespace BorrowedSeconds.Sim
                 lv.ExpectDebt = MiniJson.Bool(exd, "debt", false);
                 lv.ExpectMargin = MiniJson.Int(exd, "margin", 0);
                 lv.MinLoans = MiniJson.Int(exd, "minLoans", 0);
+                lv.SearchBudget = MiniJson.Int(exd, "budget", 0);
             }
             return lv;
         }

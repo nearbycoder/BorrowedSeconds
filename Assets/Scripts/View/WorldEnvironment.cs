@@ -20,6 +20,8 @@ namespace BorrowedSeconds.View
         WhiteBalance white;
         Material backdropMat;
         Transform backdrop;
+        readonly System.Collections.Generic.List<(Transform, float)> gears = new System.Collections.Generic.List<(Transform, float)>();
+        float gearAngle;
 
         // pulses
         float chromaPulse, lensPulse, flash;
@@ -71,6 +73,21 @@ namespace BorrowedSeconds.View
             backdropMat = Mats.Instance("BS_Backdrop");
             var bd = Shapes.Make("Backdrop", transform, Shapes.FlatQuad, backdropMat, new Vector3(0, -7f, 2f), new Vector3(90f, 1f, 90f), false);
             backdrop = bd.transform;
+
+            var gearMat = Mats.Lit(Palette.Hex("#2A3164"), 0.2f, 0f);
+            var gearSpots = new[]
+            {
+                (new Vector3(-14f, -6.6f, 6f), 1.5f, 9f), (new Vector3(14.5f, -6.8f, -1f), 2.0f, -6f),
+                (new Vector3(-10f, -6.9f, -9f), 1.1f, 14f), (new Vector3(11f, -6.5f, 10f), 0.9f, -16f),
+            };
+            foreach (var (pos, scale, speed) in gearSpots)
+            {
+                var g = Shapes.Model("Gear", transform, (_, __) => gearMat, false);
+                if (g == null) break;
+                g.transform.localPosition = pos;
+                g.transform.localScale = Vector3.one * scale;
+                gears.Add((g.transform, speed));
+            }
 
             var volGo = new GameObject("Volume");
             volGo.transform.SetParent(transform, false);
@@ -145,6 +162,9 @@ namespace BorrowedSeconds.View
             white.temperature.value = -FrozenAmount * 18f - RewindAmount * 25f;
             vignette.intensity.value = 0.3f + FrozenAmount * 0.12f + RewindAmount * 0.15f + DangerAmount * 0.15f + FocusAmount * 0.1f;
             bloom.intensity.value = 0.85f + flash * 1.2f;
+            float spin = Mathf.Lerp(1f, -6f, RewindAmount) * (1f - FrozenAmount * 0.85f);
+            gearAngle += dt * spin;
+            foreach (var (t, speed) in gears) t.localRotation = Quaternion.Euler(0, gearAngle * speed, 0);
             if (backdropMat != null)
             {
                 backdropMat.SetFloat("_Spin", Mathf.Lerp(0.02f, -0.6f, RewindAmount));

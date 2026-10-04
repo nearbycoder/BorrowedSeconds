@@ -1,0 +1,60 @@
+{
+ "id": "1-5",
+ "name": "Exactly Now",
+ "chapter": 1,
+ "term": 120,
+ "loans": 1,
+ "map": [
+  "  ...          ",
+  "  .S.          ",
+  "   .           ",
+  "...............",
+  "           .   ",
+  "    ....   .   ",
+  "    .##L....X  ",
+  "    ....       "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     0,
+     3
+    ],
+    [
+     14,
+     3
+    ]
+   ],
+   "speed": 2
+  },
+  {
+   "path": [
+    [
+     4,
+     5
+    ],
+    [
+     7,
+     5
+    ],
+    [
+     7,
+     7
+    ],
+    [
+     4,
+     7
+    ]
+   ],
+   "loop": true,
+   "speed": 3
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 2
+ },
+ "hint": "Frozen, you still weigh on a dial."
+}

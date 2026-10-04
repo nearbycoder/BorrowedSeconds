@@ -73,7 +73,7 @@ namespace BorrowedSeconds.View
                     if (m == null) Shapes.Box("Floor", statics, p + new Vector3(0, -0.075f, 0), new Vector3(0.97f, 0.15f, 0.97f), (x + y) % 2 == 0 ? floorA : floorB);
                     else foreach (var r in m.GetComponentsInChildren<Renderer>()) r.sharedMaterial = (x + y) % 2 == 0 ? floorA : floorB;
                 }
-                else
+                else if (model("WallBlock", p) == null)
                 {
                     Shapes.Box("Wall", statics, p + new Vector3(0, 0.22f, 0), new Vector3(1f, 0.6f, 1f), wall);
                     Shapes.Box("WallTop", statics, p + new Vector3(0, 0.53f, 0), new Vector3(0.9f, 0.04f, 0.9f), wallTop);

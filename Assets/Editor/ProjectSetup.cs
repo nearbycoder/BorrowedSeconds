@@ -32,12 +32,22 @@ namespace BorrowedSeconds.EditorTools
                     m.SetFloat("_Smoothness", 0.4f);
                     m.enableInstancing = true;
                 }) != null;
+                // a separate template keeps the _EMISSION variant from being stripped out of builds
+                ok &= Mat("BS_LitEmissive", "Universal Render Pipeline/Lit", m =>
+                {
+                    m.SetFloat("_Smoothness", 0.5f);
+                    m.enableInstancing = true;
+                    m.EnableKeyword("_EMISSION");
+                    m.SetColor("_EmissionColor", Color.white);
+                    m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+                }) != null;
                 ok &= Mat("BS_Crystal", "BS/Crystal", null) != null;
                 ok &= Mat("BS_Glow", "BS/Glow", m => { m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha); m.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha); }) != null;
                 ok &= Mat("BS_GlowAdd", "BS/Glow", m => { m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha); m.SetFloat("_DstBlend", (float)BlendMode.One); }) != null;
                 ok &= Mat("BS_Ghost", "BS/Ghost", null) != null;
                 ok &= Mat("BS_Ring", "BS/Ring", null) != null;
                 ok &= Mat("BS_Backdrop", "BS/Backdrop", null) != null;
+                ok &= Mat("BS_Particle", "BS/Particle", null) != null;
                 ConfigureUrp();
                 ConfigurePlayer();
                 BuildScene();

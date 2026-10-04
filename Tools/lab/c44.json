@@ -1,0 +1,67 @@
+{
+ "id": "4-4",
+ "name": "Long Term",
+ "chapter": 4,
+ "term": 160,
+ "loans": 1,
+ "map": [
+  " ...           ",
+  " .S.           ",
+  "  .            ",
+  "#...........   ",
+  "           .   ",
+  "      .  . .   ",
+  "      .  . .   ",
+  "      .  . .   ",
+  "   ...L......  ",
+  "   .  .  .     ",
+  "   .  .  .     ",
+  "  .X. .  .     "
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    3
+   ],
+   "dir": "E",
+   "on": 30,
+   "off": 6
+  }
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     6,
+     5
+    ],
+    [
+     6,
+     11
+    ]
+   ],
+   "speed": 3
+  },
+  {
+   "path": [
+    [
+     9,
+     5
+    ],
+    [
+     9,
+     11
+    ]
+   ],
+   "speed": 2,
+   "phase": 7
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 2
+ },
+ "hint": "Long term: eight seconds to reach the place your debt should land."
+}

@@ -19,6 +19,7 @@ namespace BorrowedSeconds.Game
         public SimState Cur { get; private set; }
         public SimState Look { get; private set; }
         public BoardView Board { get; private set; }
+        public GhostPreview Ghost { get; private set; }
         public Mode State { get; private set; } = Mode.Intro;
         public int Aim { get; private set; } = -1;
         public float Alpha { get; private set; }
@@ -27,6 +28,8 @@ namespace BorrowedSeconds.Game
         public int RewindTicksUsed { get; private set; }
         public float RewindPos => rewindPos;
         public float IntroTime = 0.6f;
+        /// <summary>Simulation speed while focusing (a setting).</summary>
+        public static float FocusScale = 0.2f;
 
         public event Action<SimState, List<SimEvent>> Events;
         public event Action Won;
@@ -37,6 +40,8 @@ namespace BorrowedSeconds.Game
         public List<TimedAction> Autoplay;   // when set, input is ignored and these actions drive the sim
         public bool AllowInput = true;
         public bool Paused;
+        /// <summary>Attract-mode playback behind menus: no sounds or freeze tint.</summary>
+        public bool Muted;
         public float Speed = 1f;
 
         readonly List<SimState> history = new List<SimState>();
@@ -60,6 +65,7 @@ namespace BorrowedSeconds.Game
             Look = Cur.Clone();
             Simulation.Step(def, Look, Act.None);
             history.Add(Cur.Clone());
+            Ghost = new GhostPreview(Board);
             State = Mode.Intro;
             stateTimer = 0f;
             Board.Render(Cur, Look, 0f, 0f);
@@ -85,6 +91,8 @@ namespace BorrowedSeconds.Game
                     return;
                 case Mode.Dying:
                     Board.Render(Cur, Cur, 0f, dt);
+                    Ghost.Refresh(Cur, -1, false);
+                    Ghost.Render(dt, Time.time);
                     if (stateTimer > 0.85f) BeginRewind(false);
                     return;
                 case Mode.Rewinding:
@@ -112,7 +120,7 @@ namespace BorrowedSeconds.Game
             focusBlend = Mathf.MoveTowards(focusBlend, Focusing ? 1f : 0f, dt * 6f);
             Board.SetHighlight(LoanAvailable ? Aim : -1);
 
-            float scale = Mathf.Lerp(1f, 0.2f, focusBlend) * Speed;
+            float scale = Mathf.Lerp(1f, FocusScale, focusBlend) * Speed;
             if (Paused) scale = 0f;
             if (hitstop > 0f)
             {
@@ -129,6 +137,16 @@ namespace BorrowedSeconds.Game
             if (acc > TickDt) acc = TickDt;
             Alpha = State == Mode.Playing ? acc / TickDt : 0f;
             Board.Render(Cur, State == Mode.Playing ? Look : Cur, Alpha, dt);
+            if (Aim != lastAim) { lastAim = Aim; RefreshGhost(); }
+            Ghost.Render(dt, Time.time);
+        }
+
+        int lastAim = -1;
+
+        void RefreshGhost()
+        {
+            if (State == Mode.Playing) Ghost.Refresh(Cur, Aim, LoanAvailable);
+            else Ghost.Refresh(Cur.Dead ? Cur : history[0], -1, false);
         }
 
         // ---------------------------------------------------------------- input → actions
@@ -215,6 +233,7 @@ namespace BorrowedSeconds.Game
             Look.CopyFrom(Cur);
             Simulation.Step(Def, Look, Act.None);
 
+            RefreshGhost();
             if (Cur.Events.Count > 0) Events?.Invoke(Cur, Cur.Events);
             if (Cur.Dead)
             {
@@ -246,6 +265,8 @@ namespace BorrowedSeconds.Game
 
         void UpdateRewind(float dt)
         {
+            Ghost.Visible = false;
+            Ghost.Render(dt, Time.time);
             int target;
             if (manualRewind)
             {
@@ -283,6 +304,8 @@ namespace BorrowedSeconds.Game
             acc = 0f;
             State = Mode.Playing;
             stateTimer = 0f;
+            Ghost.Visible = true;
+            RefreshGhost();
             RewindChanged?.Invoke(false);
         }
     }

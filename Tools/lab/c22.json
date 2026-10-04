@@ -1,0 +1,56 @@
+{
+ "id": "2-2",
+ "name": "Counterweight",
+ "chapter": 2,
+ "term": 100,
+ "map": [
+  " ...    .a.   ",
+  " .S.    .#.   ",
+  " ...    ...   ",
+  "  .           ",
+  "  ..A......#  ",
+  "          .   ",
+  "         .X.  "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     8,
+     0
+    ],
+    [
+     10,
+     0
+    ],
+    [
+     10,
+     2
+    ],
+    [
+     8,
+     2
+    ]
+   ],
+   "loop": true,
+   "speed": 3
+  }
+ ],
+ "lasers": [
+  {
+   "at": [
+    11,
+    4
+   ],
+   "dir": "W",
+   "on": 20,
+   "off": 0,
+   "plate": "a"
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "margin": 2
+ },
+ "hint": "A plate holds the gate of its colour open while anything rests on it, blocks included."
+}

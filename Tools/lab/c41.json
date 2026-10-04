@@ -1,0 +1,58 @@
+{
+ "id": "4-1",
+ "name": "Double Entry",
+ "chapter": 4,
+ "term": 100,
+ "loans": 1,
+ "map": [
+  " ...     .L.   ",
+  " .S.     .#.   ",
+  " ...     ...   ",
+  "  .            ",
+  "  .....L....   ",
+  "       .   .   ",
+  "       .   .X  ",
+  "       #       "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     9,
+     0
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     11,
+     2
+    ],
+    [
+     9,
+     2
+    ]
+   ],
+   "loop": true,
+   "speed": 4
+  }
+ ],
+ "lasers": [
+  {
+   "at": [
+    7,
+    7
+   ],
+   "dir": "N",
+   "on": 40,
+   "off": 20
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 2
+ },
+ "hint": "One loan can pay twice: a frozen block weighs on a dial too."
+}
