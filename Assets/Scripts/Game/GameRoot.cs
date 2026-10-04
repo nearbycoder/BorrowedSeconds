@@ -28,6 +28,7 @@ namespace BorrowedSeconds.Game
         public Fx Fx { get; private set; }
         public Hud Hud { get; private set; }
         public Prompts Prompts { get; private set; }
+        public Transition Wipe { get; private set; }
         bool diedSinceRewind, promptDemo;
         public AudioDirector Audio { get; private set; }
         public SaveData Save { get; private set; }
@@ -88,17 +89,26 @@ namespace BorrowedSeconds.Game
         void BuildMenus()
         {
             menuCanvas = Ui.MakeCanvas("MenuCanvas", 20, transform);
+            Wipe = Transition.Create(transform);
             var root = menuCanvas.transform;
-            title = new TitleScreen(root, Continue, () => ShowLevels(Save.lastLevel), () => OpenSettings(Flow.Title), Quit,
+            title = new TitleScreen(root, () => Go(Continue), () => Go(() => ShowLevels(Save.lastLevel), 0.7f), () => OpenSettings(Flow.Title), Quit,
                 () => Save.ids.Length == 0 ? "Begin" : Save.finished ? "Replay" : "Continue");
-            levels = new LevelSelectScreen(root, Catalog, Save, i => StartLevel(i, true), ShowTitle);
-            pause = new PauseScreen(root, Resume, () => { pause.Hide(); StartLevel(LevelIndex, false); },
-                () => { pause.Hide(); ShowLevels(LevelIndex); }, () => OpenSettings(Flow.Paused), () => { pause.Hide(); ShowTitle(); });
+            levels = new LevelSelectScreen(root, Catalog, Save, i => Go(() => StartLevel(i, true)), () => Go(ShowTitle, 0.7f));
+            pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); },
+                () => { pause.Hide(); Go(() => ShowLevels(LevelIndex)); }, () => OpenSettings(Flow.Paused), () => { pause.Hide(); Go(ShowTitle); });
             settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, CloseSettings);
-            complete = new CompleteScreen(root, Next, () => { complete.Hide(); StartLevel(LevelIndex, false); },
-                () => { complete.Hide(); ShowLevels(LevelIndex); });
+            complete = new CompleteScreen(root, () => Go(Next), () => { complete.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); },
+                () => { complete.Hide(); Go(() => ShowLevels(LevelIndex)); }, amount => Rig.Shake(amount));
             card = new ChapterCard(root);
             ending = new EndingScreen(root);
+        }
+
+        /// <summary>Runs a screen change behind the clock-hand wipe (directly during scripted runs).</summary>
+        void Go(System.Action change, float seconds = 0.85f)
+        {
+            if (capturing || Wipe == null) { change(); return; }
+            if (Wipe.Busy) return; // one screen change at a time
+            Wipe.Play(change, seconds);
         }
 
         void ApplySettings()
@@ -178,7 +188,7 @@ namespace BorrowedSeconds.Game
             levels.Hide();
             title.Show();
             Hud.SetVisible(false);
-            Rig.ShiftX = 0.56f;
+            Rig.ShiftX = 0.64f;
             Rig.Zoom = 1.6f;
             Audio.SetMusic("music_title");
             LoadAttract();
@@ -350,8 +360,9 @@ namespace BorrowedSeconds.Game
         {
             Input.Poll();
             float dt = Clock.Dt;
-            bool top(MenuScreen s) => s.Visible && TopScreen() == s;
+            bool top(MenuScreen s) => s.Visible && TopScreen() == s && (Wipe == null || !Wipe.Busy);
             Prompts.Tick(Session, Save, Input, State == Flow.Playing && Session != null && !Session.Muted && (promptDemo || (!capturing && Session.Autoplay == null)), dt);
+            Env.MenuBlur = Mathf.Max(Mathf.Max(levels.BlurNow, pause.BlurNow), Mathf.Max(Mathf.Max(settings.BlurNow, complete.BlurNow), Mathf.Max(card.BlurNow, ending.BlurNow)));
             title.Update(Input, dt, top(title));
             levels.Update(Input, dt, top(levels));
             pause.Update(Input, dt, top(pause));
@@ -622,19 +633,31 @@ namespace BorrowedSeconds.Game
         /// <summary>Screenshots every menu screen (for visual review), then quits.</summary>
         IEnumerator MenuTour(string dir)
         {
+            // frame-locked at 30 fps so captured animation timing is exact, whatever the real frame rate
             Directory.CreateDirectory(dir);
-            IEnumerator Shot(string name, float wait)
+            Time.captureFramerate = 30;
+            IEnumerator Wait(float seconds)
             {
-                yield return new WaitForSecondsRealtime(wait);
-                ScreenCapture.CaptureScreenshot(Path.Combine(dir, name + ".png"));
-                yield return null;
-                yield return null;
+                int n = Mathf.RoundToInt(seconds * 30f);
+                for (int i = 0; i < n; i++) yield return null;
+            }
+            IEnumerator Burst(string name, params float[] times)
+            {
+                float t = 0f;
+                foreach (var at in times)
+                {
+                    yield return Wait(at - t);
+                    t = at;
+                    ScreenCapture.CaptureScreenshot(Path.Combine(dir, $"{name}_{Mathf.RoundToInt(at * 100):000}.png"));
+                    yield return null;
+                    t += 1f / 30f;
+                }
             }
             ShowTitle();
-            yield return Shot("01_title", 3.5f);
+            yield return Burst("01_title", 0.2f, 0.5f, 0.8f, 1.1f, 1.5f, 2.0f, 3.2f);
             if (Save.ids.Length == 0)
             {
-                // fake a bit of progress so the ledger shows medals
+                // fake a bit of progress (in memory only; the save is read-only here) so the ledger shows medals
                 for (int i = 0; i < 7; i++)
                 {
                     var d = Catalog.Levels[i];
@@ -642,29 +665,31 @@ namespace BorrowedSeconds.Game
                     Save.Record(d.Id, par + i * 15);
                 }
             }
-            ShowLevels(6);
-            yield return Shot("02_levels", 1.2f);
+            Wipe.Play(() => ShowLevels(6), 0.9f);
+            yield return Burst("02_wipe", 0.15f, 0.3f, 0.45f, 0.6f, 0.75f);
+            yield return Burst("03_levels", 0.2f, 0.45f, 0.8f, 1.6f);
             StartLevel(5, true);
             Session.Autoplay = Catalog.SolutionFor(Session.Def)?.Actions;
-            yield return Shot("03_chapter_card", 1.6f);
-            yield return new WaitForSecondsRealtime(2.5f);
-            yield return Shot("04_playing", 2.5f);
+            yield return Burst("04_card", 0.3f, 0.8f, 1.4f, 2.6f);
+            yield return Wait(1.4f);
+            yield return Burst("05_play", 0.15f, 0.5f, 1.0f, 1.45f, 1.8f, 2.6f);
             Pause();
-            yield return Shot("05_pause", 0.8f);
+            yield return Burst("06_pause", 0.1f, 0.25f, 0.45f, 1.0f);
             OpenSettings(Flow.Paused);
-            yield return Shot("06_settings", 0.8f);
+            yield return Burst("07_settings", 0.25f, 1.0f);
             CloseSettings();
             Resume();
-            float until = Time.realtimeSinceStartup + 30f;
-            while (Session.State != LevelSession.Mode.Won && Time.realtimeSinceStartup < until) yield return null;
-            yield return new WaitForSecondsRealtime(0.1f);
+            int guard = 0;
+            while (Session.State != LevelSession.Mode.Won && guard++ < 30 * 30) yield return null;
+            yield return Wait(0.1f);
             complete.Show(Session.Tick, Catalog.SolutionFor(Session.Def)?.Par ?? 0, 0, false);
             State = Flow.Complete;
-            yield return Shot("07_complete", 1.4f);
+            yield return Burst("08_complete", 0.25f, 0.6f, 1.0f, 1.2f, 1.4f, 1.7f, 2.6f);
             complete.Hide();
             State = Flow.Ending;
             ending.Show(9000, 8200, 7, 20, ShowTitle);
-            yield return Shot("08_ending", 6f);
+            yield return Burst("09_ending", 3f, 6f);
+            Time.captureFramerate = 0;
             Application.Quit(0);
         }
     }

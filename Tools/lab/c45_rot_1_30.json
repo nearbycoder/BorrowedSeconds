@@ -1,0 +1,89 @@
+{
+ "id": "4-5",
+ "name": "Settlement",
+ "chapter": 4,
+ "term": 100,
+ "loans": 2,
+ "map": [
+  " ...     .L..  ",
+  " .S.     .##.  ",
+  "  .      ....  ",
+  "  .            ",
+  "  .........    ",
+  "          .    ",
+  "        ...    ",
+  "#.......L.     ",
+  "      ..       ",
+  "      X        "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     9,
+     0
+    ],
+    [
+     12,
+     0
+    ],
+    [
+     12,
+     2
+    ],
+    [
+     9,
+     2
+    ]
+   ],
+   "loop": true,
+   "speed": 6
+  },
+  {
+   "path": [
+    [
+     2,
+     4
+    ],
+    [
+     10,
+     4
+    ]
+   ],
+   "speed": 5,
+   "dwell": 8
+  }
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    7
+   ],
+   "dir": "E",
+   "on": 36,
+   "off": 24
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 2,
+  "budget": 150000000
+ },
+ "hint": "Two loans, two dials. Settle up before you leave.",
+ "rotors": [
+  {
+   "at": [
+    8,
+    6
+   ],
+   "arms": "S",
+   "len": 1,
+   "cw": true,
+   "turn": 3,
+   "hold": 12,
+   "phase": 30
+  }
+ ]
+}

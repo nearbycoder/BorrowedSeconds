@@ -19,7 +19,7 @@ Shader "BS/TimeRipple"
 
             float4 _BS_RippleA;   // xy centre (viewport uv), z age (s, <0 = off), w strength
             float4 _BS_RippleB;
-            float4 _BS_TimeFx;    // x rewind amount, y aspect (w/h)
+            float4 _BS_TimeFx;    // x rewind amount, y aspect (w/h), z menu blur (0..1)
 
             float2 Ripple(float2 uv, float4 r, float aspect, out float front)
             {
@@ -58,12 +58,31 @@ Shader "BS/TimeRipple"
                 float split = front * 0.006 + rw * 0.002;
                 float2 sdir = normalize(c + 1e-5) * split;
                 half r = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, uv + off + sdir).r;
-                half g = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, uv + off).g;
+                half4 centre = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, uv + off);
+                half g = centre.g;
                 half b = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, uv + off - sdir).b;
                 half3 col = half3(r, g, b);
+
+                // menus: a soft disk blur of the board, dimmed and desaturated behind the panels
+                float blur = _BS_TimeFx.z;
+                if (blur > 0.001)
+                {
+                    half3 acc = col;
+                    float2 rad = float2(1 / aspect, 1) * 0.016 * blur;
+                    [unroll] for (int k = 1; k <= 24; k++)
+                    {
+                        float a = k * 2.39996323;
+                        float rr = sqrt(k / 24.0);
+                        acc += SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, uv + off + float2(cos(a), sin(a)) * rr * rad).rgb;
+                    }
+                    acc /= 25;
+                    half lum = dot(acc, half3(0.299, 0.587, 0.114));
+                    acc = lerp(acc, lum.xxx * half3(0.82, 0.88, 1.08), 0.45 * blur);
+                    col = lerp(col, acc * (1 - 0.45 * blur), saturate(blur * 1.5));
+                }
                 // a thin cyan glint riding the front
                 col += half3(0.35, 0.9, 1.0) * front * 0.08;
-                return half4(col, 1);
+                return half4(col, centre.a);
             }
             ENDHLSL
         }

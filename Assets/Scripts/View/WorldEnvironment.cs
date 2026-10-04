@@ -30,6 +30,9 @@ namespace BorrowedSeconds.View
         public float FocusAmount;    // 0..1 while focusing
         public float DangerAmount;   // 0..1 death moment
         public bool ReduceFlashing;
+        /// <summary>0..1: blur + dim of the board behind menus (set by the UI each frame).</summary>
+        public float MenuBlur;
+        float menuBlurCur;
 
         public void Build(Camera cam)
         {
@@ -172,7 +175,8 @@ namespace BorrowedSeconds.View
             Shader.SetGlobalVector(RippleA, ripples[0]);
             Shader.SetGlobalVector(RippleB, ripples[1]);
             var c = Camera.main;
-            Shader.SetGlobalVector(TimeFx, new Vector4(ReduceFlashing ? RewindAmount * 0.3f : RewindAmount, c != null ? c.aspect : 1.78f, 0, 0));
+            menuBlurCur = Mathf.MoveTowards(menuBlurCur, MenuBlur, dt * 3.5f);
+            Shader.SetGlobalVector(TimeFx, new Vector4(ReduceFlashing ? RewindAmount * 0.3f : RewindAmount, c != null ? c.aspect : 1.78f, Mathf.SmoothStep(0, 1, menuBlurCur), 0));
             if (chroma == null) return;
 
             chroma.intensity.value = Mathf.Clamp01(0.04f + chromaPulse * 0.9f + RewindAmount * 0.55f + FrozenAmount * 0.12f + DangerAmount * 0.4f);

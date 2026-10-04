@@ -48,10 +48,13 @@ namespace BorrowedSeconds.EditorTools
                 ok &= Mat("BS_Ring", "BS/Ring", null) != null;
                 ok &= Mat("BS_Backdrop", "BS/Backdrop", null) != null;
                 ok &= Mat("BS_Particle", "BS/Particle", null) != null;
+                ok &= Mat("BS_UIPanel", "BS/UIPanel", null) != null;
+                ok &= Mat("BS_UIWipe", "BS/UIWipe", null) != null;
                 var ripple = Mat("BS_TimeRipple", "BS/TimeRipple", null);
                 ok &= ripple != null;
                 ConfigureUrp();
                 if (ripple != null) AddRipplePass(ripple);
+                EnsureUi3DRenderer();
                 ConfigurePlayer();
                 BuildScene();
                 BuildFonts();
@@ -130,6 +133,37 @@ namespace BorrowedSeconds.EditorTools
                 EditorUtility.SetDirty(feature);
                 EditorUtility.SetDirty(data);
             }
+        }
+
+        const string Ui3DRenderer = "Assets/Settings/UI3D_Renderer.asset";
+
+        /// <summary>
+        /// A copy of the main renderer without the full-screen time pass, for cameras that render the
+        /// 3D UI props (pocket watch) into textures: they must keep their alpha and never blur or ripple.
+        /// Registered as renderer index 1 on the PC pipeline asset (see UI.WatchStage).
+        /// </summary>
+        static void EnsureUi3DRenderer()
+        {
+            if (!File.Exists(Ui3DRenderer)) AssetDatabase.CopyAsset("Assets/Settings/PC_Renderer.asset", Ui3DRenderer);
+            AssetDatabase.ImportAsset(Ui3DRenderer);
+            var data = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(Ui3DRenderer);
+            foreach (var f in data.rendererFeatures)
+                if (f != null) { f.SetActive(false); EditorUtility.SetDirty(f); }
+            EditorUtility.SetDirty(data);
+            var pc = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>("Assets/Settings/PC_RPAsset.asset");
+            var so = new SerializedObject(pc);
+            var list = so.FindProperty("m_RendererDataList");
+            bool present = false;
+            for (int i = 0; i < list.arraySize; i++)
+                if (list.GetArrayElementAtIndex(i).objectReferenceValue == data) present = true;
+            if (!present)
+            {
+                while (list.arraySize < 1) list.arraySize++;
+                list.arraySize = 2;
+                list.GetArrayElementAtIndex(1).objectReferenceValue = data;
+                so.ApplyModifiedProperties();
+            }
+            EditorUtility.SetDirty(pc);
         }
 
         static void ConfigureUrp()
