@@ -43,11 +43,13 @@ namespace BorrowedSeconds.UI
 
         LevelSession session;
         float watchPulse, shownAlpha;
+        /// <summary>0..1: how much a modal menu (pause, complete) covers the play screen.</summary>
+        public float Dim;
         // 3D pocket watch + level title intro + banner band
         WatchStage watch3d;
         RawImage watchImg;
         Spring watchRoll = Spring.Make(0f, 160f, 9f);
-        RectTransform titleGroup, bannerRootRt;
+        RectTransform titleGroup, bannerRootRt, timeRoot;
         Panel introBand, bannerBand, aimPanel;
         TextFx nameFx, numberFx, bannerFx, bannerSubFx;
         float introT = 99f;
@@ -88,7 +90,7 @@ namespace BorrowedSeconds.UI
             numberFx = TextFx.On(numberText, TextFx.Kind.Drop, 0.08f, 0.5f, 60f);
 
             // ---- top right: clock
-            var tr = Ui.Rect("TopRight", root, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-56, -40), new Vector2(400, 120));
+            var tr = timeRoot = Ui.Rect("TopRight", root, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-56, -40), new Vector2(400, 120));
             timeText = Ui.Text("Time", tr, "0.00", Ui.Heavy, 54, ink, TextAlignmentOptions.TopRight);
             Ui.Place(timeText.rectTransform, new Vector2(1, 1), new Vector2(1, 1), Vector2.zero, new Vector2(400, 64));
             parText = Ui.Text("Par", tr, "", Ui.Semi, 22, dim, TextAlignmentOptions.TopRight);
@@ -256,7 +258,7 @@ namespace BorrowedSeconds.UI
         void LateUpdate()
         {
             float dt = Mathf.Min(Clock.Dt, 0.05f); // a loading hitch must not skip the animations
-            group.alpha = Mathf.MoveTowards(group.alpha, shownAlpha, dt * 4f);
+            group.alpha = Mathf.MoveTowards(group.alpha, shownAlpha * (1f - 0.75f * Dim), dt * 4f);
             if (session == null || session.Def == null) return;
             var s = session.Cur;
             var d = session.Def;
@@ -393,6 +395,12 @@ namespace BorrowedSeconds.UI
             introBand.Image.color = new Color(1, 1, 1, Mathf.Clamp01(band));
             introBand.Sheen = -2f;
             introBand.Apply();
+            // the watch rises into place and the key hints fade up once the title has settled
+            float rise = Ease.OutBack((introT - 1.35f) / 0.6f, 1.4f);
+            watch.anchoredPosition = new Vector2(0, Mathf.LerpUnclamped(-340f, 30f, rise));
+            hintGroup.alpha = Ease.OutCubic((introT - 1.7f) / 0.5f);
+            termText.alpha = 0.75f * Ease.OutCubic((introT - 1.75f) / 0.5f);
+            timeRoot.anchoredPosition = new Vector2(Mathf.Lerp(260f, -56f, Ease.OutCubic((introT - 1.5f) / 0.5f)), -40f);
         }
     }
 }

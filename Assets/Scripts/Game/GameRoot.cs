@@ -366,6 +366,7 @@ namespace BorrowedSeconds.Game
                 ? Cursors.Kind.Aim : Cursors.Kind.Arrow);
             Prompts.Tick(Session, Save, Input, State == Flow.Playing && Session != null && !Session.Muted && (promptDemo || (!capturing && Session.Autoplay == null)), dt);
             Env.MenuBlur = Mathf.Max(Mathf.Max(levels.BlurNow, pause.BlurNow), Mathf.Max(Mathf.Max(settings.BlurNow, complete.BlurNow), Mathf.Max(card.BlurNow, ending.BlurNow)));
+            Hud.Dim = Mathf.Max(pause.BlurNow, Mathf.Max(complete.BlurNow, settings.BlurNow));
             title.Update(Input, dt, top(title));
             levels.Update(Input, dt, top(levels));
             pause.Update(Input, dt, top(pause));

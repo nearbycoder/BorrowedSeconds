@@ -422,7 +422,7 @@ namespace BorrowedSeconds.UI
             float r = Ease.OutExpo((a - 1.15f) / 0.7f);
             rule.localScale = new Vector3(r, 1, 1);
             fxTag.Age = a - 1.25f;
-            if (promptRow.childCount == 0) Kit.Keycaps(promptRow, "<b>W S</b> choose <b>Space</b> confirm <b>Esc</b> back");
+            if (promptRow.childCount == 0) Kit.Keycaps(promptRow, "<b>W S</b> choose <b>Space</b> confirm");
             promptGroup.alpha = Ease.Clamp((a - 2.2f) * 2f);
             Menu.IntroDelay = 1.45f;
             Menu.Update(input, dt, hasInput && a > 1.6f, a);
@@ -1147,11 +1147,11 @@ namespace BorrowedSeconds.UI
             sun.color = new Color(1f, 0.78f, 0.48f, 0.55f * rise);
             sun.rectTransform.anchoredPosition = new Vector2(0, Mathf.Lerp(-520f, -200f, rise));
             // the watch spins its hands forward through the night, then settles on the real time
-            float w = Ease.OutBack(a / 1.2f, 1.3f);
+            float w = Ease.OutBack((a - 0.7f) / 1.1f, 1.3f);
             watch.Scale = Mathf.Lerp(0.3f, 1f, w);
             watch.Yaw = Mathf.Sin(Clock.Now * 0.5f) * 14f;
             watch.Pitch = -5f + Mathf.Sin(Clock.Now * 0.4f) * 4f;
-            watchImg.color = new Color(1, 1, 1, Ease.OutCubic(a * 2f));
+            watchImg.color = new Color(1, 1, 1, Ease.OutCubic((a - 0.7f) * 2.5f));
             watch.ShowRealTime();
             float extra = (1f - Ease.OutCubic(a / 3.5f)) * -1440f;
             watch.MinuteDeg += extra;
