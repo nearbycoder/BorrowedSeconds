@@ -98,7 +98,7 @@ namespace BorrowedSeconds.UI
             parText.characterSpacing = 8;
 
             // ---- bottom centre: pocket watch
-            watch = Ui.Rect("Watch", root, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(170, 170));
+            watch = Ui.Rect("Watch", root, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 46), new Vector2(170, 170));
             watchGlow = Ui.Img("Glow", watch, Ui.Glow, new Color(Palette.Ice.r, Palette.Ice.g, Palette.Ice.b, 0f));
             Ui.Place(watchGlow.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(320, 320));
             watch3d = WatchStage.Create(transform, 512);
@@ -118,7 +118,7 @@ namespace BorrowedSeconds.UI
             Ui.Place(watchSmall.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -30), new Vector2(160, 24));
             watchSmall.characterSpacing = 10;
             termText = Ui.Text("Term", root, "", Ui.Semi, 18, dim);
-            Ui.Place(termText.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 8), new Vector2(400, 26));
+            Ui.Place(termText.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 6), new Vector2(400, 26));
             termText.characterSpacing = 10;
 
             // ---- aim tag
@@ -397,7 +397,7 @@ namespace BorrowedSeconds.UI
             introBand.Apply();
             // the watch rises into place and the key hints fade up once the title has settled
             float rise = Ease.OutBack((introT - 1.35f) / 0.6f, 1.4f);
-            watch.anchoredPosition = new Vector2(0, Mathf.LerpUnclamped(-340f, 30f, rise));
+            watch.anchoredPosition = new Vector2(0, Mathf.LerpUnclamped(-340f, 46f, rise));
             hintGroup.alpha = Ease.OutCubic((introT - 1.7f) / 0.5f);
             termText.alpha = 0.75f * Ease.OutCubic((introT - 1.75f) / 0.5f);
             timeRoot.anchoredPosition = new Vector2(Mathf.Lerp(260f, -56f, Ease.OutCubic((introT - 1.5f) / 0.5f)), -40f);
