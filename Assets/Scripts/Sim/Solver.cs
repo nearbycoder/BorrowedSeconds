@@ -215,6 +215,73 @@ namespace BorrowedSeconds.Sim
     /// Exact shortest-time search over decision points (ticks where the player may act) using a
     /// bucket queue keyed by tick. Moves cost 3 ticks, waiting/borrowing 1, freezes are skipped.
     /// </summary>
+    /// <summary>
+    /// Compact visited set + search tree for the solver: each key is stored once in a flat array and
+    /// an open-addressing table of node indices finds it (about 50 bytes per state, versus ~100+ for
+    /// Dictionary plus parallel lists), so the big proofs fit on a shared machine.
+    /// </summary>
+    sealed class NodeStore
+    {
+        public ulong[] Keys = new ulong[4 << 16];
+        public int[] Parent = new int[1 << 16], ViaTick = new int[1 << 16], Arrival = new int[1 << 16];
+        public byte[] ViaAction = new byte[1 << 16];
+        public int Count;
+        int[] table = new int[1 << 17];   // node index + 1, 0 = empty
+        int mask = (1 << 17) - 1;
+
+        public StateKey Key(int n) => new StateKey { A = Keys[n * 4], B = Keys[n * 4 + 1], C = Keys[n * 4 + 2], D = Keys[n * 4 + 3] };
+
+        bool Same(int n, in StateKey k) => Keys[n * 4] == k.A && Keys[n * 4 + 1] == k.B && Keys[n * 4 + 2] == k.C && Keys[n * 4 + 3] == k.D;
+
+        public int Find(in StateKey k)
+        {
+            int i = k.GetHashCode() & mask;
+            while (true)
+            {
+                int n = table[i];
+                if (n == 0) return -1;
+                if (Same(n - 1, k)) return n - 1;
+                i = (i + 1) & mask;
+            }
+        }
+
+        public int Add(in StateKey k, int parent, int act, int viaTick, int arrival)
+        {
+            if (Count == Parent.Length)
+            {
+                int cap = Parent.Length * 2;
+                System.Array.Resize(ref Keys, cap * 4);
+                System.Array.Resize(ref Parent, cap);
+                System.Array.Resize(ref ViaTick, cap);
+                System.Array.Resize(ref Arrival, cap);
+                System.Array.Resize(ref ViaAction, cap);
+            }
+            if ((Count + 1) * 10L > table.Length * 6L) Rehash();
+            int n = Count++;
+            Keys[n * 4] = k.A; Keys[n * 4 + 1] = k.B; Keys[n * 4 + 2] = k.C; Keys[n * 4 + 3] = k.D;
+            Parent[n] = parent;
+            ViaAction[n] = (byte)act;
+            ViaTick[n] = viaTick;
+            Arrival[n] = arrival;
+            Insert(k, n);
+            return n;
+        }
+
+        void Insert(in StateKey k, int n)
+        {
+            int i = k.GetHashCode() & mask;
+            while (table[i] != 0) i = (i + 1) & mask;
+            table[i] = n + 1;
+        }
+
+        void Rehash()
+        {
+            table = new int[table.Length * 2];
+            mask = table.Length - 1;
+            for (int n = 0; n < Count; n++) Insert(Key(n), n);
+        }
+    }
+
     public static class Solver
     {
         public sealed class Config
@@ -233,17 +300,12 @@ namespace BorrowedSeconds.Sim
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var res = new SolveResult();
             var packer = new StatePacker(d);
-            var visited = new Dictionary<StateKey, int>(1 << 16);
-            var keys = new List<StateKey>(1 << 16);
-            var parent = new List<int>(1 << 16);
-            var viaAction = new List<int>(1 << 16);
-            var viaTick = new List<int>(1 << 16);
-            var arrival = new List<int>(1 << 16);
+            var nodes = new NodeStore();
             var buckets = new List<int>[cfg.MaxTicks + 1];
 
             var root = Simulation.Create(d);
             // Advance from the very start until the player can act (they can, immediately).
-            int rootIdx = Add(packer.Pack(root), -1, Act.None, 0, 0);
+            int rootIdx = nodes.Add(packer.Pack(root), -1, Act.None, 0, 0);
             Push(0, rootIdx);
 
             var cur = new SimState(d);
@@ -259,8 +321,8 @@ namespace BorrowedSeconds.Sim
                 buckets[t] = null;
                 foreach (int node in bucket)
                 {
-                    if (arrival[node] != t) continue; // superseded by a faster route
-                    packer.Unpack(keys[node], cur, t);
+                    if (nodes.Arrival[node] != t) continue; // superseded by a faster route
+                    packer.Unpack(nodes.Key(node), cur, t);
                     for (int a = 0; a < actions; a++)
                     {
                         int act = a < 5 ? a : Act.Borrow(a - 5);
@@ -291,28 +353,29 @@ namespace BorrowedSeconds.Sim
                         {
                             res.Solved = true;
                             res.Ticks = next.Tick;
-                            res.States = keys.Count;
+                            res.States = nodes.Count;
                             BuildActions(node, t, act);
                             res.Seconds = sw.Elapsed.TotalSeconds;
                             return res;
                         }
                         if (next.Tick > cfg.MaxTicks) continue;
                         var key = packer.Pack(next);
-                        if (visited.TryGetValue(key, out int seen))
+                        int seen = nodes.Find(key);
+                        if (seen >= 0)
                         {
-                            if (arrival[seen] <= next.Tick) continue;
-                            arrival[seen] = next.Tick;
-                            parent[seen] = node;
-                            viaAction[seen] = act;
-                            viaTick[seen] = t;
+                            if (nodes.Arrival[seen] <= next.Tick) continue;
+                            nodes.Arrival[seen] = next.Tick;
+                            nodes.Parent[seen] = node;
+                            nodes.ViaAction[seen] = (byte)act;
+                            nodes.ViaTick[seen] = t;
                             Push(next.Tick, seen);
                             continue;
                         }
-                        int idx = Add(key, node, act, t, next.Tick);
+                        int idx = nodes.Add(key, node, act, t, next.Tick);
                         Push(next.Tick, idx);
-                        if (keys.Count > cfg.MaxStates)
+                        if (nodes.Count > cfg.MaxStates)
                         {
-                            res.States = keys.Count;
+                            res.States = nodes.Count;
                             res.Seconds = sw.Elapsed.TotalSeconds;
                             return res; // gave up: not exhausted
                         }
@@ -320,24 +383,12 @@ namespace BorrowedSeconds.Sim
                 }
             }
 
-            res.States = keys.Count;
+            res.States = nodes.Count;
             res.Exhausted = true;
             for (int t = 0; t < buckets.Length; t++)
                 if (buckets[t] != null) { res.Exhausted = false; break; }
             res.Seconds = sw.Elapsed.TotalSeconds;
             return res;
-
-            int Add(StateKey k, int par, int act, int tick, int arrive)
-            {
-                int idx = keys.Count;
-                keys.Add(k);
-                parent.Add(par);
-                viaAction.Add(act);
-                viaTick.Add(tick);
-                arrival.Add(arrive);
-                visited[k] = idx;
-                return idx;
-            }
 
             void Push(int tick, int idx)
             {
@@ -351,8 +402,8 @@ namespace BorrowedSeconds.Sim
                 if (act != Act.None) list.Add(new TimedAction(tick, act));
                 while (node > 0)
                 {
-                    if (viaAction[node] != Act.None) list.Add(new TimedAction(viaTick[node], viaAction[node]));
-                    node = parent[node];
+                    if (nodes.ViaAction[node] != Act.None) list.Add(new TimedAction(nodes.ViaTick[node], nodes.ViaAction[node]));
+                    node = nodes.Parent[node];
                 }
                 list.Reverse();
                 res.Actions = list;
