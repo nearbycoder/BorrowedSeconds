@@ -53,7 +53,7 @@ Menus work with the keyboard, mouse or gamepad.
 |---|---|---|---|
 | 1-1 | First Loan | slider | B |
 | 1-2 | Pass-Through | slider | B, D |
-| 1-3 | Grace Period | 2 sliders (3 s term) | B |
+| 1-3 | Grace Period | 2 sliders (3 s term) | B, needs ≥ 2 loans |
 | 1-4 | Collateral | 2 sliders, 2 dials | B |
 | 1-5 | Exactly Now | 2 sliders, dial (6 s term) | B, D |
 | 2-1 | Blink | 4 lasers | B |
@@ -80,7 +80,8 @@ The game also includes:
 - **Chapter cards**, pause menu, level-complete screen with a medal stamp, and an ending with your total time against par plus credits.
 - **Settings:** master/music/effects volume, fullscreen, screen shake, reduced flashing and Focus strength.
 - **Saves:** progress and settings are stored in PlayerPrefs (`bs.save.v1`).
-- **Onboarding:** each level has a one-line tip about its new idea, and level 1 is built so that the only thing to try is the slider.
+- **Onboarding:** key-cap prompts float in the world over the thing they refer to ("WASD move" over the pawn, "Hover + click, freeze it" over the nearest slider, "Hold Shift, slow time to aim", "Hold Z, rewind further" after a default). Each retires for good once you've done it (saved). Each level also has a one-line tip about its new idea, and level 1 is built so that the only thing to try is the slider.
+- **Time distortion:** a custom full-screen pass (`BS/TimeRipple`) sends a radial ripple with a chromatic split out from whatever you freeze and from you when a debt lands, and smears the image while rewinding. It's layered on URP's bloom, vignette, colour grading, chromatic aberration and lens distortion.
 
 ## Project layout
 
@@ -89,15 +90,17 @@ Assets/
   Scripts/Sim/      Pure C# simulation (no UnityEngine): LevelDef + JSON, SimState, Simulation.Step,
                     Solver (BFS). Integer-only and deterministic; shared by the game and the solver.
   Scripts/Game/     GameRoot (flow state machine, sim event → FX/audio), LevelSession (20 Hz loop,
-                    focus, rewind history), InputReader, SaveData, LevelCatalog.
+                    focus, rewind history), InputReader, SaveData, LevelCatalog, Clock.
+                    GameRoot.Demo (scripted demo reel), GameRoot.InputBot (controls smoke test, fps probe).
   Scripts/View/     BoardView, Pieces (per-obstacle views), GhostPreview, CameraRig, Fx,
                     WorldEnvironment (backdrop, gears, post-processing pulses), Mats, Shapes.
-  Scripts/UI/       Runtime-built uGUI + TextMeshPro: Hud, Menus (title, level select, pause,
-                    settings, complete, chapter card, ending).
+  Scripts/UI/       Runtime-built uGUI + TextMeshPro: Hud, Prompts (in-world onboarding), Menus (title,
+                    level select, pause, settings, complete, chapter card, ending).
   Scripts/Audio/    AudioDirector: pooled SFX with low-pass "muffle", crossfading music decks.
-  Shaders/          Backdrop, Crystal, Ghost, Glow (beams), Ring (watch), Particle.
+  Shaders/          Backdrop, Crystal, Ghost, Glow (beams), Ring (watch), Particle, TimeRipple (full screen).
   Resources/        Levels/levels.json + solutions.json, Models/*.fbx, Audio/*.wav, Fonts, Materials.
-  Editor/           ProjectSetup (URP assets, materials, scene), BuildScript, import settings.
+  Editor/           ProjectSetup (URP assets, renderer features, materials, scene), BuildScript, import settings.
+  Tests/Editor/     EditMode tests: every solver replay wins at par under Unity's Mono runtime.
 ArtSource/          build_assets.py (Blender bpy generator), generated .blend files, previews/.
 Tools/
   unity.sh          Run the editor / a batch method / the Linux build.
@@ -105,6 +108,8 @@ Tools/
   validate.sh       Build and run the solver over every level and write solutions.json.
   capture.sh        Self-test: the built game autoplays every level from the solver's replays.
   devcap.sh         Development build followed by capture.sh.
+  inputbot.sh       Controls smoke test: plays 1-1 through virtual keyboard and mouse devices.
+  demo/             record.sh + mix.py: records the demo reel to Builds/Demo/.
   Solver/           .NET 8 console front end for the shared simulation and solver.
   lab/              Per-level design files (cXY.json), lab.py (solve one), assemble.py.
   audio/            synth.py: every sound effect and music loop, synthesised with numpy.
@@ -126,6 +131,10 @@ All commands are run from the project root.
 | Materials / scene | `Tools/unity.sh batch BorrowedSeconds.EditorTools.ProjectSetup.Apply` | |
 | Linux build | `Tools/unity.sh build-linux` | Writes `Builds/Linux/BorrowedSeconds.x86_64`. |
 | Self-test | `Tools/devcap.sh /tmp/bs-cap` | Development build, then autoplays all 20 levels and prints PASS/FAIL per level, saving screenshots. |
+| Unity tests | `unity test . --mode EditMode` | 42 EditMode tests: each saved solution replayed under Mono must win at exactly its par tick; idling never wins; state keys round-trip. |
+| Controls test | `Tools/inputbot.sh` | Release build plays 1-1 through virtual keyboard + mouse: taps, a held key, Shift-focus aiming, hover and click-to-borrow, repayment, win. |
+| Frame rate | `Tools/play.sh -bsFps /tmp/fps.txt -bsNoVsync` | Plays the three busiest levels and logs average fps and worst-1% frame time. |
+| Demo reel | `Tools/demo/record.sh` | Needs the Linux build. Records a 1:45 reel frame-locked at 60 fps to `Builds/Demo/BorrowedSeconds_demo.mp4` and mixes its soundtrack offline from the game's audio event log. |
 
 ## Status
 
@@ -133,16 +142,15 @@ What has been verified:
 - The latest build autoplays all 20 levels from the solver's saved replays, and every one passes (`Tools/capture.sh`). This checks that the in-game loop matches the solver tick for tick.
 - The solver proves every level solvable and proves each B/D claim in the table above.
 - A scripted menu tour (`-bsMenus DIR`) covers the title, level select, chapter card, play, pause, settings, level complete and ending screens with no console errors.
+- 42 EditMode tests pass in Unity, so the .NET 8 solver and the game's Mono runtime agree tick for tick.
+- The input bot wins 1-1 through the real input path (3 of 3 runs) using virtual keyboard and mouse devices.
+- Frame rate on this machine (AMD Radeon 8060S iGPU, 1600×900, vsync off): 316–428 fps average and 6.5–7.9 ms worst-1% frame time on 4-5, 3-5 and 2-4. With vsync on, a window that isn't visible is throttled by the Wayland compositor (to about 11 fps here); that's the compositor, not the game.
 
 Known gaps and differences from `docs/PLAN.md`, stated plainly:
 - **Audio is unheard.** It is fully procedural and checked only numerically and with spectrograms (levels, clipping, loop seams); nobody has listened to it on speakers during development. The mix balance between SFX and music may need tuning.
 - **No human playtesting.** Difficulty and the margins come from the solver, not from people.
-- **Onboarding** uses one short tip line per level instead of the planned floating key glyphs in the world.
-- **No EditMode replay test** in Unity. Determinism is checked end to end by the autoplay capture in the built player instead.
-- **Level order and names differ from the plan's table**, because levels were reworked against the solver. For example, *Pass-Through* became 1-2, *Crystal Bar* became 4-3, and *Hold Still*, *Out of Phase* and *Leverage* were replaced by *Crossfire*, *Second Hand* and *Gnomon*.
-- **1-3 Grace Period** teaches "one loan at a time" through its tip, but its optimal solution uses only one loan; the solver doesn't enforce two.
+- **Levels were reworked against the solver**, so names and order differ from the plan's original draft (*Hold Still*, *Out of Phase* and *Leverage* became *Crossfire*, *Second Hand* and *Gnomon*). `docs/PLAN.md` §6 now lists the levels as shipped.
 - **The finale (4-5) has no rotors**, so it doesn't combine all three obstacle types as planned. Rotors are combined with lasers in 3-4 and 3-5.
-- **Time distortion** is done with URP's built-in post effects (chromatic aberration, lens distortion, colour adjustments) rather than a custom full-screen shader.
 - **Linux only.** Only the Linux standalone was built and tested.
 
 ## Credits

@@ -84,44 +84,44 @@ The simulation is cheap and deterministic, so previews come from cloning the sta
 
 ## 6. Content: 20 levels in 4 chapters
 
-Each level is a single screen (at most 15×9 tiles). The geometry is iterated against the solver; this table is the design intent, and the validation target each level must satisfy.
-*B* = "borrowing required" (unsolvable with no loans). *D* = "debt-as-tool required" (unsolvable even with unlimited, debt-free loans, so the player's own freeze is essential).
+Each level is a single screen (at most 16×12 tiles). This section lists the levels **as shipped**. The first draft of this table was a statement of intent; every level was then iterated against the solver (`Tools/lab/`), and several ideas changed when the solver found shortcuts or proved a design impossible. Notable changes: *Due Date* became the dodge-by-debt level *Pass-Through*, *Hold Still* became *Crossfire*, *Out of Phase* was dropped because the lasting phase shift was redundant with a plain freeze and too subtle to read, and *Leverage* became *Crystal Bar*.
+*B* = "borrowing required" (unsolvable with no loans). *D* = "debt-as-tool required" (unsolvable even when loans never come due, under the same loan cap, so the player's own freeze is essential). Par is the solver's optimal time; margin is the hesitation slack in ticks (1 tick = 50 ms).
 
 ### Chapter I: PRINCIPAL. *"Every second you take, you give back."* (Sliders)
-| # | Name | Purpose / new idea | Intended solution | Proof |
-|---|---|---|---|---|
-| 1 | First Loan | Teach moving, aiming, borrowing; see the debt freeze harmlessly | A fast slider orbits a ring corridor you must cross; freeze it off your arc, walk through, freeze in the quiet far room | B |
-| 2 | Due Date | Thawing in a hazard kills | After the first crossing a second lane follows; dawdle and you freeze in it. Stop in the pocket between lanes, or time the cross so your thaw is clear | B |
-| 3 | Grace Period | One loan at a time | Two separate crossings; settle the first debt in the middle room before taking the second loan | B (≥2 loans) |
-| 4 | Collateral | Time-locks: 3 s of pressure | A sealed exit; the lock sits behind a slider crossing; borrow to cross, then simply stand on it | B |
-| 5 | Exactly Now | **The aha.** Freeze *on* the lock | The lock sits in a slider's lane and the slider returns every 2 s, so you can't stand on it for 3. Borrow to reach it so your debt lands on the lock; the slider passes through you; thaw clear | B, D |
+| # | Name | New idea | Solution (as proven) | Proof | Par | Margin |
+|---|---|---|---|---|---|---|
+| 1-1 | First Loan | Borrowing; the debt freeze | A fast shuttle sweeps a lane you must walk along; freeze it in its far alcove, cross, repay on the exit | B | 8.15 s | 4 |
+| 1-2 | Pass-Through | Frozen, hazards pass through you | A shuttle covers a dead-end corridor end to end; borrow on it anyway, then be frozen as it passes through you | B, D | 8.70 s | 4 |
+| 1-3 | Grace Period | One loan at a time | Two shuttle lanes; repay the first loan in the bay, then borrow again. Both shuttles cycle in exactly 60 ticks, so the debt can't stand in for the second loan | B, ≥2 loans | 12.15 s | 4 |
+| 1-4 | Collateral | Dials (time-locks) | Freeze a looping slider while it sits on an unreachable dial (its weight latches it), stand 3 s on the other dial | B | 9.70 s | 4 |
+| 1-5 | Exactly Now | **The aha:** freeze *on* the dial | One loan: borrow to cross the shuttle; the debt lands you on a dial a loop slider sweeps every 1.2 s | B, D | 9.75 s | 4 |
 
 ### Chapter II: INTEREST. *"Light keeps no promises."* (Lasers, plates, gates)
-| # | Name | Purpose / new idea | Intended solution | Proof |
-|---|---|---|---|---|
-| 6 | Blink | Lasers: cycles, telegraphs, beam lanes | Hop across blinking beams on timing, then walk *along* a beam lane by freezing it dark | B |
-| 7 | Counterweight | Plates & gates; sliders press plates | Freeze the slider while it's on the plate so the gate stays open for 3 s | B |
-| 8 | Crystal Bar | A frozen lit beam is a wall | Freeze the laser while lit; its crystal bar bounces a slider back early, opening your path | B |
-| 9 | Hold Still | Freeze on a lock inside a beam | The lock is in a beam lit 2 s of every 3; freeze on it while lit and thaw in the dark | B, D |
-| 10 | Fine Print | Short term (3 s): the debt lands as the obstacle thaws | Capstone of slider, lasers and lock, with tight placement of the payment | B, D |
+| # | Name | New idea | Solution (as proven) | Proof | Par | Margin |
+|---|---|---|---|---|---|---|
+| 2-1 | Blink | Laser cycles and telegraphs | Time three blinking beams, then freeze a mostly-lit beam dark to walk along its lane | B | 10.25 s | 4 |
+| 2-2 | Counterweight | Plates switch gates and lasers | Freeze the slider while it rests on the plate: the gate opens and the lane's laser goes dark for 3 s | B | 8.10 s | 4 |
+| 2-3 | Eclipse | Frozen things are solid and cast shadows | Freeze a slider inside an always-on beam; walk the shadow behind it | B | 8.50 s | 4 |
+| 2-4 | Crossfire | Light can't touch a frozen you | A dial sits where two blinking beams cross; one loan, so the debt has to hold it | B, D | 10.60 s | 3 |
+| 2-5 | Fine Print | Short term (3 s) | The debt lands on the dial just as the counterweight thaws and the lane relights; the slider's loop brings it back to the plate exactly as you thaw | B, D | 6.35 s | 4 |
 
 ### Chapter III: MOMENTUM. *"What goes around comes around."* (Rotors)
-| # | Name | Purpose / new idea | Intended solution | Proof |
-|---|---|---|---|---|
-| 11 | Turnstile | Rotors: sweeps, holds, reversal | Freeze a two-arm turnstile with its arms along the walls and slip through | B |
-| 12 | Clockwork | Rotor arms pass through a frozen you | The lock lies under a rotor's sweep; freeze on it as the arms come round | B, D |
-| 13 | Out of Phase | A freeze permanently shifts an obstacle's timing | Two rotors in sync never leave a gap; freeze one to desync them for good | B |
-| 14 | Pass-Through | The debt as a dodge | A dead-end corridor swept by a slider with no alcove; borrow on something else so you're frozen exactly as it passes through you | B, D |
-| 15 | Escapement | Capstone of rotor, slider, plate and lock | Two-phase plan: a plate-held gate, then a lock under a sweep | B, D |
+| # | Name | New idea | Solution (as proven) | Proof | Par | Margin |
+|---|---|---|---|---|---|---|
+| 3-1 | Turnstile | Rotors: quarter turns and sweeps | Freeze the fast two-arm turnstile with its arms clear of your corridor | B | 8.45 s | 4 |
+| 3-2 | Clockwork | Arms sweep through a frozen you | Two clock hands at different rates sweep a dial; one loan, the debt holds it | B, D | 8.45 s | 4 |
+| 3-3 | Second Hand | One loan pays twice | Freeze the turnstile to get through; the debt holds a dial under a sweeping hand | B, D | 9.80 s | 4 |
+| 3-4 | Gnomon | A frozen arm stops a beam | Freeze the rotor with its arm across an always-on beam and walk its shadow | B | 8.15 s | 4 |
+| 3-5 | Escapement | Capstone: shadow, then dial | Shadow the beam with a frozen hand to cross; the 7 s debt lands on a dial guarded by a hand and a blinking beam | B, D | 10.95 s | 4 |
 
 ### Chapter IV: COMPOUND. *"Pay it all back."* (Everything)
-| # | Name | Purpose / new idea | Intended solution | Proof |
-|---|---|---|---|---|
-| 16 | Double Entry | One loan pays twice | Freeze a slider on lock A (its crystal charges it) while your debt lands you on lock B | B, D |
-| 17 | Refinance | Chained loans | Three loans in sequence; each repayment spot is the setup for the next | B |
-| 18 | Leverage | Crystal-bar walls + plates + rotor | A frozen beam steers a slider onto a plate that opens the rotor room | B |
-| 19 | Long Term | Long term (8 s): plan across the whole board | Borrow early; the debt lands on a lock at the far side after a run through two hazards | B, D |
-| 20 | Settlement | Finale: two locks, all obstacles | Choreographed run ending frozen on the final lock as every hazard converges on you. Thaw, the vault opens, dawn | B, D |
+| # | Name | New idea | Solution (as proven) | Proof | Par | Margin |
+|---|---|---|---|---|---|---|
+| 4-1 | Double Entry | Both halves of one loan latch a dial | Freeze a slider on the remote dial, then let the debt land you on the dial inside a blinking beam | B, D | 9.15 s | 4 |
+| 4-2 | Refinance | Chained loans | Three mostly-lit laser lanes in a snake; three loans, each repaid in the pocket before the next lane | B, ≥3 loans | 20.75 s | 4 |
+| 4-3 | Crystal Bar | A frozen lit beam is a wall | Freeze a blinking laser while lit; its crystal bar shadows the always-on beam you need to walk | B | 8.05 s | 4 |
+| 4-4 | Long Term | Long term (8 s) | Freeze a laser lane early, run a two-slider gauntlet, arrive on the dial in a slider's column as the debt lands | B, D | 13.60 s | 4 |
+| 4-5 | Settlement | Finale: two loans, two dials | Remote-latch the island dial; the first debt carries you through a shuttle corridor; the second lands on a dial where two blinking beams cross | B, D | 17.65 s | 4 |
 
 **Difficulty curve:** a single new idea per level within a chapter. Levels 1–3 are under 30 s and gentle, and 5 is the first aha (within roughly 5 minutes of starting). The middle chapters alternate "learn" and "twist" levels. Chapter capstones combine two ideas. The finale combines four. Solver margins (§10) make sure timing demands stay humane.
 
