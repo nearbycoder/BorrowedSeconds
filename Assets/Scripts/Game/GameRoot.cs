@@ -12,7 +12,8 @@ namespace BorrowedSeconds.Game
     /// <summary>
     /// Bootstraps the whole game at runtime (the scene only needs a camera) and owns the flow
     /// between title, level select, levels and menus.
-    /// Command line: -bsLevel N, -bsCapture DIR [-bsOnly ID] [-bsShots t1,t2], -bsMenus DIR, -bsDemo FILE.mp4.
+    /// Command line: -bsLevel N, -bsCapture DIR [-bsOnly ID] [-bsShots t1,t2], -bsMenus DIR, -bsDemo FILE.mp4,
+    /// -bsTrailer DIR / -bsStills DIR -bsShotList FILE [-bsOnly SHOT].
     /// </summary>
     public sealed partial class GameRoot : MonoBehaviour
     {
@@ -133,7 +134,8 @@ namespace BorrowedSeconds.Game
             string menus = Arg(args, "-bsMenus");
             string demo = Arg(args, "-bsDemo");
             string bot = Arg(args, "-bsInputBot");
-            capturing = capture != null || menus != null || demo != null || bot != null;
+            string trailer = Arg(args, "-bsTrailer"), stills = Arg(args, "-bsStills");
+            capturing = capture != null || menus != null || demo != null || bot != null || trailer != null || stills != null;
             promptDemo = System.Array.IndexOf(args, "-bsPrompts") >= 0;
             if (promptDemo) Save.learned = 0;
             Save.ReadOnly = capturing;
@@ -153,6 +155,11 @@ namespace BorrowedSeconds.Game
             if (demo != null)
             {
                 StartCoroutine(DemoReel(demo));
+                return;
+            }
+            if (trailer != null || stills != null)
+            {
+                StartCoroutine(Trailer(trailer ?? stills, Arg(args, "-bsShotList"), stills != null, Arg(args, "-bsOnly")));
                 return;
             }
             if (capture != null)
@@ -368,7 +375,7 @@ namespace BorrowedSeconds.Game
             Cursors.Set(State == Flow.Playing && Session != null && Session.Aim >= 0 && Session.LoanAvailable && Session.State == LevelSession.Mode.Playing
                 ? Cursors.Kind.Aim : Cursors.Kind.Arrow);
             Prompts.Tick(Session, Save, Input, State == Flow.Playing && Session != null && !Session.Muted && (promptDemo || (!capturing && Session.Autoplay == null)), dt);
-            Env.MenuBlur = Mathf.Max(Mathf.Max(levels.BlurNow, pause.BlurNow), Mathf.Max(Mathf.Max(settings.BlurNow, complete.BlurNow), Mathf.Max(card.BlurNow, ending.BlurNow)));
+            Env.MenuBlur = Mathf.Max(Mathf.Max(Mathf.Max(levels.BlurNow, pause.BlurNow), trailerBlur), Mathf.Max(Mathf.Max(settings.BlurNow, complete.BlurNow), Mathf.Max(card.BlurNow, ending.BlurNow)));
             Hud.Dim = Mathf.Max(pause.BlurNow, Mathf.Max(complete.BlurNow, settings.BlurNow));
             title.Update(Input, dt, top(title));
             levels.Update(Input, dt, top(levels));

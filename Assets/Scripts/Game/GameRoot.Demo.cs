@@ -78,7 +78,7 @@ namespace BorrowedSeconds.Game
             yield return Cut(ov, null);
             yield return PlayLevel(ov, "4-5", false,
                 "Settlement: two loans, two dials, every hazard.",
-                "20 levels, each proven solvable by an exhaustive solver.", true);
+                $"{Catalog.Levels.Count} levels, each proven solvable by an exhaustive solver.", true);
 
             yield return Cut(ov, () =>
             {

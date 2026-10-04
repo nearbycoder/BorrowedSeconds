@@ -571,6 +571,22 @@ namespace BorrowedSeconds.UI
 
         public bool Unlocked(int i) => i == 0 || save.Cleared(catalog.Levels[i - 1].Id) || save.Cleared(catalog.Levels[i].Id);
 
+        /// <summary>Moves the selection the way input would, turning the page if needed (scripted tours).</summary>
+        public void Select(int i)
+        {
+            int prev = sel;
+            sel = Mathf.Clamp(i, 0, cards.Count - 1);
+            if (cards[sel].Page != page)
+            {
+                oldPage = page;
+                pageDir = cards[sel].Page > page ? 1 : -1;
+                page = cards[sel].Page;
+                pageAge = 0f;
+                Sfx.Play("rotor_whoosh");
+            }
+            if (sel != prev) Sfx.Play("ui_hover");
+        }
+
         public void Show(int focus)
         {
             sel = Mathf.Clamp(focus, 0, cards.Count - 1);
@@ -892,6 +908,7 @@ namespace BorrowedSeconds.UI
         }
 
         public override void Show() { base.Show(); menu.Selected = 0; }
+        public MenuList Menu => menu;
 
         protected override void Tick(InputReader input, float dt, bool hasInput)
         {

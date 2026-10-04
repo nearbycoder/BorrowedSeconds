@@ -13,6 +13,8 @@ namespace BorrowedSeconds.View
         public float ShiftX;
         /// <summary>Distance multiplier (title framing pulls back a little).</summary>
         public float Zoom = 1f;
+        /// <summary>World-space shift of the framed point (the trailer leans toward the action).</summary>
+        public Vector3 Offset;
         float shiftCur, zoomCur = 1f;
         Vector3 focus, targetFocus;
         float distance, targetDistance;
@@ -51,6 +53,16 @@ namespace BorrowedSeconds.View
 
         public void Punch(float amount) => punchVel += amount;
 
+        /// <summary>Jumps to the current framing with no easing, shake or punch (for cuts).</summary>
+        public void Snap()
+        {
+            focus = targetFocus;
+            distance = targetDistance;
+            zoomCur = Zoom;
+            shiftCur = ShiftX;
+            shake = punch = punchVel = 0f;
+        }
+
         void LateUpdate()
         {
             if (Cam == null) return;
@@ -72,7 +84,7 @@ namespace BorrowedSeconds.View
             var rot = Quaternion.Euler(Pitch + driftPitch, driftYaw, 0f);
             zoomCur = Mathf.Lerp(zoomCur, Zoom, 1f - Mathf.Exp(-3f * dt));
             float d = distance * zoomCur * (1f - Mathf.Clamp(punch, -0.2f, 0.2f));
-            Cam.transform.position = focus - rot * Vector3.forward * d;
+            Cam.transform.position = focus + Offset - rot * Vector3.forward * d;
             Cam.transform.rotation = rot;
             Cam.transform.position += Cam.transform.right * shakeOffset.x + Cam.transform.up * shakeOffset.y;
             shiftCur = Mathf.Lerp(shiftCur, ShiftX, 1f - Mathf.Exp(-3f * dt));

@@ -45,6 +45,9 @@ namespace BorrowedSeconds.Game
         public float Speed = 1f;
         /// <summary>Aim shown while input is disabled (the demo reel previews scripted borrows).</summary>
         public int ForcedAim = -1;
+        /// <summary>Focus held while input is disabled (the trailer shows slow-motion aiming).</summary>
+        public bool ForcedFocus;
+        bool seeking;
 
         readonly List<SimState> history = new List<SimState>();
         readonly Stack<SimState> pool = new Stack<SimState>();
@@ -116,7 +119,7 @@ namespace BorrowedSeconds.Game
             }
             else
             {
-                Focusing = false;
+                Focusing = ForcedFocus;
                 Aim = ForcedAim;
             }
             focusBlend = Mathf.MoveTowards(focusBlend, Focusing ? 1f : 0f, dt * 6f);
@@ -236,7 +239,7 @@ namespace BorrowedSeconds.Game
             Simulation.Step(Def, Look, Act.None);
 
             RefreshGhost();
-            if (Cur.Events.Count > 0) Events?.Invoke(Cur, Cur.Events);
+            if (Cur.Events.Count > 0 && !seeking) Events?.Invoke(Cur, Cur.Events);
             if (Cur.Dead)
             {
                 State = Mode.Dying;
@@ -250,6 +253,22 @@ namespace BorrowedSeconds.Game
                 stateTimer = 0f;
                 Won?.Invoke();
             }
+        }
+
+        /// <summary>
+        /// Runs the autoplay replay forward to <paramref name="tick"/> without events, effects or
+        /// sounds, then plays on from there (the trailer opens shots mid-level).
+        /// </summary>
+        public void Seek(int tick)
+        {
+            seeking = true;
+            while (Cur.Tick < tick && !Cur.Dead && !Cur.Won) DoTick();
+            seeking = false;
+            State = Mode.Playing;
+            stateTimer = 0f;
+            acc = 0f;
+            RefreshGhost();
+            Board.Render(Cur, Look, 0f, 1f);
         }
 
         // ---------------------------------------------------------------- rewind

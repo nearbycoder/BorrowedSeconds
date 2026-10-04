@@ -45,6 +45,9 @@ namespace BorrowedSeconds.UI
         float watchPulse, shownAlpha;
         /// <summary>0..1: how much a modal menu (pause, complete) covers the play screen.</summary>
         public float Dim;
+        /// <summary>Trailer framing: keeps the pocket watch, loan terms, tags and banners; hides the
+        /// level title, clock, key hints and tip (the trailer's captions take their place).</summary>
+        public bool TrailerMode;
         // 3D pocket watch + level title intro + banner band
         WatchStage watch3d;
         RawImage watchImg;
@@ -245,6 +248,9 @@ namespace BorrowedSeconds.UI
             shownAlpha = v ? 1f : 0f;
         }
 
+        /// <summary>Settles the level-title intro at once (shots that open mid-level).</summary>
+        public void SkipIntro() => introT = 10f;
+
         /// <summary>Control hints as "&lt;b&gt;Key&lt;/b&gt; label" pairs, drawn as brass keycaps.</summary>
         public void SetHints(string text)
         {
@@ -270,6 +276,8 @@ namespace BorrowedSeconds.UI
             timeText.text = $"<mspace=0.6em>{Ui.Secs(s.Tick)}</mspace>";
             timeText.richText = true;
             AnimateIntro(dt);
+            if (titleGroup.gameObject.activeSelf == TrailerMode)
+                foreach (var rt in new[] { titleGroup, timeRoot, hintRow, tipRt, introBand.Rt }) rt.gameObject.SetActive(!TrailerMode);
 
             // pocket watch
             string big, small;
