@@ -12,9 +12,9 @@ namespace BorrowedSeconds.Game
     /// <summary>
     /// Bootstraps the whole game at runtime (the scene only needs a camera) and owns the flow
     /// between title, level select, levels and menus.
-    /// Command line: -bsLevel N, -bsCapture DIR [-bsOnly ID] [-bsShots t1,t2], -bsMenus DIR.
+    /// Command line: -bsLevel N, -bsCapture DIR [-bsOnly ID] [-bsShots t1,t2], -bsMenus DIR, -bsDemo FILE.mp4.
     /// </summary>
-    public sealed class GameRoot : MonoBehaviour
+    public sealed partial class GameRoot : MonoBehaviour
     {
         public enum Flow { Title, Levels, Card, Playing, Paused, Complete, Settings, Ending }
 
@@ -118,7 +118,14 @@ namespace BorrowedSeconds.Game
             var args = System.Environment.GetCommandLineArgs();
             string capture = Arg(args, "-bsCapture");
             string menus = Arg(args, "-bsMenus");
-            capturing = capture != null || menus != null;
+            string demo = Arg(args, "-bsDemo");
+            capturing = capture != null || menus != null || demo != null;
+            Save.ReadOnly = capturing;
+            if (demo != null)
+            {
+                StartCoroutine(DemoReel(demo));
+                return;
+            }
             if (capture != null)
             {
                 StartCoroutine(Autopilot(capture, Arg(args, "-bsOnly"), Arg(args, "-bsShots")));
@@ -307,7 +314,7 @@ namespace BorrowedSeconds.Game
 
         void OnWon()
         {
-            wonAt = Time.unscaledTime;
+            wonAt = Clock.Now;
             if (Session.Autoplay != null && State != Flow.Playing) return;
             var def = Session.Def;
             int prev = Save.Best(def.Id);
@@ -323,7 +330,7 @@ namespace BorrowedSeconds.Game
         void Update()
         {
             Input.Poll();
-            float dt = Time.unscaledDeltaTime;
+            float dt = Clock.Dt;
             bool top(MenuScreen s) => s.Visible && TopScreen() == s;
             title.Update(Input, dt, top(title));
             levels.Update(Input, dt, top(levels));
@@ -357,12 +364,12 @@ namespace BorrowedSeconds.Game
                 case Flow.Title:
                 case Flow.Levels:
                     attractTimer += dt;
-                    if ((Session.State == LevelSession.Mode.Won && Time.unscaledTime - wonAt > 2.5f) || attractTimer > 40f) LoadAttract();
+                    if ((Session.State == LevelSession.Mode.Won && Clock.Now - wonAt > 2.5f) || attractTimer > 40f) LoadAttract();
                     break;
                 case Flow.Playing:
                     if (Input.Pause) { Pause(); break; }
                     if (Input.Restart && Session.State != LevelSession.Mode.Won) { Sfx.Play("ui_back"); StartLevel(LevelIndex, false); break; }
-                    if (pendingComplete.HasValue && Time.unscaledTime - wonAt > 1.1f)
+                    if (pendingComplete.HasValue && Clock.Now - wonAt > 1.1f)
                     {
                         var (t, p, prev) = pendingComplete.Value;
                         pendingComplete = null;
@@ -595,8 +602,7 @@ namespace BorrowedSeconds.Game
             }
             ShowTitle();
             yield return Shot("01_title", 3.5f);
-            bool fake = Save.ids.Length == 0;
-            if (fake)
+            if (Save.ids.Length == 0)
             {
                 // fake a bit of progress so the ledger shows medals
                 for (int i = 0; i < 7; i++)
@@ -629,7 +635,6 @@ namespace BorrowedSeconds.Game
             State = Flow.Ending;
             ending.Show(9000, 8200, 7, 20, ShowTitle);
             yield return Shot("08_ending", 6f);
-            if (fake) PlayerPrefs.DeleteAll();
             Application.Quit(0);
         }
     }

@@ -144,7 +144,7 @@ namespace BorrowedSeconds.View
 
         void Update()
         {
-            float dt = Time.unscaledDeltaTime;
+            float dt = Clock.Dt;
             chromaPulse = Mathf.MoveTowards(chromaPulse, 0f, dt * 2.2f);
             lensPulse = Mathf.MoveTowards(lensPulse, 0f, dt * 1.4f);
             flash = Mathf.MoveTowards(flash, 0f, dt * 3f);

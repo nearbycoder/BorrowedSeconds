@@ -64,7 +64,7 @@ namespace BorrowedSeconds.View
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = 3000;
             main.gravityModifier = gravity;
-            main.useUnscaledTime = true;
+            main.useUnscaledTime = false; // scaled time follows the demo recorder's capture step
             var em = ps.emission;
             em.enabled = false;
             var sh = ps.shape;
@@ -242,7 +242,7 @@ namespace BorrowedSeconds.View
 
         void Update()
         {
-            float dt = Time.unscaledDeltaTime;
+            float dt = Clock.Dt;
             if (tetherT < 1f)
             {
                 tetherT = Mathf.Min(1f, tetherT + dt / 0.35f);

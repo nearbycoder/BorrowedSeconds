@@ -30,8 +30,12 @@ namespace BorrowedSeconds.Game
             return new SaveData();
         }
 
+        /// <summary>Set for scripted runs (capture, menu tour, demo) so they never overwrite the player's save.</summary>
+        [NonSerialized] public bool ReadOnly;
+
         public void Save()
         {
+            if (ReadOnly) return;
             PlayerPrefs.SetString(Key, JsonUtility.ToJson(this));
             PlayerPrefs.Save();
         }

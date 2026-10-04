@@ -43,6 +43,8 @@ namespace BorrowedSeconds.Game
         /// <summary>Attract-mode playback behind menus: no sounds or freeze tint.</summary>
         public bool Muted;
         public float Speed = 1f;
+        /// <summary>Aim shown while input is disabled (the demo reel previews scripted borrows).</summary>
+        public int ForcedAim = -1;
 
         readonly List<SimState> history = new List<SimState>();
         readonly Stack<SimState> pool = new Stack<SimState>();
@@ -79,7 +81,7 @@ namespace BorrowedSeconds.Game
 
         void Update()
         {
-            float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+            float dt = Mathf.Min(Clock.Dt, 0.1f);
             stateTimer += dt;
             if (Def == null) return;
 
@@ -115,7 +117,7 @@ namespace BorrowedSeconds.Game
             else
             {
                 Focusing = false;
-                Aim = -1;
+                Aim = ForcedAim;
             }
             focusBlend = Mathf.MoveTowards(focusBlend, Focusing ? 1f : 0f, dt * 6f);
             Board.SetHighlight(LoanAvailable ? Aim : -1);

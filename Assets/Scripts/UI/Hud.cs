@@ -196,7 +196,7 @@ namespace BorrowedSeconds.UI
 
         void LateUpdate()
         {
-            float dt = Time.unscaledDeltaTime;
+            float dt = Clock.Dt;
             group.alpha = Mathf.MoveTowards(group.alpha, shownAlpha, dt * 4f);
             if (session == null || session.Def == null) return;
             var s = session.Cur;
@@ -242,7 +242,7 @@ namespace BorrowedSeconds.UI
             watchFill.fillAmount = Mathf.Lerp(watchFill.fillAmount, fill, 1f - Mathf.Exp(-25f * dt));
             watchFill.color = col;
             bool urgent = !frozen && s.Countdown > 0 && s.Countdown <= Rules.TicksPerSecond;
-            watchPulse = urgent ? Mathf.Abs(Mathf.Sin(Time.unscaledTime * 12f)) : Mathf.MoveTowards(watchPulse, 0f, dt * 3f);
+            watchPulse = urgent ? Mathf.Abs(Mathf.Sin(Clock.Now * 12f)) : Mathf.MoveTowards(watchPulse, 0f, dt * 3f);
             watch.localScale = Vector3.one * (1f + watchPulse * 0.06f);
             watchGlow.color = new Color(col.r, col.g, col.b, (frozen ? 0.35f : 0.12f) + watchPulse * 0.3f);
             for (int i = 0; i < pips.Length; i++) pips[i].color = i < d.LoanLimit - s.Loans ? Palette.Ice : new Color(1, 1, 1, 0.18f);

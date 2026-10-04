@@ -54,7 +54,7 @@ namespace BorrowedSeconds.View
         void LateUpdate()
         {
             if (Cam == null) return;
-            float dt = Time.unscaledDeltaTime;
+            float dt = Clock.Dt;
             float k = 1f - Mathf.Exp(-4f * dt);
             focus = Vector3.Lerp(focus, targetFocus, k);
             distance = Mathf.Lerp(distance, targetDistance, k);
@@ -64,7 +64,7 @@ namespace BorrowedSeconds.View
             punch += punchVel * dt;
 
             shake = Mathf.MoveTowards(shake, 0f, dt * 2.5f);
-            float t = Time.unscaledTime;
+            float t = Clock.Now;
             shakeOffset = new Vector3(Mathf.PerlinNoise(seed, t * 28f) - 0.5f, Mathf.PerlinNoise(seed + 7f, t * 28f) - 0.5f, 0f) * shake * 0.5f;
 
             float driftYaw = Mathf.Sin(t * 0.13f) * 0.8f;

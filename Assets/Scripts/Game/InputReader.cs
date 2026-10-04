@@ -94,7 +94,7 @@ namespace BorrowedSeconds.Game
                 if (padAny) UsingGamepad = true;
             }
 
-            float now = Time.unscaledTime;
+            float now = Clock.Now;
             for (int d = 0; d < 4; d++)
             {
                 if (held[d])

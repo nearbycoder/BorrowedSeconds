@@ -225,8 +225,8 @@ namespace BorrowedSeconds.UI
         protected override void Tick(InputReader input, float dt, bool hasInput)
         {
             Menu.Items[0].Label = continueLabel();
-            float sec = Mathf.Floor(Time.unscaledTime);
-            float frac = Time.unscaledTime - sec;
+            float sec = Mathf.Floor(Clock.Now);
+            float frac = Clock.Now - sec;
             float snap = sec + Mathf.Clamp01(frac * 8f) * (1f + 0.15f * Mathf.Sin(Mathf.Clamp01(frac * 8f) * Mathf.PI));
             hand.localRotation = Quaternion.Euler(0, 0, -snap * 6f);
             logo.anchoredPosition = new Vector2(150, -150 + (1f - Mathf.Clamp01(Age * 2f)) * 30f);

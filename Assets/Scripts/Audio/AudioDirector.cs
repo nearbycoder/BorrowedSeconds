@@ -28,6 +28,13 @@ namespace BorrowedSeconds.Audio
         public float Focus;
         /// <summary>Music pitch multiplier (rewind / frozen sag).</summary>
         public float MusicPitch = 1f;
+        /// <summary>
+        /// When set (demo recording), every one-shot and the per-frame mixer state are written here
+        /// so Tools/demo/mix.py can rebuild the soundtrack offline in sync with the captured frames.
+        /// </summary>
+        public static System.IO.TextWriter Log;
+
+        static string F(float v) => v.ToString("0.#####", System.Globalization.CultureInfo.InvariantCulture);
 
         public static AudioDirector Create(Transform parent)
         {
@@ -79,7 +86,7 @@ namespace BorrowedSeconds.Audio
         public static void Play(string name, float volume = 1f, float pitch = 1f, bool world = true)
         {
             if (I == null || !I.clips.TryGetValue(name, out var list) || list.Count == 0) return;
-            float now = Time.unscaledTime;
+            float now = Clock.Now;
             if (I.lastPlayed.TryGetValue(name, out float t) && now - t < 0.03f) return;
             I.lastPlayed[name] = now;
             AudioSource src = null;
@@ -92,6 +99,7 @@ namespace BorrowedSeconds.Audio
             src.pitch = pitch;
             I.poolLp[idx].enabled = world;
             src.Play();
+            Log?.WriteLine($"S {F(now)} {src.clip.name} {F(src.volume)} {F(pitch)} {(world ? 1 : 0)}");
             if (volume >= 0.9f && world) I.duck = Mathf.Max(I.duck, 0.35f);
         }
 
@@ -107,12 +115,13 @@ namespace BorrowedSeconds.Audio
             decks[live].clip = list[0];
             decks[live].volume = 0f;
             decks[live].Play();
+            Log?.WriteLine($"M {F(Clock.Now)} {live} {list[0].name}");
             deckFade = 0f;
         }
 
         void Update()
         {
-            float dt = Time.unscaledDeltaTime;
+            float dt = Clock.Dt;
             duck = Mathf.MoveTowards(duck, 0f, dt * 0.9f);
             deckFade = Mathf.MoveTowards(deckFade, 1f, dt / 1.6f);
             float musicVol = Music * Master * (1f - duck) * (1f - Muffle * 0.25f);
@@ -125,6 +134,11 @@ namespace BorrowedSeconds.Audio
             foreach (var d in decks) d.pitch = MusicPitch * Mathf.Lerp(1f, 0.94f, Muffle);
             float sfxCut = Mathf.Lerp(22000f, 1400f, Muffle);
             foreach (var lp in poolLp) lp.cutoffFrequency = sfxCut;
+            if (Log != null)
+            {
+                float V(int i) => decks[i].isPlaying ? decks[i].volume : 0f;
+                Log.WriteLine($"F {F(Clock.Now)} {F(V(0))} {F(decks[0].pitch)} {F(V(1))} {F(decks[1].pitch)} {F(Muffle)} {F(Focus)}");
+            }
         }
     }
 
