@@ -27,7 +27,7 @@
 
 <a href="docs/media/trailer.mp4"><img src="docs/media/trailer-poster.jpg" width="100%" alt="Borrowed Seconds trailer: click to play"></a>
 
-A 1:36 feature trailer: scripted gameplay recorded frame by frame from the release build, with the game's own music and sound effects. It covers every mechanic, obstacle, device and system. Click the poster to play the MP4 ([direct link](docs/media/trailer.mp4)).
+A 1:36 feature trailer: scripted gameplay recorded frame by frame from the release build, with the game's own music and sound effects. It covers every mechanic, obstacle, device and system. Click the poster to open the MP4, or [download it directly](https://github.com/nearbycoder/BorrowedSeconds/raw/main/docs/media/trailer.mp4) (36 MB, 1080p60).
 
 ## About
 
