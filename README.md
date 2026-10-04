@@ -1,55 +1,94 @@
-# Borrowed Seconds
+<p align="center">
+  <img src="docs/media/teaser.webp" width="860" alt="The player walks onto a gold dial as their debt comes due, freezes in slow motion while a slider passes straight through them, and the dial latches open the exit">
+</p>
 
-**Solve compact puzzles by borrowing time from your future self.**
+<h1 align="center">Borrowed Seconds</h1>
 
-Freeze any moving obstacle for three seconds, but every second you borrow comes due: a few seconds later *you* freeze for three seconds, wherever you happen to be standing. While frozen, hazards pass straight through you. Thawing inside one is what kills. The best solutions turn the debt into the plan: pay it back standing on a dial, or exactly as a laser sweeps over you.
+<p align="center"><b>Solve compact puzzles by borrowing time from your future self.</b></p>
 
-A Unity 6 (6000.6.2f1, URP) puzzle game with 30 levels across six chapters. The simulation is fully deterministic, and an exhaustive solver proves every level solvable. Where a level is designed around it, the solver also proves the debt is required.
+<p align="center">
+  <img alt="Unity 6000.6.2f1" src="https://img.shields.io/badge/Unity-6000.6.2f1%20URP-222c37?logo=unity&logoColor=white">
+  <img alt="Platform: Linux" src="https://img.shields.io/badge/platform-Linux%20x86__64-f6c915?logo=linux&logoColor=black">
+  <img alt="30 levels, every one solver-proven" src="https://img.shields.io/badge/levels-30%2C%20all%20solver--proven-ffd27a">
+  <img alt="Models: Blender 4.5" src="https://img.shields.io/badge/models-Blender%204.5-e87d0d?logo=blender&logoColor=white">
+  <img alt="Audio: procedural" src="https://img.shields.io/badge/audio-100%25%20procedural-7cf4ff">
+</p>
 
-![](ArtSource/previews/_contact_sheet.png)
+<p align="center">
+  <a href="https://github.com/nearbycoder/BorrowedSeconds/releases/latest"><b>Download for Linux</b></a> ·
+  <a href="docs/media/trailer.mp4"><b>Watch the trailer</b></a> ·
+  <a href="#how-to-play">How to play</a> ·
+  <a href="#build-from-source">Build from source</a>
+</p>
 
-## Playing
+---
 
-```
-Builds/Linux/BorrowedSeconds.x86_64        # or: Tools/play.sh
-```
+## Trailer
 
-`Tools/play.sh` starts the game windowed at 1600×900 and uses Unity's native Wayland backend when a Wayland session is available. On this machine the X11/XWayland path sometimes hangs at startup.
+<a href="docs/media/trailer.mp4"><img src="docs/media/trailer-poster.jpg" width="100%" alt="Borrowed Seconds trailer: click to play"></a>
 
-### Controls
+A 1:36 feature trailer: scripted gameplay recorded frame by frame from the release build, with the game's own music and sound effects. It covers every mechanic, obstacle, device and system. Click the poster to play the MP4 ([direct link](docs/media/trailer.mp4)).
+
+## About
+
+Freeze any moving obstacle for three seconds. The catch is that the time is **borrowed**. A few seconds later the debt comes due and *you* freeze for three seconds, wherever you happen to be standing.
+
+While you're frozen, nothing can hurt you. Sliders, laser beams and rotor arms pass straight through. But if you thaw inside a hazard, you **default** and time rewinds. The best solutions turn the debt into the plan: you pay it back standing on a gold dial, or exactly as a laser sweeps over you.
+
+Every level is a single screen, the rules are fully deterministic, and an exhaustive solver has proven every one of the 30 levels solvable. Where a level is built around a trick, the solver also proves the trick is required.
+
+## How to play
 
 | Action | Keyboard + mouse | Gamepad |
 |---|---|---|
-| Move (one tile per step, hold to keep walking) | WASD / arrow keys | Left stick / D-pad |
+| Move (one tile per step; hold to keep walking) | WASD / arrow keys | Left stick / D-pad |
 | Aim at an obstacle | Hover it with the mouse, or cycle with Tab / Q / E | LB / RB |
-| Borrow (freeze the aimed obstacle) | Left click or Space | A |
-| Focus (time runs at 20% for precise timing) | Hold Shift or right mouse button | Hold LT |
-| Rewind | Hold Z or Backspace | Hold X |
-| Restart level | R | Y |
+| **Borrow** (freeze the aimed obstacle for 3 s) | Left click or Space | A |
+| **Focus** (time runs at 20 % while you line up a shot) | Hold Shift or right mouse button | Hold LT |
+| **Rewind** | Hold Z or Backspace | Hold X |
+| Restart the level | R | Y |
 | Pause | Esc / P | Start |
 
-Menus work with the keyboard, mouse or gamepad.
+Menus work with keyboard, mouse or gamepad, and on-screen key hints switch to match the device you last used. There are no touch controls.
 
-### Rules
+**The rules in one breath:** the world ticks at a fixed 20 Hz. You can have one loan out at a time. The loan freezes an obstacle for 3.0 s, and its **term** (usually 5 s, between 3 and 8 s depending on the level) counts down on the pocket watch. When the term runs out you freeze for 3.0 s. The ghost preview shows where every hazard will be when you thaw, and whether the spot you're standing on is safe. Some levels cap how many loans you can take; the pips under the watch count what's left.
 
-- The world runs on a fixed 20 Hz tick. A step takes 0.15 s.
-- **Borrow:** the aimed obstacle freezes for **3.0 s**. A frozen obstacle is a solid crystal: it blocks you, blocks sliders and stops laser beams. It also still weighs on plates and dials.
-- **Debt:** when the loan is taken, the **term** starts counting (5 s on most levels, between 3 and 8 s on others; the table below lists the exceptions). When it runs out you freeze for **3.0 s**. The pocket watch at the bottom of the screen shows the countdown, and the ghost preview shows where every hazard will be when you freeze and when you thaw.
-- While you are frozen, nothing can hurt you: sliders, laser beams and rotor arms pass through. If a hazard occupies your tile on the tick you thaw, you are *Defaulted* and the level rewinds.
-- One loan at a time. Some levels also cap the total number of loans (shown as pips under the watch).
-- **Obstacles:**
-  - **Sliders** shuttle along a track and bounce off anything solid.
-  - **Lasers** blink on a cycle and flicker before firing. A laser frozen while lit leaves a crystal bar that works as a wall.
-  - **Rotors** turn their arms in quarter steps. A frozen rotor arm is a wall and stops beams.
-- **Devices:**
-  - **Plates** hold the gate of their colour open while anything rests on them.
-  - **Gold dials** latch after 3 s of continuous weight (yours, frozen or not, or a frozen block's).
-  - The **exit** opens once every dial is latched.
-- **Medals:** finishing gives Bronze, finishing within par + 4 s gives Silver, and finishing within par + 1 s gives Gold ("Time Thief"). Par is the solver's optimal time.
+## Features
+
+<img src="docs/media/screenshots/02_aim-and-focus.png" width="49%" alt="Aiming at a slider while holding Focus: the aim tag reads freeze 3.0s, repay in 5.0s, and red ghosts forecast the hazards"> <img src="docs/media/screenshots/03_exactly-now.png" width="49%" alt="The player's debt comes due on a gold dial and they freeze into crystal while a slider approaches">
+
+- **One verb, two sides.** Borrowing freezes a sliding block, a laser or a rotor into crystal for three seconds. Repaying freezes you. Both halves are useful: a frozen obstacle is a wall, and a frozen you is untouchable.
+- **Truthful ghosts.** Aim at something and red ghosts forecast every hazard at the moment you'd thaw, along with a safe or lethal ring under your feet. They're computed by running the real simulation forward, so they're never wrong.
+- **Focus and rewind.** Hold Focus to slow time to a crawl while you aim. Hold rewind to scrub back through everything that happened. Defaulting rewinds you two seconds automatically.
+- **Three obstacles, each with a frozen form.** *Sliders* shuttle along tracks and bounce off anything solid. *Lasers* blink on a cycle and flicker before firing; freeze one while it's lit and it leaves a crystal bar that blocks other beams. *Rotors* sweep their arms in quarter turns; a frozen arm is a wall.
+- **Devices that care about weight.** *Plates* hold a gate open while anything rests on them, including a block you froze there. *Gold dials* latch after three seconds of continuous weight from you (frozen or not) or from a frozen block. The exit opens once every dial is latched.
+- **Crystal physics.** In the later chapters, a frozen block pens another slider in, rotor arms swing back off crystal, a frozen arm shades a laser, one crystal bar pens two sliders at once, and a gate you shut stops light.
+- **Medals against a proven par.** Par is the solver's optimal time. Finish within par + 1 s for gold (*Time Thief*), within par + 4 s for silver, or anywhere for bronze.
+- **Teaches without text walls.** Keycap prompts float in the world over the thing they mean, such as *Hover + click, freeze it* over the nearest slider, then retire for good once you've done it. Each level adds one idea, along with a one-line tip.
+- **Juice everywhere.** Hit-stop on every borrow, a full-screen time-ripple with chromatic split, a rewind smear, screen shake, dial-latch flashes, a medal coin that drops and stamps, and clock-hand wipes between screens.
+- **Comfort settings.** Master, music and effects volume, fullscreen, screen shake, reduced flashing and Focus strength. Progress and settings save automatically.
+
+<img src="docs/media/screenshots/04_in-the-beams.png" width="49%" alt="Frozen on a gold dial at the crossing of two laser beams, which pass harmlessly through"> <img src="docs/media/screenshots/06_crystal-bar.png" width="49%" alt="A laser frozen mid-shot becomes a cyan crystal bar that blocks the other beam">
 
 ## Content
 
-| # | Name | Obstacles | Proven |
+Thirty single-screen levels in six chapters. Each chapter opens with a title card, and each level unlocks when the previous one is settled. The Ledger tracks medals and best times for each level.
+
+| Chapter | Introduces | Levels |
+|---|---|---|
+| I · Principal | Borrowing, the debt and sliders | First Loan, Pass-Through, Grace Period, Collateral, Exactly Now |
+| II · Interest | Lasers, plates and gates | Blink, Counterweight, Eclipse, Crossfire, Fine Print |
+| III · Momentum | Rotors | Turnstile, Clockwork, Second Hand, Gnomon, Escapement |
+| IV · Compound | Everything at once, short and long terms, loan caps | Double Entry, Refinance, Crystal Bar, Long Term, Settlement |
+| V · Leverage | Crystal pushing back: pens, rebounds, backswings | Rebound, Backswing, Crossbar, Pendulum, Fulcrum |
+| VI · Escrow | Leaving things behind to hold doors | Lockout, Gatekeeper, Doorstop, Two Keys, Escrow |
+
+Thirteen levels are proven to need *the debt itself*. Even with unlimited debt-free loans they can't be solved, so your own freeze has to be part of the solution. Every level also has a timing margin of at least ±150 ms around its intended solution.
+
+<details>
+<summary><b>Every level, and what the solver proves about it</b> (mild spoilers)</summary>
+
+| # | Name | Obstacles and devices | Proven |
 |---|---|---|---|
 | 1-1 | First Loan | slider | B |
 | 1-2 | Pass-Through | slider | B, D |
@@ -72,102 +111,109 @@ Menus work with the keyboard, mouse or gamepad.
 | 4-4 | Long Term | 2 sliders, laser, dial (8 s term) | B, D |
 | 4-5 | Settlement | 2 sliders, laser, rotor, 2 dials | B, D |
 | 5-1 | Rebound | 2 sliders (a frozen block pens the other) | B |
-| 5-2 | Backswing | slider, rotor (the hand swings back off crystal) | B |
+| 5-2 | Backswing | slider, rotor (the arm swings back off crystal) | B |
 | 5-3 | Crossbar | 2 sliders, laser (one crystal bar pens both) | B |
-| 5-4 | Pendulum | slider, laser, rotor (a frozen hand shades and walls) | B |
+| 5-4 | Pendulum | slider, laser, rotor (a frozen arm shades and walls) | B |
 | 5-5 | Fulcrum | 2 sliders, dial | B, D |
 | 6-1 | Lockout | slider, laser, plate + gate (shut a block in a pen) | B |
-| 6-2 | Gatekeeper | loop slider, laser, plates + gate (a shut gate stops light) | B |
+| 6-2 | Gatekeeper | looping slider, laser, plates + gate (a shut gate stops light) | B |
 | 6-3 | Doorstop | 2 sliders, plates + gate, dial | B, D |
 | 6-4 | Two Keys | 2 sliders, 2 plates + 2 gates, dial | B |
 | 6-5 | Escrow | 2 sliders, plate + gate, dial | B, D |
 
-*B* means the level is unsolvable without borrowing. *D* means the debt is a tool: the level is unsolvable even with unlimited debt-free loans, so your own freeze has to be part of the solution. Every level has a timing safety margin of at least ±3 ticks (150 ms). All but 2-4 have ±4.
+*B*: unsolvable without borrowing. *D*: unsolvable even with unlimited debt-free loans, so your own freeze has to be part of the solution. Every level keeps a timing margin of at least ±3 ticks (150 ms); all but 2-4 have ±4.
 
-The game also includes:
-- **Title screen** with a live attract-mode replay behind the menu.
-- **Level select** ("The Ledger") showing medals and best times; each level unlocks when the previous one is cleared.
-- **Chapter cards**, pause menu, level-complete screen with a medal stamp, and an ending with your total time against par plus credits.
-- **Settings:** master/music/effects volume, fullscreen, screen shake, reduced flashing and Focus strength.
-- **Saves:** progress and settings are stored in PlayerPrefs (`bs.save.v1`).
-- **Onboarding:** key-cap prompts float in the world over the thing they refer to ("WASD move" over the pawn, "Hover + click, freeze it" over the nearest slider, "Hold Shift, slow time to aim", "Hold Z, rewind further" after a default). Each retires for good once you've done it (saved). Each level also has a one-line tip about its new idea, and level 1 is built so that the only thing to try is the slider.
-- **Interface:** every panel is drawn by one procedural shader (`BS/UIPanel`): chamfered watch-case corners, a lit brass rim, an enamel gradient, an outer glow, a sheen sweep and a clock-hand reveal. Screen changes use a clock-face wipe (`BS/UIWipe`). Menus blur and darken the board behind them. Motion is driven by springs and staggered easing, with per-letter text effects (drop, stamp, rise, spread, typewriter). A 3D pocket watch modelled in Blender and rendered live into the UI is the title emblem, the HUD's loan dial (its second hand counts the term down and frosts over while frozen) and the ending's centrepiece. The medal coins and padlock are Blender renders. Key hints are drawn as keycaps, and the mouse cursors are custom.
-- **Time distortion:** a custom full-screen pass (`BS/TimeRipple`) sends a radial ripple with a chromatic split out from whatever you freeze and from you when a debt lands, and smears the image while rewinding. It's layered on URP's bloom, vignette, colour grading, chromatic aberration and lens distortion.
+</details>
 
-## Project layout
+## Screenshots
 
-```
-Assets/
-  Scripts/Sim/      Pure C# simulation (no UnityEngine): LevelDef + JSON, SimState, Simulation.Step,
-                    Solver (BFS). Integer-only and deterministic; shared by the game and the solver.
-  Scripts/Game/     GameRoot (flow state machine, sim event → FX/audio), LevelSession (20 Hz loop,
-                    focus, rewind history), InputReader, SaveData, LevelCatalog, Clock.
-                    GameRoot.Demo (scripted demo reel), GameRoot.InputBot (controls smoke test, fps probe).
-  Scripts/View/     BoardView, Pieces (per-obstacle views), GhostPreview, CameraRig, Fx,
-                    WorldEnvironment (backdrop, gears, post-processing pulses), Mats, Shapes.
-  Scripts/UI/       Runtime-built uGUI + TextMeshPro: Hud, Prompts (in-world onboarding), Menus (title,
-                    level select, pause, settings, complete, chapter card, ending), Kit (panels, sliders,
-                    toggles, keycaps, coins), Motion (springs, easing), TextFx (per-letter animation),
-                    WatchStage (3D watch rendered to a texture), Transition (clock wipe), Cursors.
-  Scripts/Audio/    AudioDirector: pooled SFX with low-pass "muffle", crossfading music decks.
-  Shaders/          Backdrop, Crystal, Ghost, Glow (beams), Ring (watch), Particle, TimeRipple (full screen,
-                    also the menu blur), UIPanel and UIWipe (interface).
-  Resources/        Levels/levels.json + solutions.json, Models/*.fbx, Audio/*.wav, Fonts, Materials.
-  Editor/           ProjectSetup (URP assets, renderer features, materials, scene), BuildScript, import settings.
-  Tests/Editor/     EditMode tests: every solver replay wins at par under Unity's Mono runtime.
-ArtSource/          build_assets.py and build_ui_assets.py (Blender bpy generators), generated .blend files, previews/.
-Tools/
-  unity.sh          Run the editor / a batch method / the Linux build.
-  play.sh           Run the built game (add `dev` for the development build).
-  validate.sh       Build and run the solver over every level and write solutions.json.
-  capture.sh        Self-test: the built game autoplays every level from the solver's replays.
-  devcap.sh         Development build followed by capture.sh.
-  inputbot.sh       Controls smoke test: plays 1-1 through virtual keyboard and mouse devices.
-  demo/             record.sh + mix.py: records the demo reel to Builds/Demo/.
-  Solver/           .NET 8 console front end for the shared simulation and solver.
-  lab/              Per-level design files (cXY.json), lab.py (solve one), assemble.py.
-  audio/            synth.py: every sound effect and music loop, synthesised with numpy.
-docs/               BRIEF.md (the assignment) and PLAN.md (design and technical plan).
+| | |
+|---|---|
+| ![Title screen: the pocket-watch emblem and the Borrowed Seconds logo over a live replay](docs/media/screenshots/01_title.png) | ![The Ledger level select with medal coins, best times and sealed levels](docs/media/screenshots/07_the-ledger.png) |
+| ![Chapter VI card: Escrow, leave something behind to hold the door](docs/media/screenshots/08_chapter-card.png) | ![Level complete: Settled, on par, with a gold Time Thief medal](docs/media/screenshots/05_settled.png) |
+| ![Defaulted: the player thawed inside a slider and time rewinds](docs/media/screenshots/09_defaulted.png) | ![Settlement, the chapter IV finale: two loans, two dials, a slider, a laser and a rotor](docs/media/screenshots/10_settlement.png) |
+
+## Play it
+
+1. Download `BorrowedSeconds-v0.1.0-linux-x86_64.zip` from the [latest release](https://github.com/nearbycoder/BorrowedSeconds/releases/latest).
+2. Unzip it and run `./BorrowedSeconds.x86_64`. If the file manager lost the executable bit, run `chmod +x BorrowedSeconds.x86_64` first.
+
+Requirements: 64-bit Linux and an OpenGL 4.5-capable GPU. The game starts fullscreen; you can switch to windowed in Settings. On Wayland desktops where XWayland is unreliable, add `-force-wayland` to use Unity's native Wayland backend. This build has only been tested on Linux (CachyOS, AMD iGPU).
+
+## Build from source
+
+You need **Unity 6000.6.2f1** (Universal Render Pipeline) to build the game. **Blender 4.5** is only needed to regenerate the models and audio, and **ffmpeg** and **ImageMagick** only for the trailer.
+
+```sh
+git clone https://github.com/nearbycoder/BorrowedSeconds.git
+cd BorrowedSeconds
+Tools/unity.sh build-linux        # batch build -> Builds/Linux/BorrowedSeconds.x86_64
+Tools/play.sh                     # run it windowed at 1600x900
 ```
 
-Everything apart from the camera, light and volume in `Assets/Scenes/Main.unity` is built at runtime from data.
+Or open the folder in Unity Hub and press Play in `Assets/Scenes/Main.unity`. The scene only holds a camera, a light and a volume; everything else is built at runtime from data.
 
-## Rebuilding
-
-All commands are run from the project root.
+Everything generated is checked in, so none of the following is needed just to build:
 
 | What | Command | Notes |
 |---|---|---|
-| 3D models | `blender -b --factory-startup -P ArtSource/build_assets.py` | Writes `Assets/Resources/Models/*.fbx`, `ArtSource/*.blend` and the preview renders. |
-| UI models | `blender -b --factory-startup -P ArtSource/build_ui_assets.py` (or `-- watch`, `coins` or `lock`) | Writes `Assets/Resources/Models/PocketWatch.fbx` and renders the medal coins and padlock to `Assets/Resources/UI/`. |
-| Audio | `Tools/audio/synth.sh` (or `sfx`, `music`, or a single name like `music_a`) | Runs `synth.py` with Blender's bundled Python, because it needs numpy. Writes `Assets/Resources/Audio/*.wav`. Takes about 2 minutes. |
-| Levels | Edit `Tools/lab/cXY.json`, check it with `python3 Tools/lab/lab.py Tools/lab/c15.json`, then run `python3 Tools/lab/assemble.py` | Writes `levels.json`. |
-| Proofs and replays | `Tools/validate.sh` (or `--level 4-5`, or `--quick`) | Proves B/D and margins and writes `solutions.json`. 4-5 is the slow one: it searches up to 150M states and needs a lot of RAM. |
-| Materials / scene | `Tools/unity.sh batch BorrowedSeconds.EditorTools.ProjectSetup.Apply` | |
-| Linux build | `Tools/unity.sh build-linux` | Writes `Builds/Linux/BorrowedSeconds.x86_64`. |
-| Self-test | `Tools/devcap.sh /tmp/bs-cap` | Development build, then autoplays every level and prints PASS/FAIL per level, saving screenshots. |
-| Unity tests | `unity test . --mode EditMode` | 62 EditMode tests (two per level plus two): each saved solution replayed under Mono must win at exactly its par tick; idling never wins; state keys round-trip. |
-| Controls test | `Tools/inputbot.sh` | Release build plays 1-1 through virtual keyboard + mouse: taps, a held key, Shift-focus aiming, hover and click-to-borrow, repayment, win. |
-| Frame rate | `Tools/play.sh -bsFps /tmp/fps.txt -bsNoVsync` | Plays the three busiest levels and logs average fps and worst-1% frame time. |
-| Demo reel | `Tools/demo/record.sh` | Needs the Linux build. Records a 1:45 reel frame-locked at 60 fps to `Builds/Demo/BorrowedSeconds_demo.mp4` and mixes its soundtrack offline from the game's audio event log. |
+| 3D models | `blender -b --factory-startup -P ArtSource/build_assets.py` | Writes `Assets/Resources/Models/*.fbx`, `ArtSource/*.blend` and preview renders. |
+| UI models | `blender -b --factory-startup -P ArtSource/build_ui_assets.py` | The 3D pocket watch, the medal coins and the padlock. |
+| Audio | `Tools/audio/synth.sh` (or `sfx`, `music`, or one name) | Every effect and the four music loops, synthesised with numpy (via Blender's bundled Python). About 2 minutes. |
+| Levels | Edit `Tools/lab/cXY.json`, then `python3 Tools/lab/assemble.py` | `python3 Tools/lab/lab.py Tools/lab/c15.json` solves one design without touching the game. |
+| Proofs and replays | `Tools/validate.sh` (or `--level 4-5`, or `--quick`) | Proves every level and writes `solutions.json`. Level 4-5 searches up to 150M states and needs a lot of RAM. |
+| Unit tests | `unity test . --mode EditMode`, or the Test Runner | 62 EditMode tests replay every saved solution under Unity's Mono runtime and check that each one wins at exactly its par tick. |
+| Self-test | `Tools/devcap.sh /tmp/bs-cap` | Development build, then autoplays all 30 levels and prints PASS/FAIL for each. |
+| Controls test | `Tools/inputbot.sh` | Plays 1-1 through virtual keyboard and mouse devices. |
+| Release zip | `Tools/package.sh 0.1.0` | Zips the Linux build with a short README and the font licenses into `Builds/Release/`. |
+| Trailer and media | `Tools/trailer/make_trailer.sh` | Records the scripted trailer from the release build, then cuts, scores and encodes it. See [Tools/trailer/README.md](Tools/trailer/README.md). |
 
-## Status
+## Project structure
 
-What has been verified:
-- The latest build autoplays all 30 levels from the solver's saved replays, and every one passes (`Tools/capture.sh`). This checks that the in-game loop matches the solver tick for tick.
-- The solver proves every level solvable and proves each B/D claim in the table above.
-- A scripted menu tour (`Tools/play.sh dev -bsMenus DIR`) captures frame-locked bursts at 30 fps of every screen's intro animation. It covers the title, level select, chapter card, play, pause, settings, level complete and ending screens with no console errors.
-- 62 EditMode tests pass in Unity, so the .NET 8 solver and the game's Mono runtime agree tick for tick.
-- The input bot wins 1-1 through the real input path (3 of 3 runs) using virtual keyboard and mouse devices.
-- Frame rate on this machine (AMD Radeon 8060S iGPU, 1600×900, vsync off): 316–428 fps average and 6.5–7.9 ms worst-1% frame time on 4-5, 3-5 and 2-4. With vsync on, a window that isn't visible is throttled by the Wayland compositor (to about 11 fps here); that's the compositor, not the game.
+```
+Assets/
+  Scripts/Sim/      Pure C# rules (no UnityEngine): levels, state, Simulation.Step, the BFS solver
+  Scripts/Game/     Flow and level session (20 Hz loop, focus, rewind history), input, save,
+                    scripted runs: autopilot, demo reel, input bot, trailer (GameRoot.*.cs)
+  Scripts/View/     Board, pieces, ghost preview, camera rig, particles, backdrop and post FX
+  Scripts/UI/       Runtime-built uGUI + TextMeshPro: HUD, menus, prompts, UI kit, text effects
+  Scripts/Audio/    Pooled one-shots with a "frozen" low-pass, crossfading music decks
+  Shaders/          Crystal, ghost, beams, backdrop, time ripple, UI panel, clock wipe
+  Resources/        levels.json + solutions.json, models, audio, fonts, UI renders
+  Tests/Editor/     EditMode replay tests
+ArtSource/          Blender generator scripts, the .blend files they write, preview renders
+Tools/              unity.sh, play.sh, validate.sh, capture.sh, inputbot.sh, package.sh
+  Solver/           .NET 8 console front end for the shared rules and solver
+  lab/              Level design files, sweeps and the assembler
+  audio/            synth.py: every sound and music loop
+  demo/, trailer/   Frame-locked recorders and offline soundtrack mixers
+docs/               PLAN.md (design and technical plan), BRIEF.md (the original brief), media/
+```
 
-Known gaps and differences from `docs/PLAN.md`, stated plainly:
-- **Audio is unheard.** It is fully procedural and checked only numerically and with spectrograms (levels, clipping, loop seams); nobody has listened to it on speakers during development. The mix balance between SFX and music may need tuning.
-- **No human playtesting.** Difficulty and the margins come from the solver, not from people.
-- **Levels were reworked against the solver**, so names and order differ from the plan's original draft (*Hold Still*, *Out of Phase* and *Leverage* became *Crossfire*, *Second Hand* and *Gnomon*). `docs/PLAN.md` §6 now lists the levels as shipped.
-- **Linux only.** Only the Linux standalone was built and tested.
-- **Expansion in progress.** Chapters V–VI (Leverage, Escrow) shipped. Chapters VII–XII are planned for a 60-level total, but aren't designed yet. Four finished levels for them (8-1, 9-1, 9-2, 9-5) sit in `Tools/lab/`, and `assemble.py` leaves a chapter out until all five of its levels exist. New levels use a 1 s start delay, so par never needs a move in the first second. The design sweeps are in `Tools/lab/sweep.py` and `Tools/lab/designs/`.
+## Tech highlights
 
-## Credits
+- **One deterministic simulation everywhere.** `Simulation.Step` advances exactly one 20 Hz tick using only integers, with no allocation and no unordered iteration. The game, the ghost previews, the console solver and the unit tests all compile the same files, and the tests check that .NET 8 and Unity's Mono agree tick for tick.
+- **An exhaustive solver that proves things.** A breadth-first search over packed 256-bit states at the player's decision points (with a compact open-addressing node store, about half the memory per state). It finds the optimal par, then re-runs the search under relaxed rules to prove a level is unsolvable *without borrowing* or *with the debt forgiven*. It also measures how many ticks of timing slack the solution has.
+- **Ghosts by simulation.** The preview clones the current state and steps it forward to the moment you'd thaw, assuming you borrow now and stand still. Because a frozen player never blocks anything, that forecast doesn't depend on your later moves.
+- **Instant rewind.** Every tick's state is kept in a pooled history, so rewinding is just scrubbing it backwards with an accelerating speed curve. The render interpolates between neighbouring ticks.
+- **No stock assets.** Every model is generated by Blender `bpy` scripts. Every sound effect and music loop is synthesised with numpy: four 16-bar loops at 96 BPM, with their reverb tails wrapped so they loop seamlessly. Every UI panel is one procedural shader (chamfered brass rim, enamel gradient, glow, sheen, clock-hand reveal).
+- **A trailer recorded by the game.** The trailer is a shot list played by the release build, with replays driving the levels and captions drawn by the game's own UI kit. Each shot is captured frame-locked at 60 fps, and the soundtrack is rebuilt offline from the game's audio event log, so every cut and caption is reproducible.
 
-Design, code, models (Blender bpy) and audio (numpy synthesis) were all generated for this project. The font is Fira Sans (SIL Open Font License, `Assets/Resources/Fonts/OFL-FiraSans.txt`). Built with Unity 6 URP and Blender 4.5.
+## Credits and tooling
+
+Design, code, levels, models (Blender `bpy`), sound and music (numpy synthesis) were all made for this project by AI coding-agent sessions working from [the design brief](docs/BRIEF.md). Text is set in **Fira Sans** (SIL Open Font License), with TextMesh Pro's Liberation Sans as the fallback. Third-party components and their licenses are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Built with Unity 6 (URP, Input System, TextMesh Pro), Blender 4.5, Python with numpy, .NET 8, ffmpeg and ImageMagick.
+
+## Status and known issues
+
+Version 0.1.0. The game is complete and playable from start to finish, but it's young. Here's what is and isn't verified:
+
+- ✅ The release build autoplays all 30 levels from the solver's replays and wins every one (`Tools/capture.sh`), so the in-game loop matches the solver tick for tick.
+- ✅ The solver proves every level solvable and proves each "needs a borrow" and "needs the debt" claim. 62 EditMode tests pass.
+- ✅ The input bot wins 1-1 through the real input path. On the development machine (AMD Radeon 8060S iGPU, 1600×900), the busiest levels run at 300+ fps.
+- ⚠️ **Not playtested by humans yet.** Difficulty and timing margins come from the solver, not from people. Some levels may be harder than they look.
+- ⚠️ **The audio mix hasn't been tuned by ear.** The sound is fully procedural and was checked numerically (levels, clipping, loop seams), but the balance between effects and music may need work.
+- ⚠️ **Linux only.** No Windows or macOS builds have been made or tested, and there's no web build.
+- ⚠️ **Work in progress beyond chapter VI.** Chapters VII–XII (a 60-level total) are planned in `docs/PLAN.md` but not designed yet. A few finished designs for them sit in `Tools/lab/` and aren't in the game.
+- ⚠️ **No license has been chosen yet.** All rights are reserved until a `LICENSE` file is added.
