@@ -359,8 +359,11 @@ namespace BorrowedSeconds.Game
         void Update()
         {
             Input.Poll();
-            float dt = Clock.Dt;
+            float dt = Mathf.Min(Clock.Dt, 0.05f); // menus: a loading hitch must not skip their intros
             bool top(MenuScreen s) => s.Visible && TopScreen() == s && (Wipe == null || !Wipe.Busy);
+            Cursor.visible = !Input.UsingGamepad;
+            Cursors.Set(State == Flow.Playing && Session != null && Session.Aim >= 0 && Session.LoanAvailable && Session.State == LevelSession.Mode.Playing
+                ? Cursors.Kind.Aim : Cursors.Kind.Arrow);
             Prompts.Tick(Session, Save, Input, State == Flow.Playing && Session != null && !Session.Muted && (promptDemo || (!capturing && Session.Autoplay == null)), dt);
             Env.MenuBlur = Mathf.Max(Mathf.Max(levels.BlurNow, pause.BlurNow), Mathf.Max(Mathf.Max(settings.BlurNow, complete.BlurNow), Mathf.Max(card.BlurNow, ending.BlurNow)));
             title.Update(Input, dt, top(title));
@@ -636,6 +639,7 @@ namespace BorrowedSeconds.Game
             // frame-locked at 30 fps so captured animation timing is exact, whatever the real frame rate
             Directory.CreateDirectory(dir);
             Time.captureFramerate = 30;
+            Cursors.Export(dir);
             IEnumerator Wait(float seconds)
             {
                 int n = Mathf.RoundToInt(seconds * 30f);

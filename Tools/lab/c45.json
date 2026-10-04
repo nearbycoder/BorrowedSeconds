@@ -11,7 +11,7 @@
   "  .            ",
   "  .........    ",
   "          .    ",
-  "        #..    ",
+  "        ...    ",
   "#.......L.     ",
   "      ..       ",
   "      X        "
@@ -63,16 +63,6 @@
    "dir": "E",
    "on": 36,
    "off": 24
-  },
-  {
-   "at": [
-    8,
-    6
-   ],
-   "dir": "S",
-   "on": 30,
-   "off": 30,
-   "phase": 10
   }
  ],
  "expect": {
@@ -81,5 +71,19 @@
   "margin": 2,
   "budget": 150000000
  },
- "hint": "Two loans, two dials. Settle up before you leave."
+ "hint": "Two loans, two dials. Settle up before you leave.",
+ "rotors": [
+  {
+   "at": [
+    8,
+    6
+   ],
+   "arms": "S",
+   "len": 1,
+   "cw": true,
+   "turn": 3,
+   "hold": 12,
+   "phase": 0
+  }
+ ]
 }

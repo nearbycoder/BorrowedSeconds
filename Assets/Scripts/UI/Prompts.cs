@@ -20,6 +20,7 @@ namespace BorrowedSeconds.UI
             public RectTransform Rt;
             public CanvasGroup Group;
             public TextMeshProUGUI Text;
+            public Panel Panel;
             public float Alpha;
         }
 
@@ -43,20 +44,16 @@ namespace BorrowedSeconds.UI
         {
             var rt = Ui.Rect("Pill", canvas.transform, Vector2.zero, new Vector2(0.5f, 0f), Vector2.zero, new Vector2(300, 52));
             var group = rt.gameObject.AddComponent<CanvasGroup>();
-            var bg = Ui.Img("Bg", rt, Ui.Pill, new Color(0.05f, 0.07f, 0.15f, 0.9f));
-            Ui.Fill(bg.rectTransform);
-            var rim = Ui.Img("Rim", rt, Ui.Pill, new Color(Palette.Gold.r, Palette.Gold.g, Palette.Gold.b, 0.35f));
-            Ui.Fill(rim.rectTransform);
-            rim.rectTransform.offsetMin = new Vector2(-2, -2);
-            rim.rectTransform.offsetMax = new Vector2(2, 2);
-            rim.transform.SetAsFirstSibling();
-            var caret = Ui.Img("Caret", rt, Ui.Diamond, new Color(0.05f, 0.07f, 0.15f, 0.9f));
-            Ui.Place(caret.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0, -2), new Vector2(18, 18));
+            var caret = Ui.Img("Caret", rt, Ui.Diamond, Palette.Gold);
+            Ui.Place(caret.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0, -6), new Vector2(16, 16));
+            var panel = new Panel("Bg", rt, new Vector2(300, 52), Panel.Style.Card);
+            panel.Rt.anchoredPosition = Vector2.zero;
+            panel.SetRim(Palette.Gold);
             var text = Ui.Text("Text", rt, "", Ui.Semi, 21, Palette.Paper);
             Ui.Fill(text.rectTransform);
             text.richText = true;
             group.alpha = 0f;
-            return new Pill { Rt = rt, Group = group, Text = text };
+            return new Pill { Rt = rt, Group = group, Text = text, Panel = panel };
         }
 
         /// <summary>Call when a new level starts.</summary>
@@ -144,9 +141,14 @@ namespace BorrowedSeconds.UI
             {
                 pill.Text.text = text;
                 pill.Rt.sizeDelta = new Vector2(pill.Text.preferredWidth + 44f, 52f);
+                pill.Panel.SetSize(pill.Rt.sizeDelta);
+                pill.Panel.Rt.anchoredPosition = Vector2.zero;
             }
             pill.Alpha = Mathf.MoveTowards(pill.Alpha, on ? 1f : 0f, dt * (on ? 3f : 5f));
             pill.Group.alpha = pill.Alpha;
+            pill.Rt.localScale = Vector3.one * Mathf.Lerp(0.6f, 1f, Ease.OutBack(pill.Alpha, 2.4f));
+            pill.Panel.Glow = 0.35f + 0.25f * Mathf.Sin(Clock.Now * 3f);
+            pill.Panel.Apply();
             if (pill.Alpha <= 0f || cam == null) return;
             if (on)
             {

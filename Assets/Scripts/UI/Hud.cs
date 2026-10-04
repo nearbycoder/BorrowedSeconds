@@ -31,11 +31,15 @@ namespace BorrowedSeconds.UI
         CanvasGroup hintGroup;
         TextMeshProUGUI hintText, tipText;
         CanvasGroup tipGroup;
-        RectTransform tipBarRt;
+        RectTransform tipBarRt, tipRt;
+        Panel tipPanel;
+        string hintSource;
         TextMeshProUGUI focusText;
         CanvasGroup focusGroup;
         TextMeshProUGUI rewindText;
         CanvasGroup rewindGroup;
+        Panel focusTag, rewindTag;
+        RectTransform rewindDial, focusRoot, rewindRoot;
 
         LevelSession session;
         float watchPulse, shownAlpha;
@@ -97,6 +101,7 @@ namespace BorrowedSeconds.UI
             Ui.Place(watchGlow.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(320, 320));
             watch3d = WatchStage.Create(transform, 512);
             watchImg = watch3d.Show(watch, new Vector2(272, 272));
+            watch3d.MainHands = false; // the ice ring is the countdown; hands would cross the digits
             Ui.Place(watchImg.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 20), new Vector2(272, 272));
             watchFace = null;
             watchFill = Ui.Img("Fill", watch, Ui.Ring, Palette.Ice);
@@ -128,12 +133,18 @@ namespace BorrowedSeconds.UI
             // ---- hints
             hintRow = Ui.Rect("Hints", root, new Vector2(0, 0), new Vector2(0, 0), new Vector2(56, 34), new Vector2(760, 40));
             hintGroup = hintRow.gameObject.AddComponent<CanvasGroup>();
-            hintText = Ui.Text("Text", hintRow, "", Ui.Regular, 20, dim, TextAlignmentOptions.BottomLeft);
+            hintText = Ui.Text("Text", root, "", Ui.Regular, 20, dim, TextAlignmentOptions.BottomLeft);
             Ui.Fill(hintText.rectTransform);
             hintText.richText = true;
+            hintText.enabled = false; // drawn as keycaps instead
 
             var tip = Ui.Rect("Tip", root, new Vector2(0, 0), new Vector2(0, 0), new Vector2(56, 84), new Vector2(620, 120));
             tipGroup = tip.gameObject.AddComponent<CanvasGroup>();
+            tipRt = tip;
+            tipPanel = new Panel("TipPanel", tip, new Vector2(660, 100), Panel.Style.Card);
+            tipPanel.Rt.anchorMin = tipPanel.Rt.anchorMax = new Vector2(0, 0);
+            tipPanel.Rt.pivot = new Vector2(0, 0);
+            tipPanel.SetFill(new Color(0.07f, 0.08f, 0.16f, 0.82f), new Color(0.035f, 0.04f, 0.09f, 0.82f));
             var tipBar = Ui.Img("Bar", tip, null, Palette.Gold);
             Ui.Place(tipBar.rectTransform, new Vector2(0, 0), new Vector2(0, 0), Vector2.zero, new Vector2(4, 0));
             tipText = Ui.Text("Text", tip, "", Ui.Regular, 24, Palette.Paper, TextAlignmentOptions.BottomLeft);
@@ -144,14 +155,28 @@ namespace BorrowedSeconds.UI
             tipText.lineSpacing = 6;
             tipBarRt = tipBar.rectTransform;
 
-            focusText = Ui.Text("Focus", root, "FOCUS", Ui.Semi, 24, Palette.Ice);
-            Ui.Place(focusText.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -44), new Vector2(400, 40));
+            focusRoot = Ui.Rect("FocusTag", root, new Vector2(0.5f, 1), new Vector2(0.5f, 0.5f), new Vector2(0, -64), new Vector2(240, 46));
+            focusGroup = focusRoot.gameObject.AddComponent<CanvasGroup>();
+            focusTag = new Panel("Tag", focusRoot, new Vector2(240, 46), Panel.Style.Tag);
+            focusTag.Rt.anchoredPosition = Vector2.zero;
+            focusText = Ui.Text("Focus", focusRoot, "FOCUS", Ui.Semi, 22, Palette.Ice);
+            Ui.Fill(focusText.rectTransform);
             focusText.characterSpacing = 30;
-            focusGroup = focusText.gameObject.AddComponent<CanvasGroup>();
-            rewindText = Ui.Text("Rewind", root, "<<  REWIND", Ui.Heavy, 30, Palette.Ice);
-            Ui.Place(rewindText.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -44), new Vector2(500, 44));
-            rewindText.characterSpacing = 20;
-            rewindGroup = rewindText.gameObject.AddComponent<CanvasGroup>();
+            rewindRoot = Ui.Rect("RewindTag", root, new Vector2(0.5f, 1), new Vector2(0.5f, 0.5f), new Vector2(0, -64), new Vector2(300, 52));
+            rewindGroup = rewindRoot.gameObject.AddComponent<CanvasGroup>();
+            rewindTag = new Panel("Tag", rewindRoot, new Vector2(300, 52), Panel.Style.Tag);
+            rewindTag.Rt.anchoredPosition = Vector2.zero;
+            var dial = Ui.Img("Dial", rewindRoot, Ui.Ticks, Palette.Ice);
+            rewindDial = dial.rectTransform;
+            Ui.Place(rewindDial, new Vector2(0, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(38, 0), new Vector2(38, 38));
+            var dialRim = Ui.Img("Rim", rewindDial, Ui.ThinRing, Palette.Ice);
+            Ui.Fill(dialRim.rectTransform);
+            var hand = Ui.Img("Hand", rewindDial, null, Palette.Ice);
+            Ui.Place(hand.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0f), Vector2.zero, new Vector2(2.5f, 15));
+            rewindText = Ui.Text("Rewind", rewindRoot, "REWIND", Ui.Heavy, 26, Palette.Ice);
+            Ui.Fill(rewindText.rectTransform);
+            rewindText.rectTransform.offsetMin = new Vector2(40, 0);
+            rewindText.characterSpacing = 22;
 
             // ---- banner
             var bannerRoot = Ui.Rect("Banner", root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 160), new Vector2(1200, 200));
@@ -209,11 +234,17 @@ namespace BorrowedSeconds.UI
         /// <summary>Showing the HUD (re)starts the level-title intro, so it plays after a chapter card too.</summary>
         public void SetVisible(bool v)
         {
-            if (v && shownAlpha < 0.5f) introT = 0f;
+            if (v && shownAlpha < 0.5f) introT = -0.3f; // let whatever was on screen (chapter card) clear first
             shownAlpha = v ? 1f : 0f;
         }
 
-        public void SetHints(string text) => hintText.text = text;
+        /// <summary>Control hints as "&lt;b&gt;Key&lt;/b&gt; label" pairs, drawn as brass keycaps.</summary>
+        public void SetHints(string text)
+        {
+            if (text == hintSource) return;
+            hintSource = text;
+            Kit.Keycaps(hintRow, text);
+        }
 
         /// <summary>The level's one-line teaching tip, shown above the control hints.</summary>
         public void SetTip(string text)
@@ -224,7 +255,7 @@ namespace BorrowedSeconds.UI
 
         void LateUpdate()
         {
-            float dt = Clock.Dt;
+            float dt = Mathf.Min(Clock.Dt, 0.05f); // a loading hitch must not skip the animations
             group.alpha = Mathf.MoveTowards(group.alpha, shownAlpha, dt * 4f);
             if (session == null || session.Def == null) return;
             var s = session.Cur;
@@ -310,11 +341,28 @@ namespace BorrowedSeconds.UI
             }
 
             bool showTip = tipText.text.Length > 0 && session.State != LevelSession.Mode.Won;
-            tipGroup.alpha = Mathf.MoveTowards(tipGroup.alpha, showTip ? 1f : 0f, dt * 2f);
-            if (showTip) tipBarRt.sizeDelta = new Vector2(4, tipText.preferredHeight);
+            // the tip slides in once the title has docked, on a panel sized to its text
+            float tipIn = showTip ? Ease.OutCubic((introT - 1.9f) / 0.6f) : 0f;
+            tipGroup.alpha = Mathf.MoveTowards(tipGroup.alpha, tipIn, dt * 3f);
+            tipRt.anchoredPosition = new Vector2(56 - (1f - tipGroup.alpha) * 40f, 84);
+            if (showTip)
+            {
+                float h = tipText.preferredHeight;
+                tipBarRt.sizeDelta = new Vector2(4, h);
+                tipPanel.SetSize(new Vector2(Mathf.Min(660f, tipText.preferredWidth + 52f), h + 28f));
+                tipPanel.Rt.anchoredPosition = new Vector2(-14, -14);
+                tipPanel.Apply();
+            }
 
             focusGroup.alpha = session.FocusBlend;
+            focusRoot.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(session.FocusBlend, 2f));
+            focusTag.Glow = 0.35f + 0.25f * Mathf.Sin(Clock.Now * 4f);
+            focusTag.Apply();
             rewindGroup.alpha = Mathf.MoveTowards(rewindGroup.alpha, session.State == LevelSession.Mode.Rewinding ? 1f : 0f, dt * 8f);
+            rewindRoot.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, Ease.OutBack(rewindGroup.alpha, 2f));
+            rewindDial.localRotation = Quaternion.Euler(0, 0, Clock.Now * 540f); // hands run backwards
+            rewindTag.Glow = 0.5f;
+            rewindTag.Apply();
 
             bannerT += dt;
             float a = bannerT > bannerDur ? Mathf.Max(0, 1f - (bannerT - bannerDur) / 0.35f) : 1f;

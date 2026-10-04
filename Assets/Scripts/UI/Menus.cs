@@ -314,7 +314,9 @@ namespace BorrowedSeconds.UI
     {
         public readonly MenuList Menu;
         readonly RectTransform logo, emblemRt, rule, menuRoot;
-        readonly TextMeshProUGUI prompt, word1, word2, tag;
+        readonly TextMeshProUGUI word1, word2, tag;
+        readonly RectTransform promptRow;
+        readonly CanvasGroup promptGroup;
         readonly TextFx fx1, fx2, fxTag;
         readonly WatchStage watch;
         readonly RawImage emblem;
@@ -322,6 +324,7 @@ namespace BorrowedSeconds.UI
         readonly Func<string> continueLabel;
         bool played;
         float nextShimmer = 3f;
+        readonly List<(RectTransform rt, Image img, Vector2 v, float phase, float size)> motes = new List<(RectTransform, Image, Vector2, float, float)>();
 
         public TitleScreen(Transform canvas, Action onContinue, Action onLevels, Action onSettings, Action onQuit, Func<string> continueLabel) : base(canvas, "Title")
         {
@@ -331,6 +334,15 @@ namespace BorrowedSeconds.UI
             grad.rectTransform.anchorMax = new Vector2(0.78f, 1f);
             grad.rectTransform.offsetMin = grad.rectTransform.offsetMax = Vector2.zero;
 
+            // slow light motes drifting up through the dark side of the title, like dust in a vault
+            var rnd = new System.Random(7);
+            for (int i = 0; i < 34; i++)
+            {
+                float sz = 3f + (float)rnd.NextDouble() * 7f;
+                var m = Ui.Img("Mote", Root, Ui.SoftCircle, new Color(1f, 0.85f, 0.6f, 0f));
+                Ui.Place(m.rectTransform, Vector2.zero, new Vector2(0.5f, 0.5f), new Vector2((float)rnd.NextDouble() * 1400f, (float)rnd.NextDouble() * 1080f), new Vector2(sz, sz) * 2.5f);
+                motes.Add((m.rectTransform, m, new Vector2(((float)rnd.NextDouble() - 0.5f) * 10f, 8f + (float)rnd.NextDouble() * 22f), (float)rnd.NextDouble() * 6.28f, sz));
+            }
             logo = Ui.Rect("Logo", Root, new Vector2(0, 1), new Vector2(0, 1), new Vector2(90, -70), new Vector2(1000, 330));
             watch = WatchStage.Create(Root.transform.root, 640);
             emblemGlow = Ui.Img("EmblemGlow", logo, Ui.Glow, new Color(1f, 0.75f, 0.4f, 0f));
@@ -363,10 +375,9 @@ namespace BorrowedSeconds.UI
             Menu.Add("Settings", onSettings);
             Menu.Add("Quit", onQuit);
 
-            prompt = Ui.Text("Prompt", Root, "", Ui.Regular, 20, new Color(0.8f, 0.84f, 0.95f, 0.6f), TextAlignmentOptions.BottomLeft);
-            Ui.Place(prompt.rectTransform, new Vector2(0, 0), new Vector2(0, 0), new Vector2(126, 56), new Vector2(900, 30));
-            prompt.text = "<b>WASD</b> / <b>Arrows</b> choose     <b>Space</b> / <b>Enter</b> confirm";
-            prompt.richText = true;
+            promptRow = Ui.Rect("Prompt", Root, new Vector2(0, 0), new Vector2(0, 0), new Vector2(126, 50), new Vector2(900, 34));
+            promptGroup = promptRow.gameObject.AddComponent<CanvasGroup>();
+
         }
 
         public override void Show()
@@ -381,6 +392,16 @@ namespace BorrowedSeconds.UI
         {
             Menu.Items[0].Label = continueLabel();
             float a = Age;
+            for (int i = 0; i < motes.Count; i++)
+            {
+                var m = motes[i];
+                var p = m.rt.anchoredPosition + m.v * dt;
+                if (p.y > 1110f) p = new Vector2(p.x, -30f);
+                m.rt.anchoredPosition = p;
+                float tw = 0.5f + 0.5f * Mathf.Sin(Clock.Now * 0.9f + m.phase);
+                float fadeX = 1f - Mathf.Clamp01((p.x - 900f) / 500f);
+                m.img.color = new Color(1f, 0.82f, 0.55f, 0.22f * tw * fadeX * Ease.OutCubic(a * 0.7f) * (m.size / 10f + 0.3f));
+            }
             // emblem: spins in and settles, then sways while showing real time
             float e = Ease.Clamp(a / 1.1f);
             float t = Clock.Now;
@@ -401,7 +422,8 @@ namespace BorrowedSeconds.UI
             float r = Ease.OutExpo((a - 1.15f) / 0.7f);
             rule.localScale = new Vector3(r, 1, 1);
             fxTag.Age = a - 1.25f;
-            prompt.alpha = Ease.Clamp((a - 2.2f) * 2f) * 0.7f;
+            if (promptRow.childCount == 0) Kit.Keycaps(promptRow, "<b>W S</b> choose <b>Space</b> confirm <b>Esc</b> back");
+            promptGroup.alpha = Ease.Clamp((a - 2.2f) * 2f);
             Menu.IntroDelay = 1.45f;
             Menu.Update(input, dt, hasInput && a > 1.6f, a);
         }
@@ -428,7 +450,9 @@ namespace BorrowedSeconds.UI
         readonly SaveData save;
         readonly Action<int> onPick;
         readonly Action onBack;
-        readonly TextMeshProUGUI title, totals, infoNum, infoName, infoHint, infoStats, infoPlay;
+        readonly TextMeshProUGUI title, totals, infoNum, infoName, infoHint, infoStats;
+        readonly RectTransform infoKeys;
+        bool lastOpen = true;
         readonly TextFx titleFx, totalsFx, infoNameFx, infoHintFx;
         readonly RectTransform rule, info;
         readonly Panel infoPanel;
@@ -514,9 +538,7 @@ namespace BorrowedSeconds.UI
             infoStats = Ui.Text("InfoStats", info, "", Ui.Semi, 21, Palette.Paper, TextAlignmentOptions.TopRight);
             Ui.Place(infoStats.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-40, -22), new Vector2(300, 60));
             infoStats.lineSpacing = 8;
-            infoPlay = Ui.Text("InfoPlay", info, "", Ui.Semi, 18, new Color(0.8f, 0.84f, 0.95f, 0.7f), TextAlignmentOptions.BottomRight);
-            Ui.Place(infoPlay.rectTransform, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-40, 18), new Vector2(500, 26));
-            infoPlay.characterSpacing = 6;
+            infoKeys = Ui.Rect("InfoKeys", info, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-34, 14), new Vector2(330, 34));
         }
 
         public bool Unlocked(int i) => i == 0 || save.Cleared(catalog.Levels[i - 1].Id) || save.Cleared(catalog.Levels[i].Id);
@@ -641,8 +663,12 @@ namespace BorrowedSeconds.UI
                     ? $"best <b>{Ui.Secs(best)}s</b>\n<color=#8E9AC8>par {Ui.Secs(par)}s</color>   <color=#FFD27A>{SaveData.MedalName(medal)}</color>"
                     : $"<color=#8E9AC8>par {Ui.Secs(par)}s</color>\n<color=#8E9AC8>not yet settled</color>";
                 infoStats.richText = true;
-                infoPlay.text = open ? "<b>SPACE</b>  PLAY        <b>ESC</b>  BACK" : "<b>ESC</b>  BACK";
-                infoPlay.richText = true;
+                if (open != lastOpen || infoKeys.childCount == 0)
+                {
+                    float w = Kit.Keycaps(infoKeys, open ? "<b>Space</b> play <b>Esc</b> back" : "<b>Esc</b> back");
+                    foreach (RectTransform c in infoKeys) c.anchoredPosition += new Vector2(330 - w, 0);
+                    lastOpen = open;
+                }
                 var coin = Kit.CoinSmall(medal);
                 infoCoin.sprite = coin ?? (open ? Kit.Socket : Kit.Lock);
                 infoCoin.color = coin != null || !open ? Color.white : new Color(0.02f, 0.025f, 0.06f, 0.9f);
@@ -652,7 +678,6 @@ namespace BorrowedSeconds.UI
             infoHintFx.Age = infoAge - 0.1f;
             infoNum.alpha = intro * Ease.OutCubic(infoAge * 4f);
             infoStats.alpha = intro * Ease.OutCubic(infoAge * 3f);
-            infoPlay.alpha = intro * 0.75f;
             float pop = Ease.OutBack(Ease.Clamp(infoAge * 4f), 2f);
             infoCoin.rectTransform.localScale = Vector3.one * Mathf.Lerp(0.6f, 1f, pop);
             infoCoin.rectTransform.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(Clock.Now * 1.4f) * 3f);
@@ -741,7 +766,8 @@ namespace BorrowedSeconds.UI
     {
         readonly MenuList menu;
         readonly Action onBack;
-        readonly TextMeshProUGUI foot;
+        readonly RectTransform footRow;
+        readonly CanvasGroup footGroup;
 
         public SettingsScreen(Transform canvas, SaveData save, Action apply, Action onBack)
             : base(canvas, "Settings", new Vector2(860, 800), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
@@ -760,9 +786,9 @@ namespace BorrowedSeconds.UI
                 d => { save.focus = Mathf.Clamp(Mathf.Round((save.focus + d * 0.1f) * 10f) / 10f, 0.1f, 0.6f); apply(); });
             menu.Add("Back", onBack);
             menu.IntroDelay = 0.25f;
-            foot = Ui.Text("Foot", Body, "<b>←  →</b>  adjust      <b>Esc</b>  back", Ui.Regular, 18, new Color(0.8f, 0.84f, 0.95f, 0.6f), TextAlignmentOptions.Bottom);
-            Ui.Place(foot.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 26), new Vector2(700, 26));
-            foot.richText = true;
+            footRow = Ui.Rect("Foot", Body, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 22), new Vector2(700, 34));
+            footGroup = footRow.gameObject.AddComponent<CanvasGroup>();
+
         }
 
         public override void Show() { base.Show(); menu.Selected = 0; }
@@ -770,7 +796,8 @@ namespace BorrowedSeconds.UI
         protected override void Tick(InputReader input, float dt, bool hasInput)
         {
             float a = AnimateWindow();
-            foot.alpha = Ease.OutCubic((a - 0.8f) * 2f) * 0.6f;
+            if (footRow.childCount == 0) Kit.Keycaps(footRow, "<b>W S</b> choose <b>A D</b> adjust <b>Esc</b> back", 1f, true);
+            footGroup.alpha = Ease.OutCubic((a - 0.8f) * 2f);
             if (hasInput && input.Back) { Sfx.Play("ui_back"); onBack(); return; }
             menu.Update(input, dt, hasInput, a);
         }

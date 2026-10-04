@@ -113,6 +113,7 @@ namespace BorrowedSeconds.UI
         public static Sprite ThinRing => Get("thinring", () => Gen(256, (x, y) => Annulus(x, y, 0.93f, 0.985f)));
         public static Sprite Rounded => Get("rounded", () => RoundedSprite(64, 22));
         public static Sprite Pill => Get("pill", () => RoundedSprite(64, 31));
+        public static Sprite Keycap => Get("keycap", () => RoundedSprite(32, 7));
         public static Sprite Glow => Get("glow", () => Gen(128, (x, y) => Mathf.Pow(Mathf.Clamp01(1f - Mathf.Sqrt(x * x + y * y)), 2.2f)));
         public static Sprite Diamond => Get("diamond", () => Gen(64, (x, y) => Mathf.Clamp01((1f - (Mathf.Abs(x) + Mathf.Abs(y))) * 32f)));
         public static Sprite Ticks => Get("ticks", () => Gen(256, TickFace));

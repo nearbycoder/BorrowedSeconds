@@ -464,7 +464,7 @@
         "  .            ",
         "  .........    ",
         "          .    ",
-        "        #..    ",
+        "        ...    ",
         "#.......L.     ",
         "      ..       ",
         "      X        "
@@ -474,8 +474,10 @@
         {"path": [[2, 4], [10, 4]], "speed": 5, "dwell": 8}
       ],
       "lasers": [
-        {"at": [0, 7], "dir": "E", "on": 36, "off": 24},
-        {"at": [8, 6], "dir": "S", "on": 30, "off": 30, "phase": 10}
+        {"at": [0, 7], "dir": "E", "on": 36, "off": 24}
+      ],
+      "rotors": [
+        {"at": [8, 6], "arms": "S", "len": 1, "cw": true, "turn": 3, "hold": 12, "phase": 0}
       ],
       "expect": {"borrow": true, "debt": true, "margin": 2, "budget": 150000000}
     }

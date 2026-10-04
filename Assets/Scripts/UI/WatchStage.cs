@@ -26,6 +26,7 @@ namespace BorrowedSeconds.UI
         public float HourDeg, MinuteDeg, SecondDeg, SmallDeg;
         public float Frost;
         public float Scale = 1f;
+        public bool MainHands = true;
         /// <summary>The UI image showing this stage; the camera only renders while it is visible.</summary>
         public Graphic Viewer;
 
@@ -183,6 +184,9 @@ namespace BorrowedSeconds.UI
             pivot.localRotation = Quaternion.Euler(Pitch, Yaw, Roll);
             pivot.localScale = Vector3.one * Scale;
             // hands turn about the model's depth axis (+Z after export), clockwise seen from the front
+            if (hour != null) hour.gameObject.SetActive(MainHands);
+            if (minute != null) minute.gameObject.SetActive(MainHands);
+            if (second != null) second.gameObject.SetActive(MainHands);
             if (hour != null) hour.localRotation = Quaternion.Euler(0, 0, -HourDeg);
             if (minute != null) minute.localRotation = Quaternion.Euler(0, 0, -MinuteDeg);
             if (second != null) second.localRotation = Quaternion.Euler(0, 0, -SecondDeg);

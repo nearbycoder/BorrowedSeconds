@@ -167,6 +167,46 @@ namespace BorrowedSeconds.UI
             }
         }
 
+        /// <summary>
+        /// Lays out "&lt;b&gt;Key&lt;/b&gt; label" pairs as brass keycaps followed by their labels,
+        /// left to right from the row's bottom-left (or centred). Returns the total width.
+        /// </summary>
+        public static float Keycaps(RectTransform row, string text, float alpha = 1f, bool centred = false)
+        {
+            for (int i = row.childCount - 1; i >= 0; i--) Object.Destroy(row.GetChild(i).gameObject);
+            var made = new System.Collections.Generic.List<(RectTransform rt, float x)>();
+            float x = 0f;
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(text, @"<b>(.*?)</b>\s*([^<]*)"))
+            {
+                string key = m.Groups[1].Value.Trim(), label = m.Groups[2].Value.Trim();
+                var cap = Ui.Rect("Key " + key, row, new Vector2(0, 0), new Vector2(0, 0), Vector2.zero, new Vector2(40, 30));
+                var rim = Ui.Img("Rim", cap, Ui.Keycap, new Color(Palette.Brass.r, Palette.Brass.g, Palette.Brass.b, 0.55f * alpha));
+                Ui.Fill(rim.rectTransform);
+                var face = Ui.Img("Face", cap, Ui.Keycap, new Color(0.07f, 0.08f, 0.16f, 0.95f * alpha));
+                Ui.Fill(face.rectTransform);
+                face.rectTransform.offsetMin = new Vector2(1.5f, 3f);
+                face.rectTransform.offsetMax = new Vector2(-1.5f, -1.5f);
+                var kt = Ui.Text("K", cap, key, Ui.Semi, 16, new Color(Palette.Paper.r, Palette.Paper.g, Palette.Paper.b, alpha));
+                Ui.Fill(kt.rectTransform);
+                kt.rectTransform.offsetMin = new Vector2(0, 2);
+                float kw = Mathf.Max(30f, kt.GetPreferredValues(key).x + 18f);
+                cap.sizeDelta = new Vector2(kw, 30);
+                made.Add((cap, x));
+                x += kw + 8f;
+                var lt = Ui.Text("L", row, label, Ui.Regular, 18, new Color(0.78f, 0.82f, 0.95f, 0.75f * alpha), TextAlignmentOptions.BottomLeft);
+                float lw = lt.GetPreferredValues(label).x;
+                lt.rectTransform.anchorMin = lt.rectTransform.anchorMax = Vector2.zero;
+                lt.rectTransform.pivot = Vector2.zero;
+                lt.rectTransform.sizeDelta = new Vector2(lw + 4, 26);
+                made.Add((lt.rectTransform, x));
+                x += lw + 22f;
+            }
+            float total = Mathf.Max(0f, x - 22f);
+            float off = centred ? (row.rect.width - total) * 0.5f : 0f;
+            foreach (var (rt, px) in made) rt.anchoredPosition = new Vector2(px + off, rt.name.StartsWith("Key") ? 2f : 6f);
+            return total;
+        }
+
         /// <summary>An empty, recessed coin socket.</summary>
         public static Sprite Socket => NotchSprite != null ? NotchSprite : NotchSprite = Gen(128, 128, (x, y) =>
         {
