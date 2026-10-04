@@ -152,8 +152,8 @@ namespace BorrowedSeconds.Game
             levels.Hide();
             title.Show();
             Hud.SetVisible(false);
-            Rig.ShiftX = 0.48f;
-            Rig.Zoom = 1.45f;
+            Rig.ShiftX = 0.56f;
+            Rig.Zoom = 1.6f;
             Audio.SetMusic("music_title");
             LoadAttract();
         }
