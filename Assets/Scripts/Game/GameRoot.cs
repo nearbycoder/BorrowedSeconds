@@ -313,7 +313,7 @@ namespace BorrowedSeconds.Game
             int prev = Save.Best(def.Id);
             Save.Record(def.Id, Session.Tick);
             if (LevelIndex + 1 < Catalog.Levels.Count) Save.lastLevel = LevelIndex + 1;
-            Save.Save();
+            if (!capturing) Save.Save();
             pendingComplete = (Session.Tick, Catalog.SolutionFor(def)?.Par ?? 0, prev);
         }
 
@@ -334,6 +334,7 @@ namespace BorrowedSeconds.Game
             ending.Update(Input, dt, top(ending));
 
             if (Session == null) return;
+            if (Input.UsingGamepad != hintsForPad) ShowControlHints();
             var s = Session.Cur;
             Env.FrozenAmount = Mathf.MoveTowards(Env.FrozenAmount, s.PFrozen > 0 && !s.Dead && !Session.Muted ? 1f : 0f, dt * 4f);
             Env.RewindAmount = Mathf.MoveTowards(Env.RewindAmount, Session.State == LevelSession.Mode.Rewinding ? 1f : 0f, dt * 6f);
@@ -403,8 +404,18 @@ namespace BorrowedSeconds.Game
             Session.BorrowDenied += _ => { Rig.Shake(0.06f); if (!Session.Muted) Sfx.Play("denied", 0.7f); };
             Rig.Frame(Session.Board.Bounds, true);
             Hud.Bind(Session, Catalog);
-            Hud.SetHints("<b>WASD</b> move     <b>Click</b> borrow     <b>Shift</b> focus     <b>Z</b> rewind     <b>R</b> restart     <b>Esc</b> pause");
+            ShowControlHints();
             Hud.SetTip(def.Hint);
+        }
+
+        bool hintsForPad;
+
+        void ShowControlHints()
+        {
+            hintsForPad = Input.UsingGamepad;
+            Hud.SetHints(hintsForPad
+                ? "<b>Stick</b> move     <b>LB/RB</b> aim     <b>A</b> borrow     <b>LT</b> focus     <b>X</b> rewind     <b>Y</b> restart     <b>Start</b> pause"
+                : "<b>WASD</b> move     <b>Click</b> borrow     <b>Shift</b> focus     <b>Z</b> rewind     <b>R</b> restart     <b>Esc</b> pause");
         }
 
         void OnSimEvents(SimState s, List<SimEvent> events)
