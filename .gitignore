@@ -41,14 +41,30 @@ ExportedObj/
 /Tools/Solver/obj/
 !/Tools/Solver/Solver.csproj
 __pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+dist/
+
+# Blender autosaves and backups
 *.blend1
 *.blend2
+*.blend@
+
+# Raw captures and recordings (finished media lives in docs/media/)
 /Screenshots/
 /Captures/
+*.player.log
+*.audio.log
+*.video.mp4
+*.mov
+*.mkv
+*.avi
 
-# OS
+# OS and editor junk
 .DS_Store
 Thumbs.db
-
-__pycache__/
-*.blend1
+desktop.ini
+*~
+*.swp

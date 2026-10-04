@@ -21,10 +21,10 @@ You're one of eight sessions building a separate game at the same time. Your gam
 **Goal:** a polished, complete-feeling indie game at AAA quality: juicy feedback, cohesive art direction, real audio, smooth UX, and no placeholder look in the final result. Treat the "buildable first version" scope above as the content target, and make the quality bar high.
 
 **Tooling on this machine**
-- Unity **6000.6.2f1** (licensed, Personal) at `/home/nearby/Unity/Hub/Editor/6000.6.2f1/Editor/Unity`. Use URP. The `unity` CLI is installed (`unity --help`, `unity commands`). It can create projects, drive a running Editor, enter play mode, capture the game, and build. Use it.
+- Unity **6000.6.2f1** (licensed, Personal) at `~/Unity/Hub/Editor/6000.6.2f1/Editor/Unity`. Use URP. The `unity` CLI is installed (`unity --help`, `unity commands`). It can create projects, drive a running Editor, enter play mode, capture the game, and build. Use it.
 - Blender **4.5 LTS** is on PATH as `blender`. Do **all 3D modeling in Blender**, scripted with `bpy` (for example `blender -b -P ArtSource/build_assets.py`). Keep `.blend` sources and generator scripts in `ArtSource/` and export FBX/GLB into `Assets/`. Render-check models from Blender and look at the renders before importing.
 - Audio: there are no stock libraries. Synthesize SFX and music procedurally (for example Python and numpy to WAV, layered and enveloped). Don't use copyrighted assets.
-- Reference projects from the same developer (read only, don't modify): `/home/nearby/Sites/packthetrunk` (Unity 6.6 URP puzzle game) and `/home/nearby/Sites/peggle` (Unity plus a Blender `ArtSource/` pipeline). Skim them for working pipeline patterns.
+- Reference projects from the same developer (read only, don't modify): `packthetrunk` (Unity 6.6 URP puzzle game) and `peggle` (Unity plus a Blender `ArtSource/` pipeline). Skim them for working pipeline patterns.
 
 **Process**
 1. **Plan first.** Write `docs/PLAN.md`. It should be a thorough game design and technical plan: one-sentence pitch, design pillars, core loop, mechanics in detail, every level/case/day/object enumerated with its purpose, difficulty curve, narrative beats, art direction (palette, shapes, lighting, camera), audio direction, UI/UX and controls, game feel and juice list, code architecture, asset list (Blender models), milestone plan, risks, and a "5-minute prototype test" describing what must make a player ask to play again. Then **go straight into building** without waiting for approval.
