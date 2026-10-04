@@ -117,6 +117,8 @@ namespace BorrowedSeconds.UI
         public static Sprite Glow => Get("glow", () => Gen(128, (x, y) => Mathf.Pow(Mathf.Clamp01(1f - Mathf.Sqrt(x * x + y * y)), 2.2f)));
         public static Sprite Diamond => Get("diamond", () => Gen(64, (x, y) => Mathf.Clamp01((1f - (Mathf.Abs(x) + Mathf.Abs(y))) * 32f)));
         public static Sprite Ticks => Get("ticks", () => Gen(256, TickFace));
+        /// <summary>Opaque at the bottom, fading out towards the top.</summary>
+        public static Sprite VGradient => Get("vgrad", () => Gen(256, (x, y) => Mathf.Pow(Mathf.Clamp01((1f - y) * 0.5f), 1.6f)));
         /// <summary>Opaque on the left, fading out to the right.</summary>
         public static Sprite HGradient => Get("hgrad", () => Gen(256, (x, y) => Mathf.SmoothStep(1f, 0f, Mathf.Clamp01((x + 1f) * 0.5f))));
 

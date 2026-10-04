@@ -691,8 +691,9 @@ namespace BorrowedSeconds.Game
             yield return Burst("08_complete", 0.25f, 0.6f, 1.0f, 1.2f, 1.4f, 1.7f, 2.6f);
             complete.Hide();
             State = Flow.Ending;
+            Hud.SetVisible(false);
             ending.Show(9000, 8200, 7, 20, ShowTitle);
-            yield return Burst("09_ending", 3f, 6f);
+            yield return Burst("09_ending", 0.4f, 1.2f, 2.4f, 3.5f, 6f);
             Time.captureFramerate = 0;
             Application.Quit(0);
         }

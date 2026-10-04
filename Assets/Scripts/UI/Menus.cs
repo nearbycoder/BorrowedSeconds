@@ -1072,7 +1072,7 @@ namespace BorrowedSeconds.UI
             dial.localScale = Vector3.one * Mathf.Lerp(1.25f, 1f, Ease.OutCubic(a / 2.5f));
             dial.localRotation = Quaternion.Euler(0, 0, -a * 6f);
             float dv = Ease.OutCubic(a * 1.2f);
-            dialTicks.color = new Color(Palette.Gold.r, Palette.Gold.g, Palette.Gold.b, 0.045f * dv);
+            dialTicks.color = new Color(Palette.Gold.r, Palette.Gold.g, Palette.Gold.b, 0.028f * dv);
             dialRing.color = new Color(Palette.Brass.r, Palette.Brass.g, Palette.Brass.b, 0.08f * dv);
             smallFx.Age = a - 0.1f;
             bigFx.Age = a - 0.2f;
@@ -1092,24 +1092,32 @@ namespace BorrowedSeconds.UI
     {
         readonly TextMeshProUGUI head, sub, body, foot;
         readonly TextFx headFx, subFx, bodyFx;
-        readonly Image dawn;
+        readonly Image dawn, sun;
+        readonly WatchStage watch;
+        readonly RawImage watchImg;
         Action done;
         public override float Blur => 0.7f;
 
         public EndingScreen(Transform canvas) : base(canvas, "Ending")
         {
-            dawn = Ui.Img("Dawn", Root, null, new Color(1f, 0.86f, 0.62f, 0.0f));
+            Shade(Root, 0.5f);
+            // dawn: a warm sun rising behind the vault, washing up from the bottom edge
+            dawn = Ui.Img("Dawn", Root, Ui.VGradient, new Color(1f, 0.72f, 0.42f, 0f));
             Ui.Fill(dawn.rectTransform);
-            Shade(Root, 0.45f);
+            sun = Ui.Img("Sun", Root, Ui.Glow, new Color(1f, 0.8f, 0.5f, 0f));
+            Ui.Place(sun.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0, -200), new Vector2(2200, 1400));
+            watch = WatchStage.Create(Root.transform.root, 640);
+            watchImg = watch.Show(Root, new Vector2(300, 300));
+            Ui.Place(watchImg.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 330), new Vector2(300, 300));
             head = Ui.Text("Head", Root, "Account settled.", Ui.Heavy, 100, Palette.Gold);
-            Ui.Place(head.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 230), new Vector2(1600, 130));
+            Ui.Place(head.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 120), new Vector2(1600, 130));
             headFx = TextFx.On(head, TextFx.Kind.Drop, 0.05f, 0.7f, 80f);
             sub = Ui.Text("Sub", Root, "Time well spent.", Ui.Light, 48, Palette.Paper);
-            Ui.Place(sub.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 140), new Vector2(1600, 70));
+            Ui.Place(sub.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 32), new Vector2(1600, 70));
             sub.fontStyle = FontStyles.Italic;
             subFx = TextFx.On(sub, TextFx.Kind.Type, 0.05f, 0.3f);
             body = Ui.Text("Body", Root, "", Ui.Regular, 28, new Color(0.88f, 0.9f, 1f, 0.92f));
-            Ui.Place(body.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -120), new Vector2(1600, 360));
+            Ui.Place(body.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -190), new Vector2(1600, 360));
             body.richText = true;
             body.lineSpacing = 12;
             bodyFx = TextFx.On(body, TextFx.Kind.Rise, 0.006f, 0.6f, 18f);
@@ -1134,7 +1142,20 @@ namespace BorrowedSeconds.UI
         protected override void Tick(InputReader input, float dt, bool hasInput)
         {
             float a = Age;
-            dawn.color = new Color(1f, 0.82f, 0.58f, Mathf.Clamp01(a / 4f) * 0.35f);
+            float rise = Ease.InOutCubic(a / 5f);
+            dawn.color = new Color(1f, 0.72f, 0.42f, 0.32f * rise);
+            sun.color = new Color(1f, 0.78f, 0.48f, 0.55f * rise);
+            sun.rectTransform.anchoredPosition = new Vector2(0, Mathf.Lerp(-520f, -200f, rise));
+            // the watch spins its hands forward through the night, then settles on the real time
+            float w = Ease.OutBack(a / 1.2f, 1.3f);
+            watch.Scale = Mathf.Lerp(0.3f, 1f, w);
+            watch.Yaw = Mathf.Sin(Clock.Now * 0.5f) * 14f;
+            watch.Pitch = -5f + Mathf.Sin(Clock.Now * 0.4f) * 4f;
+            watchImg.color = new Color(1, 1, 1, Ease.OutCubic(a * 2f));
+            watch.ShowRealTime();
+            float extra = (1f - Ease.OutCubic(a / 3.5f)) * -1440f;
+            watch.MinuteDeg += extra;
+            watch.HourDeg += extra / 12f;
             headFx.Age = a - 0.6f;
             subFx.Age = a - 1.8f;
             bodyFx.Age = a - 2.8f;
