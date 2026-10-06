@@ -82,9 +82,9 @@ The simulation is cheap and deterministic, so previews come from cloning the sta
 - **Telegraphs:** slider chevrons point the way they're travelling, lasers flicker before firing, and rotors draw a faint arc ahead of their next sweep.
 - **Focus** (hold **Shift** / **RMB** / **LT**): time slows to 20% for precise borrows. You can't move while focusing; it's for aiming, not dodging.
 
-## 6. Content: 20 levels in 4 chapters
+## 6. Content: the levels as shipped
 
-Each level is a single screen (at most 16×12 tiles). This section lists the levels **as shipped**. The first draft of this table was a statement of intent; every level was then iterated against the solver (`Tools/lab/`), and several ideas changed when the solver found shortcuts or proved a design impossible. Notable changes: *Due Date* became the dodge-by-debt level *Pass-Through*, *Hold Still* became *Crossfire*, *Out of Phase* was dropped because the lasting phase shift was redundant with a plain freeze and too subtle to read, and *Leverage* became *Crystal Bar*.
+Each level is a single screen (at most 16×12 tiles). This section lists the levels **as shipped**: chapters I–IV were the original plan, and chapters V–VII were added in later rounds (`docs/IMPROVEMENTS.md`). For V–VII the trick column quotes the level's in-game tip, the designer's intent; the proof, par and margin columns are the solver's. The first draft of this table was a statement of intent; every level was then iterated against the solver (`Tools/lab/`), and several ideas changed when the solver found shortcuts or proved a design impossible. Notable changes: *Due Date* became the dodge-by-debt level *Pass-Through*, *Hold Still* became *Crossfire*, *Out of Phase* was dropped because the lasting phase shift was redundant with a plain freeze and too subtle to read, and *Leverage* became *Crystal Bar*.
 *B* = "borrowing required" (unsolvable with no loans). *D* = "debt-as-tool required" (unsolvable even when loans never come due, under the same loan cap, so the player's own freeze is essential). Par is the solver's optimal time; margin is the hesitation slack in ticks (1 tick = 50 ms).
 
 ### Chapter I: PRINCIPAL. *"Every second you take, you give back."* (Sliders)
@@ -122,6 +122,35 @@ Each level is a single screen (at most 16×12 tiles). This section lists the lev
 | 4-3 | Crystal Bar | A frozen lit beam is a wall | Freeze a blinking laser while lit; its crystal bar shadows the always-on beam you need to walk | B | 8.05 s | 4 |
 | 4-4 | Long Term | Long term (8 s) | Freeze a laser lane early, run a two-slider gauntlet, arrive on the dial in a slider's column as the debt lands | B, D | 13.60 s | 4 |
 | 4-5 | Settlement | Finale: two loans, two dials | Remote-latch the island dial; the first debt carries you through a shuttle corridor; the second lands on a dial that a blinking beam and a rotor arm both cross; all three obstacle types together | B, D | 17.65 s | 4 |
+
+### Chapter V: LEVERAGE. *"Crystal turns everything back."* (Pens, rebounds, backswings)
+Crystal is solid to obstacles too: a slider reverses when it meets a frozen block or bar, and a rotor swings back when its sweep would hit crystal.
+| # | Name | New idea | The intended trick (the level's tip) | Proof | Par | Margin |
+|---|---|---|---|---|---|---|
+| 5-1 | Rebound | A frozen block turns other blocks back | Crystal is solid to everything. A frozen block turns other blocks back. | B | 10.30 s | 4 |
+| 5-2 | Backswing | An arm swings back off crystal | A hand that meets crystal swings back the way it came. | B | 10.85 s | 4 |
+| 5-3 | Crossbar | One crystal bar pens two sliders | A beam frozen while lit leaves a crystal bar, and crystal turns blocks back. | B | 9.85 s | 4 |
+| 5-4 | Pendulum | A frozen arm shades and walls | A frozen hand is a crystal wall to light and blocks alike. | B | 9.05 s | 4 |
+| 5-5 | Fulcrum | Capstone: pen, then dial | One loan opens the way. The debt has to hold the dial. | B, D | 11.10 s | 4 |
+
+### Chapter VI: ESCROW. *"Leave something behind to hold the door."* (Plates and gates)
+A shut gate is a wall to sliders and light as well as to you, and it can't close on anything standing in it.
+| # | Name | New idea | The intended trick (the level's tip) | Proof | Par | Margin |
+|---|---|---|---|---|---|---|
+| 6-1 | Lockout | A shut gate pens a block | A closed gate is a wall to blocks too. Let it through, then shut it. | B | 9.55 s | 4 |
+| 6-2 | Gatekeeper | A shut gate stops light | A shut gate is a shield. Every time the block steps on the plate, the light gets through. | B | 9.05 s | 4 |
+| 6-3 | Doorstop | A gate can't close on a frozen block | A gate can't close on anything standing in it. Neither can a dial let go of a frozen block. | B, D | 9.50 s | 4 |
+| 6-4 | Two Keys | Two channels | Each plate holds open the gate with its colour and marks. The loop steps on one, then the other. | B | 10.40 s | 4 |
+| 6-5 | Escrow | Capstone: leave a block behind | Leave the block holding the dial, let the debt carry you through the lane, and meet the gate as the loop opens it. | B, D | 9.55 s | 4 |
+
+### Chapter VII: OVERDRAFT. *"Due sooner than you think."* (Short terms, 1.5–2.5 s)
+| # | Name | New idea | The intended trick (the level's tip) | Proof | Par | Margin |
+|---|---|---|---|---|---|---|
+| 7-1 | Short Notice | A 1.5 s term | Freeze the block on one dial and its weight holds it. A term this short lands you on the other. | B, D | 7.15 s | 4 |
+| 7-2 | Float | Run a frozen-dark beam | Freeze the lane's beam while it is dark and run it. Two and a half seconds later the debt lands you on the dial, in the light. | B, D | 9.30 s | 4 |
+| 7-3 | Same Day | Borrow where you want to stand | A two-second term: borrow where you want to be standing. | B, D | 11.90 s | 4 |
+| 7-4 | Cutoff | One loan, two crossings | Two chutes, a crossbeam and a beam down the lane: one loan opens the lane, and the debt has to hold the dial. | B, D | 8.55 s | 4 |
+| 7-5 | Payroll | Three loans in a row | Three dials, two-second terms. Borrow, step, settle, and again. | B, D | 16.60 s | 4 |
 
 **Difficulty curve:** a single new idea per level within a chapter. Levels 1–3 are under 30 s and gentle, and 5 is the first aha (within roughly 5 minutes of starting). The middle chapters alternate "learn" and "twist" levels. Chapter capstones combine two ideas. The finale combines four. Solver margins (§10) make sure timing demands stay humane.
 
