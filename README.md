@@ -59,7 +59,7 @@ Menus work with keyboard, mouse or gamepad, and on-screen key hints switch to ma
 
 - **One verb, two sides.** Borrowing freezes a sliding block, a laser or a rotor into crystal for three seconds. Repaying freezes you. Both halves are useful: a frozen obstacle is a wall, and a frozen you is untouchable.
 - **Truthful ghosts.** Aim at something and red ghosts forecast every hazard at the moment you'd thaw, along with a safe or lethal ring under your feet. They're computed by running the real simulation forward, so they're never wrong.
-- **Focus and rewind.** Hold Focus to slow time to a crawl while you aim. Hold rewind to scrub back through everything that happened. Defaulting rewinds you two seconds automatically.
+- **Focus and rewind.** Hold Focus to slow time to a crawl while you aim. Hold rewind to scrub back through everything that happened. Defaulting rewinds you automatically: two seconds back, or further if you'd otherwise land inside the freeze you just thawed out of, so you always get control back with at least a second to spare.
 - **Three obstacles, each with a frozen form.** *Sliders* shuttle along tracks and bounce off anything solid. *Lasers* blink on a cycle and flicker before firing; freeze one while it's lit and it leaves a crystal bar that blocks other beams. *Rotors* sweep their arms in quarter turns; a frozen arm is a wall.
 - **Devices that care about weight.** *Plates* hold a gate open while anything rests on them, including a block you froze there. *Gold dials* latch after three seconds of continuous weight from you (frozen or not) or from a frozen block. The exit opens once every dial is latched.
 - **Crystal physics.** In the later chapters, a frozen block pens another slider in, rotor arms swing back off crystal, a frozen arm shades a laser, one crystal bar pens two sliders at once, and a gate you shut stops light.
@@ -162,9 +162,10 @@ Everything generated is checked in, so none of the following is needed just to b
 | Audio | `Tools/audio/synth.sh` (or `sfx`, `music`, or one name) | Every effect and the four music loops, synthesised with numpy (via Blender's bundled Python). About 2 minutes. |
 | Levels | Edit `Tools/lab/cXY.json`, then `python3 Tools/lab/assemble.py` | `python3 Tools/lab/lab.py Tools/lab/c15.json` solves one design without touching the game. |
 | Proofs and replays | `Tools/validate.sh` (or `--level 4-5`, or `--quick`) | Proves every level and writes `solutions.json`. Level 4-5 searches up to 150M states and needs a lot of RAM. |
-| Unit tests | `unity test . --mode EditMode`, or the Test Runner | 62 EditMode tests replay every saved solution under Unity's Mono runtime and check that each one wins at exactly its par tick. |
+| Unit tests | `unity test . --mode EditMode`, or the Test Runner | 94 EditMode tests. They replay every saved solution under Unity's Mono runtime and check that each one wins at exactly its par tick, and check that the automatic rewind after a death always hands control back. |
 | Self-test | `Tools/devcap.sh /tmp/bs-cap` | Development build, then autoplays all 30 levels and prints PASS/FAIL for each. |
 | Controls test | `Tools/inputbot.sh` | Plays 1-1 through virtual keyboard and mouse devices. |
+| Behaviour checks | `Tools/checks.sh [dir] [dev]` | The built game dies, rewinds and opens menus on purpose, and prints PASS/FAIL for each check. |
 | Release zip | `Tools/package.sh 0.1.0` | Zips the Linux build with a short README and the font licenses into `Builds/Release/`. |
 | Trailer and media | `Tools/trailer/make_trailer.sh` | Records the scripted trailer from the release build, then cuts, scores and encodes it. See [Tools/trailer/README.md](Tools/trailer/README.md). |
 
@@ -210,7 +211,7 @@ Built with Unity 6 (URP, Input System, TextMesh Pro), Blender 4.5, Python with n
 Version 0.1.0. The game is complete and playable from start to finish, but it's young. Here's what is and isn't verified:
 
 - ✅ The release build autoplays all 30 levels from the solver's replays and wins every one (`Tools/capture.sh`), so the in-game loop matches the solver tick for tick.
-- ✅ The solver proves every level solvable and proves each "needs a borrow" and "needs the debt" claim. 62 EditMode tests pass.
+- ✅ The solver proves every level solvable and proves each "needs a borrow" and "needs the debt" claim. 94 EditMode tests pass.
 - ✅ The input bot wins 1-1 through the real input path. On the development machine (AMD Radeon 8060S iGPU, 1600×900), the busiest levels run at 300+ fps.
 - ⚠️ **Not playtested by humans yet.** Difficulty and timing margins come from the solver, not from people. Some levels may be harder than they look.
 - ⚠️ **The audio mix hasn't been tuned by ear.** The sound is fully procedural and was checked numerically (levels, clipping, loop seams), but the balance between effects and music may need work.

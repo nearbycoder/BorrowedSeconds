@@ -12,7 +12,7 @@ namespace BorrowedSeconds.Game
     /// <summary>
     /// Bootstraps the whole game at runtime (the scene only needs a camera) and owns the flow
     /// between title, level select, levels and menus.
-    /// Command line: -bsLevel N, -bsCapture DIR [-bsOnly ID] [-bsShots t1,t2], -bsMenus DIR, -bsDemo FILE.mp4,
+    /// Command line: -bsLevel N, -bsCapture DIR [-bsOnly ID] [-bsShots t1,t2], -bsMenus DIR, -bsDemo FILE.mp4, -bsChecks DIR,
     /// -bsTrailer DIR / -bsStills DIR -bsShotList FILE [-bsOnly SHOT].
     /// </summary>
     public sealed partial class GameRoot : MonoBehaviour
@@ -134,8 +134,9 @@ namespace BorrowedSeconds.Game
             string menus = Arg(args, "-bsMenus");
             string demo = Arg(args, "-bsDemo");
             string bot = Arg(args, "-bsInputBot");
+            string checks = Arg(args, "-bsChecks");
             string trailer = Arg(args, "-bsTrailer"), stills = Arg(args, "-bsStills");
-            capturing = capture != null || menus != null || demo != null || bot != null || trailer != null || stills != null;
+            capturing = capture != null || menus != null || demo != null || bot != null || trailer != null || stills != null || checks != null;
             promptDemo = System.Array.IndexOf(args, "-bsPrompts") >= 0;
             if (promptDemo) Save.learned = 0;
             Save.ReadOnly = capturing;
@@ -150,6 +151,11 @@ namespace BorrowedSeconds.Game
             if (bot != null)
             {
                 StartCoroutine(InputBot(bot));
+                return;
+            }
+            if (checks != null)
+            {
+                StartCoroutine(Checks(checks));
                 return;
             }
             if (demo != null)

@@ -37,7 +37,7 @@ You plan where your future self will be standing when the debt comes due, and th
 - Moves on a grid, one tile per **3 ticks (0.15 s)**. Input is buffered one move ahead, and holding a direction walks continuously.
 - Can't enter walls, void, closed gates, solid objects (sliders, rotor pivots, anything frozen), or tiles with an active hazard (a lit beam or a resting rotor arm). Trying to do so plays a soft bump.
 - On the first tick of a move the player occupies both the origin and the destination tile. After that, only the destination.
-- **Dies** when a non-frozen hazard overlaps a tile the player occupies at the end of a tick, for example a slider moving onto them or a beam switching on. Death shatters the player, briefly slows time, then **auto-rewinds 2 seconds**.
+- **Dies** when a non-frozen hazard overlaps a tile the player occupies at the end of a tick, for example a slider moving onto them or a beam switching on. Death shatters the player, briefly slows time, then **auto-rewinds 2 seconds**, or further if that would land inside the debt freeze the player just thawed out of: the rewind always lands where the player can act, with at least 1 s before the next freeze (`Sim/Rewind.cs`).
 - Borrowing requires the player to be standing still. A click during a step is buffered and fires the moment they land, at most 2 ticks later.
 - **If the debt comes due mid-step**, the player freezes on landing.
 

@@ -53,7 +53,7 @@ namespace BorrowedSeconds.Game
         readonly Stack<SimState> pool = new Stack<SimState>();
         InputReader input;
         float acc, hitstop, stateTimer, rewindPos, rewindSpeed;
-        int queuedDir = -1, queuedBorrow = -1, cycleIndex = -1, autoplayCursor;
+        int queuedDir = -1, queuedBorrow = -1, cycleIndex = -1, autoplayCursor, autoTarget;
         bool manualRewind, pointerAim;
         float focusBlend;
         Camera cam;
@@ -279,6 +279,8 @@ namespace BorrowedSeconds.Game
             State = Mode.Rewinding;
             rewindPos = history.Count - 1;
             rewindSpeed = manual ? 30f : 40f;
+            // after a death: back to where the player can act again (past the freeze they thawed out of)
+            if (!manual) autoTarget = Rewind.AfterDeath(history, history.Count - 1);
             queuedBorrow = -1;
             queuedDir = -1;
             RewindChanged?.Invoke(true);
@@ -297,8 +299,7 @@ namespace BorrowedSeconds.Game
             }
             else
             {
-                int deathTick = history.Count - 1;
-                target = Mathf.Max(0, deathTick - 2 * Rules.TicksPerSecond);
+                target = autoTarget;
                 rewindSpeed = Mathf.Min(rewindSpeed + dt * 80f, 90f);
             }
             float before = rewindPos;
