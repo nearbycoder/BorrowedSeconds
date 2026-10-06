@@ -389,7 +389,7 @@ namespace BorrowedSeconds.Game
                 yield return null;
                 focusSeen = Mathf.Max(focusSeen, Session.FocusBlend);
                 var s = Session.Cur;
-                if (Session.Aim == 0 && (s.SIdx[0] >= 13 || (s.SIdx[0] == 12 && s.SDir[0] > 0)))
+                if (focusSeen >= 0.9f && Session.Aim == 0 && (s.SIdx[0] >= 13 || (s.SIdx[0] == 12 && s.SDir[0] > 0)))
                 {
                     ScreenCapture.CaptureScreenshot(Path.Combine(dir, "pad_2_aim-focus.png"));
                     yield return PadTap(GamepadButton.South);

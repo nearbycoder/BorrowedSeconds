@@ -179,3 +179,25 @@ The order runs smallest and most certain first, with the new chapter last becaus
   - The README level table and counts are updated.
 - **Verify:** the solver per level (never the full 4-5 run), tests, autopilot, checks, and screenshots of each new level and the chapter card.
 - **Fallback:** if a level can't reach these proofs in reasonable sweep time, the chapter doesn't ship (`assemble.py` only ships complete chapters) and the designs stay in `Tools/lab/` with notes.
+
+## Round 2 results
+
+All five items shipped on `improvements-2`. Final verification ran on the **release** build: autopilot 35/35 at par, `checks.sh` all PASS, the input bot's four passes PASS twice in a row, and 109/109 EditMode tests. Screenshots are in `docs/media/improvements/round2/`.
+
+| # | Item | Commit | Verification |
+|---|---|---|---|
+| — | Tool defaults moved off the shared `/tmp` | `2b0e419` | Every script now writes under `Builds/`. |
+| 1 | Audio: a music duck that actually fires, measured balance, stinger pile-up trim | `6a7baff` | `Tools/audio/balance.py` on the same scripted run, before → after. Median stinger over music +3.5 → +10.6 dB (+10.1 to +11.0 across later runs). Worst −1.3 → ≥ +5.0 dB. Borrow −1.0 → +5.5 dB. Mixed peak 0.97 → 0.84–0.89. **Not listened to.** |
+| 2 | Gamepad input bot, which found three bugs: the menu selector plate never moved, Select didn't switch the hints to the pad, and 1-1's tip named mouse controls | `fdf0b79` | The bot's gamepad pass (D-pad, stick, RB, LT, A, Select, Start, B, pause menu, *Watch solution*), including a check that the selector plate reaches the chosen row. Shots 01–03. Virtual devices only. |
+| 3 | Key rebinding (Settings > Controls), plus a fix for Esc/Start never closing the pause menu | `43f8a4a` | The bot's rebind pass goes through the real menus, then wins 1-1 on J/L/Tab/F/K, and checks the old key is dead and the hints follow. The `key-bindings` check covers swap, reserved keys, a damaged save and the JSON round trip. Shots 04–06. |
+| 4 | Hold-to-restart after 3 s; watch label clear of the sub-dial hand | `7b80c21` | The bot's restart pass: an early tap restarts, a late tap only shows the tag, a hold restarts. Shots 07–08. |
+| 5 | Chapter VII *Overdraft*, five levels (35 total) | `c8406e3` | `validate.sh --level 7-1` … `7-5` ALL OK: B and D proven, margin ±4. The 30 existing solutions are byte-identical. Tests 109/109, autopilot 35/35, *Watch solution* 35/35, chapter cards 7/7. Shots 09–13. |
+
+Notes and loose ends:
+- **How chapter VII was built.** Three of its levels (7-1, 7-3, 7-5) are the short-term designs that were already finished in `Tools/lab` (as 9-2, 9-1, 9-5). They were renumbered, and the chapter order changed so VII is *Overdraft*. The other two came from a new 160-candidate sweep (`designs/d7.py`, about 28 minutes on 4 cores, 3 passes). Two of the five ideas overlap: 7-2 and 7-4 both freeze the lane laser and let the debt hold a dial. Nobody has played any of them.
+- **Two one-off failures.** One full `checks.sh` run failed *Watch solution* on 2-3 (no win in 40 s). It didn't recur in two reruns, and the check now logs the cause if it happens again. The release input bot once failed the gamepad focus assertion because of a timing race in the bot itself (at about 110 fps it pressed A before the Focus blend reached 0.9). Fixed, and it then passed twice.
+- **Thin audio headroom.** The audio peak limit (0.90) has only about 0.01–0.06 of headroom from run to run.
+- **macOS.** The macOS build script is unchanged, but the app was not rebuilt this round.
+- **Media.** The trailer and README screenshots still show the 30-level game.
+
+Still open: human playtesting, a listen to the mix, chapters VIII–XII (8-1 is ready in the lab), WebGL, Windows (needs the module), and touch.
