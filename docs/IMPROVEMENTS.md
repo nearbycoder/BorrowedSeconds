@@ -201,3 +201,31 @@ Notes and loose ends:
 - **Media.** The trailer and README screenshots still show the 30-level game.
 
 Still open: human playtesting, a listen to the mix, chapters VIII–XII (8-1 is ready in the lab), WebGL, Windows (needs the module), and touch.
+
+## Round 3 scope
+
+Written 2026-10-06 on `improvements-3`, after confirming `main` matched `origin/main` (`092ed1c`). The biggest gap a player feels is content: the README promises a 60-level arc, 35 levels ship, and chapter VIII's first design (8-1 *Instalments*) has been sitting in the lab. The other items close loose ends from round 2 that a visitor or the orchestrator would trip over. As before, items run smallest and most certain first, scratch output stays in `Builds/` (solver temp files too, via `TMPDIR=Builds/tmp`), and the full 150M-state 4-5 search isn't rerun unless something touches it.
+
+### 1. Make the *Watch solution* check robust (the 2-3 flake)
+- **Finding:** the check gives each replay a fixed 40 s of *wall-clock* time. `LevelSession` clamps a frame to 0.1 s, so when the shared machine stalls the game to a few frames per second, a replay that's still advancing correctly can run out of wall-clock time. That fits the one "no win in 40 s" failure on 2-3, which never recurred. No game code path stops a replay from finishing, since the sim is deterministic and input is ignored while watching.
+- **Change:** the check fails a replay only if its tick stops advancing for 10 s (a real hang) or it runs past a generous overall cap. It also logs the frame rate and tick on every failure.
+- **Acceptance:** `watch-solution` passes on every level. If it fails, the log line says whether the replay hung, died or ran slow.
+- **Verify:** `checks.sh` on the release build (the full run at the end of the round), plus a run limited to watch-solution.
+
+### 2. Chapter VIII *Amortize*: five two-loan levels (40 total)
+- **Change:** five levels for "Pay it back a little at a time". Each must **provably need at least two loans** (the solver's min-loans proof, as for 1-3 and 4-2) and need a borrow. At least two must also be proven to need the debt. Each needs a margin of ±3 ticks or more, a par between 8 and 30 s, and a distinct idea, which I'll check by reading the solver's traces and the in-game replays. 8-1 *Instalments* is already proven (B, D, margin ±4). The other four come from sweeps over the existing lab families (`d82` crossings, `dtwo8` two-lane U and loop block, gates), with designs written down as they're picked. Tips are folded behind H where they give the trick away.
+- **Acceptance:** `validate.sh --level 8-x` is OK for each with the claimed proofs, and the 35 existing solutions are byte-identical. EditMode tests cover 40 levels. Autopilot is 40/40, `checks.sh` is all PASS (*Watch solution* 40/40, chapter cards 8/8), and the input bot still passes. The README and PLAN level tables are updated.
+- **Fallback:** as in round 2, a chapter ships only whole. If four more levels can't be proven in reasonable sweep time, nothing new ships and the candidates stay in `Tools/lab/` with notes.
+
+### 3. README media for the current game
+- **Change:** regenerate the README screenshots with the repo's own `Tools/trailer/make_trailer.sh --stills` (the release build plays its shot list), so the Ledger, the chapter card and the level shots match the shipped game. Add one still from a chapter VIII level. Stills are recorded by `stillsOnly` shots, so the trailer's cut doesn't change. The trailer itself isn't re-cut, because that's an owner decision.
+- **Acceptance:** every README screenshot comes from the current build, and the Ledger shows the shipped level count. Each image is looked at before it's committed.
+
+### 4. Docs accuracy
+- **Change:** PLAN.md §6 lists chapters V–VIII as shipped (it stops at IV). README's content tables, counts, badge and "Status and known issues" follow what this round actually lands.
+- **Acceptance:** every level named in the README is in `levels.json` with the proof the README claims, and the reverse holds too. A small script cross-checks the README table against `levels.json` and the solver output.
+
+### 5. Stretch: give chapter VII five distinct ideas
+- 7-2 *Float* and 7-4 *Cutoff* both freeze the lane laser and let the debt hold a dial. **Only if** items 1–4 are done and a sweep finds a proven short-term level with a different idea, it replaces 7-4. If not, it's deferred with notes. Round 2's chapter VII hasn't been released, so no player save has a 7-4 time yet.
+
+**Not this round:** chapters IX–XII, touch controls (no touch platform ships), WebGL, Windows (blocked on the module), re-cutting the trailer, the audio mix by ear, and human playtesting.
