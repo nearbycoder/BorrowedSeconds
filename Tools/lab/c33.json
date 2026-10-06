@@ -44,5 +44,6 @@
   "debt": true,
   "margin": 2
  },
- "hint": "One loan, two jobs: freeze the turnstile to get through, and let the debt hold the dial."
+ "hint": "One loan, two jobs: freeze the turnstile to get through, and let the debt hold the dial.",
+ "spoiler": true
 }

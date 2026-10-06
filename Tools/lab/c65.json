@@ -5,6 +5,7 @@
  "term": 80,
  "loans": 1,
  "hint": "Leave the block holding the dial, let the debt carry you through the lane, and meet the gate as the loop opens it.",
+ "spoiler": true,
  "map": [
   "          .... ",
   "...       .##a ",

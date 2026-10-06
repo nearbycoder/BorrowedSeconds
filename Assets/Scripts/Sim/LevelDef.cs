@@ -53,6 +53,8 @@ namespace BorrowedSeconds.Sim
     public sealed class LevelDef
     {
         public string Id = "", Name = "", Hint = "";
+        /// <summary>The hint gives the trick away: the HUD keeps it folded until the player asks (H).</summary>
+        public bool Spoiler;
         public int Chapter, Number;
         public int W, H;
         public Tile[] Tiles;
@@ -140,6 +142,7 @@ namespace BorrowedSeconds.Sim
                 Id = MiniJson.Str(d, "id", "?"),
                 Name = MiniJson.Str(d, "name", "Untitled"),
                 Hint = MiniJson.Str(d, "hint", ""),
+                Spoiler = MiniJson.Bool(d, "spoiler", false),
                 Notes = MiniJson.Str(d, "notes", ""),
                 Chapter = MiniJson.Int(d, "chapter", 1),
                 Term = MiniJson.Int(d, "term", Rules.DefaultTerm),

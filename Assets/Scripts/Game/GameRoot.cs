@@ -17,7 +17,7 @@ namespace BorrowedSeconds.Game
     /// </summary>
     public sealed partial class GameRoot : MonoBehaviour
     {
-        public enum Flow { Title, Levels, Card, Playing, Paused, Complete, Settings, Ending }
+        public enum Flow { Title, Levels, Card, Playing, Paused, Complete, Settings, Ending, Watching }
 
         public static GameRoot I { get; private set; }
         public LevelCatalog Catalog { get; private set; }
@@ -30,7 +30,10 @@ namespace BorrowedSeconds.Game
         public Hud Hud { get; private set; }
         public Prompts Prompts { get; private set; }
         public Transition Wipe { get; private set; }
-        bool diedSinceRewind, promptDemo;
+        bool diedSinceRewind, promptDemo, tipOpen;
+        int attemptDeaths;
+        /// <summary>Defaults in one attempt before the tip points at Watch solution.</summary>
+        const int NudgeAfterDeaths = 3;
         public AudioDirector Audio { get; private set; }
         public SaveData Save { get; private set; }
         public int LevelIndex { get; private set; }
@@ -95,7 +98,7 @@ namespace BorrowedSeconds.Game
             title = new TitleScreen(root, () => Go(Continue), () => Go(() => ShowLevels(Save.lastLevel), 0.7f), () => OpenSettings(Flow.Title), Quit,
                 () => Save.ids.Length == 0 ? "Begin" : Save.finished ? "Replay" : "Continue");
             levels = new LevelSelectScreen(root, Catalog, Save, i => Go(() => StartLevel(i, true)), () => Go(ShowTitle, 0.7f));
-            pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); },
+            pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); }, WatchFromPause,
                 () => { pause.Hide(); Go(() => ShowLevels(LevelIndex)); }, () => OpenSettings(Flow.Paused), () => { pause.Hide(); Go(ShowTitle); });
             settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, CloseSettings);
             complete = new CompleteScreen(root, () => Go(Next), () => { complete.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); },
@@ -298,6 +301,64 @@ namespace BorrowedSeconds.Game
             return (chapter - 1) % 4 < 2 ? "music_a" : "music_b";
         }
 
+        void WatchFromPause()
+        {
+            pause.Hide();
+            Go(() => StartWatch(LevelIndex), 0.6f);
+        }
+
+        /// <summary>
+        /// Plays the solver's solution for a level, then hands it back fresh. Watching records no
+        /// time and unlocks nothing (OnWon ignores replays outside Flow.Playing).
+        /// </summary>
+        void StartWatch(int index)
+        {
+            StartLevel(index, false);
+            var sol = Catalog.SolutionFor(Session.Def);
+            if (sol == null) return;
+            State = Flow.Watching;
+            Session.Autoplay = sol.Actions;
+            Session.AllowInput = false;
+            Hud.Watching = true;
+            tipOpen = true;
+            RefreshTip(true);
+            ShowControlHints();
+        }
+
+        void StopWatching()
+        {
+            if (Wipe != null && Wipe.Busy) return;
+            Go(() => StartLevel(LevelIndex, false), 0.6f);
+        }
+
+        void UpdateWatch()
+        {
+            if (Input.Pause || Input.Back || Input.Restart) { Sfx.Play("ui_back"); StopWatching(); }
+            else if (Session.State == LevelSession.Mode.Won && Clock.Now - wonAt > 1.6f) StopWatching();
+        }
+
+        /// <summary>The tip panel: the level's hint, folded behind H on levels where it gives the trick
+        /// away, plus a pointer to Watch solution after a few defaults.</summary>
+        void RefreshTip(bool slideIn)
+        {
+            var def = Session.Def;
+            string text = tipOpen || string.IsNullOrEmpty(def.Hint)
+                ? def.Hint
+                : Input.UsingGamepad ? "Stuck? Press <color=#FFD27A>Select</color> for a hint." : "Stuck? Press <color=#FFD27A>H</color> for a hint.";
+            if (State == Flow.Watching) text = "<color=#7CF4FF>The solver's route, at par.</color>  " + (Input.UsingGamepad ? "<color=#FFD27A>B</color>" : "<color=#FFD27A>Esc</color>") + " to stop watching.";
+            else if (attemptDeaths >= NudgeAfterDeaths)
+                text += (text.Length > 0 ? "\n" : "") + "<size=20><color=#C9D3F0>Still stuck? Pause and choose <b>Watch solution</b>.</color></size>";
+            if (slideIn) Hud.SetTip(text); else Hud.SetTipText(text);
+        }
+
+        void ToggleTip()
+        {
+            if (string.IsNullOrEmpty(Session.Def.Hint)) return;
+            tipOpen = !tipOpen;
+            Sfx.Play(tipOpen ? "ui_click" : "ui_back", 0.7f);
+            RefreshTip(false);
+        }
+
         void Pause()
         {
             if (State != Flow.Playing || Session == null) return;
@@ -421,6 +482,7 @@ namespace BorrowedSeconds.Game
             }
             lastCountdown = cd;
 
+            if (State == Flow.Watching) UpdateWatch(); // only ever entered from the pause menu
             if (capturing) return;
             switch (State)
             {
@@ -431,6 +493,7 @@ namespace BorrowedSeconds.Game
                     break;
                 case Flow.Playing:
                     if (Input.Pause) { Pause(); break; }
+                    if (Input.Hint) ToggleTip();
                     if (Input.Restart && Session.State != LevelSession.Mode.Won) { Sfx.Play("ui_back"); StartLevel(LevelIndex, false); break; }
                     if (pendingComplete.HasValue && Clock.Now - wonAt > 1.1f)
                     {
@@ -455,6 +518,7 @@ namespace BorrowedSeconds.Game
         public void LoadLevel(int index)
         {
             if (Session != null) Destroy(Session.gameObject);
+            if (State == Flow.Watching) State = Flow.Playing; // a new session ends any solution replay
             pendingComplete = null;
             LevelIndex = index;
             var def = Catalog.Levels[index];
@@ -464,6 +528,9 @@ namespace BorrowedSeconds.Game
             Prompts.ResetLevel();
             Session.Events += (st, evs) => { if ((promptDemo || !capturing) && !Session.Muted) Prompts.OnEvents(Save, evs); };
             Session.Died += _ => diedSinceRewind = true;
+            attemptDeaths = 0;
+            Hud.Watching = false;
+            Session.Died += _ => { if (++attemptDeaths == NudgeAfterDeaths && State == Flow.Playing) RefreshTip(false); };
             Session.RewindChanged += on =>
             {
                 if (!on && diedSinceRewind) Prompts.OnAutoRewindDone();
@@ -482,18 +549,24 @@ namespace BorrowedSeconds.Game
             Session.BorrowDenied += _ => { Rig.Shake(0.06f); if (!Session.Muted) Sfx.Play("denied", 0.7f); };
             Rig.Frame(Session.Board.Bounds, true);
             Hud.Bind(Session, Catalog);
+            tipOpen = !def.Spoiler;
             ShowControlHints();
-            Hud.SetTip(def.Hint);
+            RefreshTip(true);
         }
 
         bool hintsForPad;
 
         void ShowControlHints()
         {
+            bool changed = hintsForPad != Input.UsingGamepad;
             hintsForPad = Input.UsingGamepad;
-            Hud.SetHints(hintsForPad
-                ? "<b>Stick</b> move     <b>LB/RB</b> aim     <b>A</b> borrow     <b>LT</b> focus     <b>X</b> rewind     <b>Y</b> restart     <b>Start</b> pause"
-                : "<b>WASD</b> move     <b>Click</b> borrow     <b>Shift</b> focus     <b>Z</b> rewind     <b>R</b> restart     <b>Esc</b> pause");
+            if (State == Flow.Watching)
+                Hud.SetHints(hintsForPad ? "<b>B</b> stop watching" : "<b>Esc</b> stop watching");
+            else
+                Hud.SetHints(hintsForPad
+                    ? "<b>Stick</b> move     <b>LB/RB</b> aim     <b>A</b> borrow     <b>LT</b> focus     <b>X</b> rewind     <b>Y</b> restart     <b>Select</b> hint     <b>Start</b> pause"
+                    : "<b>WASD</b> move     <b>Click</b> borrow     <b>Shift</b> focus     <b>Z</b> rewind     <b>R</b> restart     <b>H</b> hint     <b>Esc</b> pause");
+            if (changed && Session != null) RefreshTip(false); // the folded tip names the device's hint key
         }
 
         void OnSimEvents(SimState s, List<SimEvent> events)

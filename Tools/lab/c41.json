@@ -54,5 +54,6 @@
   "debt": true,
   "margin": 2
  },
- "hint": "One loan can pay twice: a frozen block weighs on a dial too."
+ "hint": "One loan can pay twice: a frozen block weighs on a dial too.",
+ "spoiler": true
 }

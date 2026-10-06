@@ -48,6 +48,8 @@ namespace BorrowedSeconds.UI
         /// <summary>Trailer framing: keeps the pocket watch, loan terms, tags and banners; hides the
         /// level title, clock, key hints and tip (the trailer's captions take their place).</summary>
         public bool TrailerMode;
+        /// <summary>The solver's solution is playing: the top tag reads SOLUTION instead of FOCUS.</summary>
+        public bool Watching;
         // 3D pocket watch + level title intro + banner band
         WatchStage watch3d;
         RawImage watchImg;
@@ -266,6 +268,10 @@ namespace BorrowedSeconds.UI
             tipGroup.alpha = 0f;
         }
 
+        /// <summary>Swaps the tip's text in place (no slide-in), e.g. when the player unfolds a hint.</summary>
+        public void SetTipText(string text) => tipText.text = text ?? "";
+        public string TipText => tipText.text;
+
         void LateUpdate()
         {
             float dt = Mathf.Min(Clock.Dt, 0.05f); // a loading hitch must not skip the animations
@@ -369,8 +375,11 @@ namespace BorrowedSeconds.UI
                 tipPanel.Apply();
             }
 
-            focusGroup.alpha = session.FocusBlend;
-            focusRoot.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(session.FocusBlend, 2f));
+            float tagBlend = Watching ? 1f : session.FocusBlend;
+            string tagText = Watching ? "SOLUTION" : "FOCUS";
+            if (focusText.text != tagText) focusText.text = tagText;
+            focusGroup.alpha = tagBlend;
+            focusRoot.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(tagBlend, 2f));
             focusTag.Glow = 0.35f + 0.25f * Mathf.Sin(Clock.Now * 4f);
             focusTag.Apply();
             rewindGroup.alpha = Mathf.MoveTowards(rewindGroup.alpha, session.State == LevelSession.Mode.Rewinding ? 1f : 0f, dt * 8f);

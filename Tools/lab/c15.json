@@ -56,5 +56,6 @@
   "debt": true,
   "margin": 2
  },
- "hint": "Frozen, you still weigh on a dial."
+ "hint": "Frozen, you still weigh on a dial.",
+ "spoiler": true
 }

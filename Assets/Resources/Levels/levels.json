@@ -95,6 +95,7 @@
       "term": 120,
       "loans": 1,
       "hint": "Frozen, you still weigh on a dial.",
+      "spoiler": true,
       "map": [
         "  ...          ",
         "  .S.          ",
@@ -188,6 +189,7 @@
       "term": 100,
       "loans": 1,
       "hint": "Lasers can't hurt a frozen you either.",
+      "spoiler": true,
       "map": [
         "      #    ",
         " ...       ",
@@ -255,6 +257,7 @@
       "term": 100,
       "loans": 1,
       "hint": "Rotor arms sweep straight through a frozen you.",
+      "spoiler": true,
       "map": [
         "    ...    ",
         "    .S.    ",
@@ -279,6 +282,7 @@
       "term": 120,
       "loans": 1,
       "hint": "One loan, two jobs: freeze the turnstile to get through, and let the debt hold the dial.",
+      "spoiler": true,
       "map": [
         " ...          ",
         " .S.          ",
@@ -327,6 +331,7 @@
       "term": 140,
       "loans": 1,
       "hint": "Freeze a hand across the beam to cast a shadow. The debt lands later: be on the dial when it does.",
+      "spoiler": true,
       "map": [
         "     ...        ",
         "     .S.        ",
@@ -357,6 +362,7 @@
       "term": 100,
       "loans": 1,
       "hint": "One loan can pay twice: a frozen block weighs on a dial too.",
+      "spoiler": true,
       "map": [
         " ...     .L.   ",
         " .S.     .#.   ",
@@ -587,6 +593,7 @@
       "term": 120,
       "loans": 1,
       "hint": "One loan opens the way. The debt has to hold the dial.",
+      "spoiler": true,
       "map": [
         " ...          ",
         " .S.          ",
@@ -704,6 +711,7 @@
       "term": 80,
       "loans": 1,
       "hint": "Leave the block holding the dial, let the debt carry you through the lane, and meet the gate as the loop opens it.",
+      "spoiler": true,
       "map": [
         "          .... ",
         "...       .##a ",

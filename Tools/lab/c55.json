@@ -5,6 +5,7 @@
  "term": 120,
  "loans": 1,
  "hint": "One loan opens the way. The debt has to hold the dial.",
+ "spoiler": true,
  "map": [
   " ...          ",
   " .S.          ",

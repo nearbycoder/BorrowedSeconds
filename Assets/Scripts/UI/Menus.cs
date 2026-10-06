@@ -855,13 +855,14 @@ namespace BorrowedSeconds.UI
         public readonly MenuList Menu;
         readonly Action onResume;
 
-        public PauseScreen(Transform canvas, Action onResume, Action onRestart, Action onLevels, Action onSettings, Action onTitle)
-            : base(canvas, "Pause", new Vector2(560, 620), "TIME  STOPPED", "PAUSED", 0.3f)
+        public PauseScreen(Transform canvas, Action onResume, Action onRestart, Action onWatch, Action onLevels, Action onSettings, Action onTitle)
+            : base(canvas, "Pause", new Vector2(560, 692), "TIME  STOPPED", "PAUSED", 0.3f)
         {
             this.onResume = onResume;
             Menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(0, -186), 420, 72, 32, false);
             Menu.Add("Resume", onResume);
             Menu.Add("Restart", onRestart);
+            Menu.Add("Watch solution", onWatch);
             Menu.Add("Levels", onLevels);
             Menu.Add("Settings", onSettings);
             Menu.Add("Title", onTitle);

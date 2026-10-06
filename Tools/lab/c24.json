@@ -40,5 +40,6 @@
   "debt": true,
   "margin": 2
  },
- "hint": "Lasers can't hurt a frozen you either."
+ "hint": "Lasers can't hurt a frozen you either.",
+ "spoiler": true
 }

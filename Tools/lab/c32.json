@@ -45,5 +45,6 @@
   "debt": true,
   "margin": 2
  },
- "hint": "Rotor arms sweep straight through a frozen you."
+ "hint": "Rotor arms sweep straight through a frozen you.",
+ "spoiler": true
 }

@@ -47,6 +47,7 @@ Every level is a single screen, the rules are fully deterministic, and an exhaus
 | **Focus** (time runs at 20 % while you line up a shot) | Hold Shift or right mouse button | Hold LT |
 | **Rewind** | Hold Z or Backspace | Hold X |
 | Restart the level | R | Y |
+| Show or fold the level's hint | H | Select / View |
 | Pause | Esc / P | Start |
 
 Menus work with keyboard, mouse or gamepad, and on-screen key hints switch to match the device you last used. There are no touch controls.
@@ -63,6 +64,7 @@ Menus work with keyboard, mouse or gamepad, and on-screen key hints switch to ma
 - **Three obstacles, each with a frozen form.** *Sliders* shuttle along tracks and bounce off anything solid. *Lasers* blink on a cycle and flicker before firing; freeze one while it's lit and it leaves a crystal bar that blocks other beams. *Rotors* sweep their arms in quarter turns; a frozen arm is a wall.
 - **Devices that care about weight.** *Plates* hold a gate open while anything rests on them, including a block you froze there. *Gold dials* latch after three seconds of continuous weight from you (frozen or not) or from a frozen block. The exit opens once every dial is latched.
 - **Crystal physics.** In the later chapters, a frozen block pens another slider in, rotor arms swing back off crystal, a frozen arm shades a laser, one crystal bar pens two sliders at once, and a gate you shut stops light.
+- **Help when you're stuck, only if you ask.** Levels whose tip would give the trick away keep it folded until you press H. After a few defaults, the tip points you to *Watch solution* in the pause menu. It plays the solver's own route at par, then hands the level back fresh, and watching records no time and unlocks nothing.
 - **Medals against a proven par.** Par is the solver's optimal time. Finish within par + 1 s for gold (*Time Thief*), within par + 4 s for silver, or anywhere for bronze.
 - **Teaches without text walls.** Keycap prompts float in the world over the thing they mean, such as *Hover + click, freeze it* over the nearest slider, then retire for good once you've done it. Each level adds one idea, along with a one-line tip.
 - **Juice everywhere.** Hit-stop on every borrow, a full-screen time-ripple with chromatic split, a rewind smear, screen shake, dial-latch flashes, a medal coin that drops and stamps, and clock-hand wipes between screens.
