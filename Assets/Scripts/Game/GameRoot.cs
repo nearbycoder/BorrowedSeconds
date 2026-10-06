@@ -162,7 +162,7 @@ namespace BorrowedSeconds.Game
             }
             if (checks != null)
             {
-                StartCoroutine(Checks(checks));
+                StartCoroutine(Checks(checks, Arg(args, "-bsOnly")));
                 return;
             }
             if (demo != null)
@@ -545,7 +545,7 @@ namespace BorrowedSeconds.Game
                 Env.PulseDeath();
                 Rig.Shake(0.5f);
                 Fx.Death(Session.Board.Player.WorldPos);
-                if (!Session.Muted) Sfx.Play("death");
+                if (!Session.Muted) Sfx.Stinger("death");
                 Hud.Banner("DEFAULTED", "rewinding…", Palette.Danger, 0.7f);
             };
             Session.RewindChanged += on => { if (on && !Session.Muted) Sfx.Play("rewind", 0.8f); };
@@ -588,7 +588,7 @@ namespace BorrowedSeconds.Game
                         Session.Hitstop(0.08f);
                         Fx.Borrow(board.At(s.P, 0.7f), board.ObstacleCenter(e.A));
                         Env.Ripple(board.ObstacleCenter(e.A), 1f);
-                        if (loud) Sfx.Play("borrow");
+                        if (loud) Sfx.Stinger("borrow");
                         break;
                     case Ev.Due:
                         Env.PulseFreeze();
@@ -596,12 +596,12 @@ namespace BorrowedSeconds.Game
                         Rig.Punch(0.5f);
                         Fx.Freeze(board.At(s.P));
                         Env.Ripple(board.At(s.P, 0.5f), 0.7f);
-                        if (loud) Sfx.Play("freeze");
+                        if (loud) Sfx.Stinger("freeze");
                         break;
                     case Ev.PlayerThaw:
                         Rig.Shake(0.12f);
                         Fx.Thaw(board.At(s.P));
-                        if (loud) Sfx.Play("thaw");
+                        if (loud) Sfx.Stinger("thaw");
                         break;
                     case Ev.ObstacleThaw:
                         Fx.ObstacleThaw(board.ObstacleCenter(e.A));
@@ -651,17 +651,17 @@ namespace BorrowedSeconds.Game
                         Env.Flash(0.6f);
                         Rig.Shake(0.15f);
                         Fx.Latch(board.At(def.Locks[e.A]));
-                        if (loud) Sfx.Play("lock_latch");
+                        if (loud) Sfx.Stinger("lock_latch");
                         break;
                     case Ev.ExitOpen:
                         Fx.ExitOpen(board.At(def.Exit));
-                        if (loud) Sfx.Play("exit_open", 0.8f);
+                        if (loud) Sfx.Stinger("exit_open", 0.8f);
                         break;
                     case Ev.Win:
                         Env.Flash(0.8f);
                         Rig.Punch(-0.6f);
                         Fx.Win(board.At(def.Exit));
-                        if (loud) Sfx.Play("win");
+                        if (loud) Sfx.Stinger("win");
                         break;
                 }
             }

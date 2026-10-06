@@ -182,7 +182,7 @@ Everything is synthesized procedurally in Python with numpy (Blender's bundled i
   - Exit open sparkle, level-complete arpeggio, medal stamp.
   - Death shatter with reverse cymbal, rewind tape-whoosh.
   - UI hover, click and back.
-- **Music:** four seamless loops at 96 BPM in a "clockwork ambient" style: soft pads, kalimba/marimba arpeggios, ticking percussion and sub bass. One loop for the title, one each for chapters I–II and III, and a fuller finale loop. Music ducks under big SFX, gets a 600 Hz low-pass and slight pitch drop while you're frozen ("out of time"), and has a lighter low-pass in Focus. Rewind plays the reversed stinger.
+- **Music:** four seamless loops at 96 BPM in a "clockwork ambient" style: soft pads, kalimba/marimba arpeggios, ticking percussion and sub bass. One loop for the title, one each for chapters I–II and III, and a fuller finale loop. Music ducks under the key stingers (borrow, freeze, thaw, latch, exit, win, default; `Sfx.Stinger`, 6 dB for 0.35 s), gets a 600 Hz low-pass and slight pitch drop while you're frozen ("out of time"), and has a lighter low-pass in Focus. Rewind plays the reversed stinger.
 
 ## 10. Validation: solver and replays
 

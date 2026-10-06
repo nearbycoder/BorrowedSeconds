@@ -42,7 +42,9 @@ def lowpass(x, fc):
     return np.fft.irfft(X * g[:, None], size, axis=0)[:n]
 
 
-def main(log_path, out_path):
+def stems(log_path):
+    """Renders the log to (music, world one-shots, UI one-shots, shots); shots are
+    (seconds from the first frame, clip, volume, pitch, world)."""
     t0, frames, music, shots = None, [], [], []
     for line in open(log_path):
         p = line.split()
@@ -101,12 +103,17 @@ def main(log_path, out_path):
         if m > 0:
             (world if is_world else ui)[s:s + m] += x[:m]
     world = world * (1 - muffle) + lowpass(world, 1400) * muffle
+    return mus, world, ui, [(t - t0, clip, vol, pitch, w) for t, clip, vol, pitch, w in shots]
 
+
+def main(log_path, out_path):
+    mus, world, ui, shots = stems(log_path)
+    n = len(mus)
     out = mus + world + ui
     a = np.abs(out)
     knee = 0.9
     out = np.where(a > knee, np.sign(out) * (knee + (1 - knee) * np.tanh((a - knee) / (1 - knee))), out)
-    print(f"[mix] {n / SR:.2f}s, {len(shots)} one-shots, {len(music)} music starts, peak {a.max():.2f}")
+    print(f"[mix] {n / SR:.2f}s, {len(shots)} one-shots, peak {a.max():.2f}")
     with wave.open(out_path, "wb") as w:
         w.setnchannels(2)
         w.setsampwidth(2)

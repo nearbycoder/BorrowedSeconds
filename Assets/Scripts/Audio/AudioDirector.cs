@@ -19,7 +19,14 @@ namespace BorrowedSeconds.Audio
         AudioLowPassFilter[] deckLp;
         int live;
         string track;
-        float duck, deckFade = 1f;
+        float duck, duckHold, deckFade = 1f;
+        /// <summary>Music sits this far under the music slider: measured with Tools/audio/balance.py so
+        /// the key stingers clear the bed (the loops are mastered several dB hotter than the effects).</summary>
+        const float MusicGain = 0.8f;
+        /// <summary>How far the music dips under a key stinger, and how long it stays down.</summary>
+        const float DuckDepth = 0.5f, DuckHold = 0.35f, DuckRelease = 1.2f;
+        const float StackWindow = 0.3f;
+        float lastStinger = -10f;
 
         public float Master = 0.8f, Music = 0.7f, Effects = 0.9f;
         /// <summary>0..1: frozen ("out of time") muffling.</summary>
@@ -100,7 +107,21 @@ namespace BorrowedSeconds.Audio
             I.poolLp[idx].enabled = world;
             src.Play();
             Log?.WriteLine($"S {F(now)} {src.clip.name} {F(src.volume)} {F(pitch)} {(world ? 1 : 0)}");
-            if (volume >= 0.9f && world) I.duck = Mathf.Max(I.duck, 0.35f);
+        }
+
+        /// <summary>A key gameplay stinger (borrow, freeze, thaw, latch, exit, win, death): the music
+        /// ducks under it so the moment reads.</summary>
+        public static void Stinger(string name, float volume = 1f, float pitch = 1f)
+        {
+            if (I == null) return;
+            // stingers that land together (a dial latching opens the exit as you thaw) would stack
+            // past full scale: each one within StackWindow of the last plays 4.4 dB down
+            float now = Clock.Now;
+            if (now - I.lastStinger < StackWindow) volume *= 0.6f;
+            I.lastStinger = now;
+            Play(name, volume, pitch, false);
+            I.duck = DuckDepth;
+            I.duckHold = DuckHold;
         }
 
         public static bool Has(string name) => I != null && I.clips.ContainsKey(name);
@@ -122,9 +143,10 @@ namespace BorrowedSeconds.Audio
         void Update()
         {
             float dt = Clock.Dt;
-            duck = Mathf.MoveTowards(duck, 0f, dt * 0.9f);
+            if (duckHold > 0f) duckHold -= dt;
+            else duck = Mathf.MoveTowards(duck, 0f, dt * DuckRelease);
             deckFade = Mathf.MoveTowards(deckFade, 1f, dt / 1.6f);
-            float musicVol = Music * Master * (1f - duck) * (1f - Muffle * 0.25f);
+            float musicVol = MusicGain * Music * Master * (1f - duck) * (1f - Muffle * 0.25f);
             decks[live].volume = musicVol * deckFade;
             decks[1 - live].volume = musicVol * (1f - deckFade);
             if (deckFade >= 1f && decks[1 - live].isPlaying) decks[1 - live].Stop();
@@ -147,5 +169,6 @@ namespace BorrowedSeconds.Audio
     {
         public static void Play(string name, float volume = 1f, float pitch = 1f) => AudioDirector.Play(name, volume, pitch, false);
         public static void World(string name, float volume = 1f, float pitch = 1f) => AudioDirector.Play(name, volume, pitch, true);
+        public static void Stinger(string name, float volume = 1f, float pitch = 1f) => AudioDirector.Stinger(name, volume, pitch);
     }
 }

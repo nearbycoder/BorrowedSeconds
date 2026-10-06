@@ -12,7 +12,7 @@ namespace BorrowedSeconds.Game
     /// </summary>
     public sealed partial class GameRoot
     {
-        IEnumerator Checks(string dir)
+        IEnumerator Checks(string dir, string only)
         {
             Directory.CreateDirectory(dir);
             var log = new List<string>();
@@ -23,21 +23,64 @@ namespace BorrowedSeconds.Game
                 log.Add($"{(ok ? "PASS" : "FAIL")} {name}: {detail}");
                 Debug.Log("[Checks] " + log[log.Count - 1]);
             }
+            // -bsOnly a,b runs just the checks whose names start with one of these
+            bool Want(string name) => only == null || System.Array.Exists(only.Split(','), o => name.StartsWith(o));
 
-            foreach (var id in new[] { "1-2", "2-1", "4-5" })
-                yield return CheckDefaultRewind(dir, id, Report);
-
-            yield return CheckFocusPause(dir, Report);
-            yield return CheckHint(dir, Report);
-            yield return CheckChannels(dir, "6-4", new[] { 1, 1 }, Report);
-            yield return CheckChannels(dir, "2-2", new[] { 2 }, Report);
-            yield return CheckSpeed(dir, Report);
-            yield return CheckWatch(dir, Report);
+            if (Want("default-rewind"))
+                foreach (var id in new[] { "1-2", "2-1", "4-5" })
+                    yield return CheckDefaultRewind(dir, id, Report);
+            if (Want("focus")) yield return CheckFocusPause(dir, Report);
+            if (Want("hint")) yield return CheckHint(dir, Report);
+            if (Want("channels"))
+            {
+                yield return CheckChannels(dir, "6-4", new[] { 1, 1 }, Report);
+                yield return CheckChannels(dir, "2-2", new[] { 2 }, Report);
+            }
+            if (Want("game-speed")) yield return CheckSpeed(dir, Report);
+            if (Want("audio")) yield return RecordAudio(dir, Report);
+            if (Want("watch")) yield return CheckWatch(dir, Report);
 
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
             yield return new WaitForSecondsRealtime(0.3f);
             Application.Quit(fail == 0 ? 0 : 1);
+        }
+
+        /// <summary>
+        /// Plays three levels with sound at the default volumes and writes the audio event log
+        /// (audio.log) for Tools/audio/balance.py, which checks.sh runs afterwards: the
+        /// solutions of 1-5 and 4-5 (borrow, freeze, thaw, dial latches, exit, win) and a thaw
+        /// death on 1-2.
+        /// </summary>
+        IEnumerator RecordAudio(string dir, System.Action<string, bool, string> report)
+        {
+            var defaults = new SaveData();
+            float m0 = Audio.Master, m1 = Audio.Music, m2 = Audio.Effects;
+            Audio.Master = defaults.master;
+            Audio.Music = defaults.music;
+            Audio.Effects = defaults.sfx;
+            var writer = new StreamWriter(Path.Combine(dir, "audio.log"));
+            BorrowedSeconds.Audio.AudioDirector.Log = writer;
+            writer.WriteLine($"V {Clock.Now.ToString(System.Globalization.CultureInfo.InvariantCulture)} 60");
+            int played = 0;
+            foreach (var id in new[] { "1-5", "4-5", "1-2" })
+            {
+                int index = Catalog.Levels.FindIndex(l => l.Id == id);
+                StartLevel(index, false);
+                Hud.SkipIntro();
+                bool death = id == "1-2";
+                Session.Autoplay = death ? FindThawDeath(Catalog.Levels[index], out _) : Catalog.SolutionFor(Catalog.Levels[index]).Actions;
+                float deadline = Time.realtimeSinceStartup + 40f;
+                while (Time.realtimeSinceStartup < deadline && (death ? Session.Deaths == 0 : Session.State != LevelSession.Mode.Won)) yield return null;
+                yield return new WaitForSecondsRealtime(1.5f); // let the last stinger ring out
+                if (death ? Session.Deaths > 0 : Session.State == LevelSession.Mode.Won) played++;
+            }
+            BorrowedSeconds.Audio.AudioDirector.Log = null;
+            writer.Close();
+            Audio.Master = m0;
+            Audio.Music = m1;
+            Audio.Effects = m2;
+            report("audio-log", played == 3, $"{played}/3 scripted runs recorded to audio.log (checks.sh runs Tools/audio/balance.py on it)");
         }
 
         /// <summary>Losing window focus mid-level opens the pause menu and stops the clock.</summary>
