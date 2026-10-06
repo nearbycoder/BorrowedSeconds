@@ -1,0 +1,74 @@
+{
+ "id": "8-5",
+ "name": "Joint Account",
+ "chapter": 8,
+ "term": 60,
+ "loans": 2,
+ "hint": "Two dials, two loans. Your debt can hold one dial; a frozen block's weight can hold the other.",
+ "map": [
+  "     .          ",
+  "     .          ",
+  "...  .          ",
+  ".S.  .          ",
+  "...  .          ",
+  "#....L...L.....X",
+  "     .          ",
+  "     .   .      ",
+  "     .          ",
+  "     .          ",
+  "     .          "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     5,
+     0
+    ],
+    [
+     5,
+     10
+    ]
+   ],
+   "loop": false,
+   "speed": 2,
+   "phase": 1
+  }
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    5
+   ],
+   "dir": "E",
+   "on": 10,
+   "off": 30,
+   "phase": 6
+  }
+ ],
+ "rotors": [
+  {
+   "at": [
+    9,
+    7
+   ],
+   "arms": "N",
+   "len": 2,
+   "cw": false,
+   "turn": 3,
+   "hold": 7,
+   "phase": 16
+  }
+ ],
+ "spoiler": true,
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "minLoans": 2,
+  "margin": 3,
+  "startDelay": 20,
+  "budget": 30000000
+ },
+ "notes": "from d84: g3 term=60 chute x=5 s=2 ph=1, rotor x=9 s N len 2 turn 3 hold 7 ph 16 ccw, lane beam 10/30 ph 6, exit e"
+}

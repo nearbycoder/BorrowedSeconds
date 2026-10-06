@@ -1,0 +1,60 @@
+{
+ "id": "8-2",
+ "name": "Bridge",
+ "chapter": 8,
+ "term": 60,
+ "loans": 2,
+ "hint": "The corridor's block reaches every tile, and only a frozen you lets it by. The lane after it needs a loan of its own.",
+ "map": [
+  " ...          ",
+  " .S.          ",
+  " ...          ",
+  "  .           ",
+  "  .........   ",
+  "          .   ",
+  "          .   ",
+  "..............",
+  "   .          ",
+  "   X          "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     2,
+     4
+    ],
+    [
+     10,
+     4
+    ]
+   ],
+   "loop": false,
+   "speed": 4,
+   "dwell": 8,
+   "phase": 10
+  },
+  {
+   "path": [
+    [
+     0,
+     7
+    ],
+    [
+     13,
+     7
+    ]
+   ],
+   "loop": false,
+   "speed": 2
+  }
+ ],
+ "spoiler": true,
+ "expect": {
+  "borrow": true,
+  "minLoans": 2,
+  "margin": 3,
+  "startDelay": 20
+ },
+ "notes": "from d85: len=14 leave=3 sa=4 dw=8 pa=10 sb=2 pb=0 term=60. The forgiven-debt search exceeds 30M states, so D is not claimed."
+}

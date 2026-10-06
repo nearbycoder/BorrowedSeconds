@@ -1,15 +1,37 @@
 {
  "id": "8-1",
- "name": "Instalments",
+ "name": "Shade",
  "chapter": 8,
- "term": 100,
+ "term": 60,
  "loans": 2,
- "hint": "Two dials in the light, two loans, two debts. Each debt has to land on a dial.",
+ "hint": "Both lanes are always lit, and one loan buys one shadow. Settle up between the lanes, then borrow again.",
  "map": [
-  "...            ",
-  ".S.           X",
-  "...           .",
-  "#....L....L...."
+  "   ...     ",
+  " . .S.     ",
+  " . ...     ",
+  "#..........",
+  " .        .",
+  " .        .",
+  " .        .",
+  "#..........",
+  " .X        ",
+  " .         "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     1,
+     1
+    ],
+    [
+     1,
+     9
+    ]
+   ],
+   "loop": false,
+   "speed": 3
+  }
  ],
  "lasers": [
   {
@@ -19,14 +41,23 @@
    ],
    "dir": "E",
    "on": 20,
-   "off": 20,
-   "phase": 5
+   "off": 0
+  },
+  {
+   "at": [
+    0,
+    7
+   ],
+   "dir": "E",
+   "on": 20,
+   "off": 0
   }
  ],
  "expect": {
   "borrow": true,
-  "debt": true,
+  "minLoans": 2,
   "margin": 3,
   "startDelay": 20
- }
+ },
+ "notes": "from d88 (hand-made): speed=3 phase=0 term=60"
 }
