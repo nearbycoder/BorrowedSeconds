@@ -50,7 +50,7 @@ Every level is a single screen, the rules are fully deterministic, and an exhaus
 | Show or fold the level's hint | H | Select / View |
 | Pause | Esc / P | Start |
 
-Menus work with keyboard, mouse or gamepad, and on-screen key hints switch to match the device you last used. There are no touch controls.
+Every keyboard action (movement, Borrow, Focus, Rewind, Restart, Hint, aiming and Pause) can be rebound in **Settings > Controls**. The arrow keys, Esc, Enter, Tab and Backspace always keep their meaning, so the game can't be locked out. Menus work with keyboard, mouse or gamepad, and on-screen key hints switch to match the device you last used and the keys you've bound. There are no touch controls.
 
 **The rules in one breath:** the world ticks at a fixed 20 Hz. You can have one loan out at a time. The loan freezes an obstacle for 3.0 s, and its **term** (usually 5 s, between 3 and 8 s depending on the level) counts down on the pocket watch. When the term runs out you freeze for 3.0 s. The ghost preview shows where every hazard will be when you thaw, and whether the spot you're standing on is safe. Some levels cap how many loans you can take; the pips under the watch count what's left.
 

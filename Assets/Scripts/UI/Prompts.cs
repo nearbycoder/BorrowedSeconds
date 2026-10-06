@@ -98,13 +98,13 @@ namespace BorrowedSeconds.UI
                 int learned = save.learned;
 
                 if ((learned & Move) == 0)
-                    playerText = pad ? "<color=#FFD27A>Stick</color>  move" : "<color=#FFD27A>WASD</color>  or  <color=#FFD27A>arrows</color>  move";
+                    playerText = pad ? "<color=#FFD27A>Stick</color>  move" : $"<color=#FFD27A>{input.MoveKeysName()}</color>  or  <color=#FFD27A>arrows</color>  move";
                 else if (rewindHint > 0f && (learned & Rewind) == 0)
-                    playerText = pad ? "Hold <color=#FFD27A>X</color>  rewind further" : "Hold <color=#FFD27A>Z</color>  rewind further";
+                    playerText = $"Hold <color=#FFD27A>{(pad ? "X" : input.KeyName(KeyAction.Rewind))}</color>  rewind further";
                 else if ((learned & Debt) == 0 && cur.Countdown > 0)
                     playerText = "Debt due: freeze where the <color=#55E0AE>ring</color> is safe";
                 else if ((learned & Borrow) != 0 && (learned & Focus) == 0 && s.LoanAvailable && s.Aim >= 0)
-                    playerText = pad ? "Hold <color=#FFD27A>LT</color>  slow time to aim" : "Hold <color=#FFD27A>Shift</color>  slow time to aim";
+                    playerText = $"Hold <color=#FFD27A>{(pad ? "LT" : input.KeyName(KeyAction.Focus))}</color>  slow time to aim";
 
                 if ((learned & Move) != 0 && (learned & Borrow) == 0 && s.LoanAvailable && s.Aim < 0)
                 {

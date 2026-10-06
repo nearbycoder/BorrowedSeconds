@@ -20,6 +20,10 @@ namespace BorrowedSeconds.Game
         public Vector2 Pointer;
         public bool AnyKey;
         public bool UsingGamepad;
+        /// <summary>The keyboard binding table (KeyBindings), indexed by KeyAction.</summary>
+        public Key[] Keys = KeyBindings.DefaultKeys();
+        /// <summary>A keyboard key pressed this frame (Key.None if none): the Controls page listens to it.</summary>
+        public Key PressedKey;
 
         readonly float[] heldSince = new float[4];
         Vector2 lastPointer;
@@ -33,27 +37,34 @@ namespace BorrowedSeconds.Game
             Borrow = Focus = Rewind = Restart = Pause = Confirm = Back = CycleNext = CyclePrev = Hint = Click = false;
             AnyKey = false;
             Scroll = 0;
+            PressedKey = Key.None;
 
             bool[] held = new bool[4];
             bool[] down = new bool[4];
             if (kb != null)
             {
-                Read(kb.wKey, kb.upArrowKey, Dirs.N, held, down);
-                Read(kb.dKey, kb.rightArrowKey, Dirs.E, held, down);
-                Read(kb.sKey, kb.downArrowKey, Dirs.S, held, down);
-                Read(kb.aKey, kb.leftArrowKey, Dirs.W, held, down);
-                Borrow |= kb.spaceKey.wasPressedThisFrame;
-                Focus |= kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
-                Rewind |= kb.zKey.isPressed || kb.backspaceKey.isPressed;
-                Restart |= kb.rKey.wasPressedThisFrame;
-                Pause |= kb.escapeKey.wasPressedThisFrame || kb.pKey.wasPressedThisFrame;
+                Read(kb, KeyAction.Up, kb.upArrowKey, Dirs.N, held, down);
+                Read(kb, KeyAction.Right, kb.rightArrowKey, Dirs.E, held, down);
+                Read(kb, KeyAction.Down, kb.downArrowKey, Dirs.S, held, down);
+                Read(kb, KeyAction.Left, kb.leftArrowKey, Dirs.W, held, down);
+                Borrow |= Pressed(kb, KeyAction.Borrow);
+                Focus |= Held(kb, KeyAction.Focus);
+                Rewind |= Held(kb, KeyAction.Rewind) || kb.backspaceKey.isPressed;
+                Restart |= Pressed(kb, KeyAction.Restart);
+                Pause |= kb.escapeKey.wasPressedThisFrame || Pressed(kb, KeyAction.Pause);
                 Confirm |= kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame;
                 Back |= kb.escapeKey.wasPressedThisFrame;
-                CycleNext |= kb.tabKey.wasPressedThisFrame && !kb.shiftKey.isPressed || kb.eKey.wasPressedThisFrame;
-                CyclePrev |= kb.tabKey.wasPressedThisFrame && kb.shiftKey.isPressed || kb.qKey.wasPressedThisFrame;
-                Hint |= kb.hKey.wasPressedThisFrame;
+                // Tab always aims forward: Shift is Focus, so Shift+Tab must not flip the direction
+                CycleNext |= kb.tabKey.wasPressedThisFrame || Pressed(kb, KeyAction.AimNext);
+                CyclePrev |= Pressed(kb, KeyAction.AimPrev);
+                Hint |= Pressed(kb, KeyAction.Hint);
                 AnyKey |= kb.anyKey.wasPressedThisFrame;
-                if (kb.anyKey.wasPressedThisFrame) UsingGamepad = false;
+                if (kb.anyKey.wasPressedThisFrame)
+                {
+                    UsingGamepad = false;
+                    foreach (var k in kb.allKeys)
+                        if (k.wasPressedThisFrame) { PressedKey = k.keyCode; break; }
+                }
             }
             if (mouse != null)
             {
@@ -120,10 +131,61 @@ namespace BorrowedSeconds.Game
                 if (held[d] && heldSince[d] > best) { best = heldSince[d]; HeldDir = d; }
         }
 
-        static void Read(KeyControl a, KeyControl b, int dir, bool[] held, bool[] down)
+        void Read(Keyboard kb, KeyAction a, KeyControl arrow, int dir, bool[] held, bool[] down)
         {
-            if (a.isPressed || b.isPressed) held[dir] = true;
-            if (a.wasPressedThisFrame || b.wasPressedThisFrame) down[dir] = true;
+            if (Held(kb, a) || arrow.isPressed) held[dir] = true;
+            if (Pressed(kb, a) || arrow.wasPressedThisFrame) down[dir] = true;
+        }
+
+        // a bound Shift, Ctrl or Alt accepts either side, as players expect
+        static Key Twin(Key k) => k switch
+        {
+            Key.LeftShift => Key.RightShift, Key.RightShift => Key.LeftShift,
+            Key.LeftCtrl => Key.RightCtrl, Key.RightCtrl => Key.LeftCtrl,
+            Key.LeftAlt => Key.RightAlt, Key.RightAlt => Key.LeftAlt,
+            _ => Key.None,
+        };
+
+        bool Held(Keyboard kb, KeyAction a)
+        {
+            var k = Keys[(int)a];
+            if (k == Key.None) return false;
+            var t = Twin(k);
+            return kb[k].isPressed || (t != Key.None && kb[t].isPressed);
+        }
+
+        bool Pressed(Keyboard kb, KeyAction a)
+        {
+            var k = Keys[(int)a];
+            if (k == Key.None) return false;
+            var t = Twin(k);
+            return kb[k].wasPressedThisFrame || (t != Key.None && kb[t].wasPressedThisFrame);
+        }
+
+        /// <summary>What a key is called on this keyboard's layout, for hints and the Controls page.</summary>
+        public static string KeyLabel(Key k)
+        {
+            switch (k)
+            {
+                case Key.LeftShift: case Key.RightShift: return "Shift";
+                case Key.LeftCtrl: case Key.RightCtrl: return "Ctrl";
+                case Key.LeftAlt: case Key.RightAlt: return "Alt";
+                case Key.Space: return "Space";
+                case Key.None: return "-";
+            }
+            var kb = Keyboard.current;
+            string name = kb != null ? kb[k].displayName : null;
+            if (string.IsNullOrEmpty(name)) name = k.ToString();
+            return name.Length == 1 ? name.ToUpperInvariant() : name;
+        }
+
+        public string KeyName(KeyAction a) => KeyLabel(Keys[(int)a]);
+
+        /// <summary>The four move keys as one hint ("WASD"), or "Arrows" if they don't spell anything short.</summary>
+        public string MoveKeysName()
+        {
+            string s = KeyName(KeyAction.Up) + KeyName(KeyAction.Left) + KeyName(KeyAction.Down) + KeyName(KeyAction.Right);
+            return s.Length == 4 ? s : "Arrows";
         }
     }
 }

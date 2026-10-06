@@ -6,6 +6,7 @@ using BorrowedSeconds.Sim;
 using BorrowedSeconds.View;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace BorrowedSeconds.UI
@@ -315,6 +316,7 @@ namespace BorrowedSeconds.UI
 
     public sealed class TitleScreen : MenuScreen
     {
+        string promptText;
         public readonly MenuList Menu;
         readonly RectTransform logo, emblemRt, rule, menuRoot;
         readonly TextMeshProUGUI word1, word2, tag;
@@ -425,7 +427,8 @@ namespace BorrowedSeconds.UI
             float r = Ease.OutExpo((a - 1.15f) / 0.7f);
             rule.localScale = new Vector3(r, 1, 1);
             fxTag.Age = a - 1.25f;
-            if (promptRow.childCount == 0) Kit.Keycaps(promptRow, "<b>W S</b> choose <b>Space</b> confirm");
+            string prompt = $"<b>{input.KeyName(KeyAction.Up)} {input.KeyName(KeyAction.Down)}</b> choose <b>Space</b> confirm";
+            if (prompt != promptText) { promptText = prompt; Kit.Keycaps(promptRow, prompt); }
             promptGroup.alpha = Ease.Clamp((a - 2.2f) * 2f);
             Menu.IntroDelay = 1.45f;
             Menu.Update(input, dt, hasInput && a > 1.6f, a);
@@ -436,6 +439,7 @@ namespace BorrowedSeconds.UI
 
     public sealed class LevelSelectScreen : MenuScreen
     {
+        string lastKeys;
         sealed class Card
         {
             public Panel Panel;
@@ -781,10 +785,13 @@ namespace BorrowedSeconds.UI
                     ? $"best <b>{Ui.Secs(best)}s</b>\n<color=#8E9AC8>par {Ui.Secs(par)}s</color>   <color=#FFD27A>{SaveData.MedalName(medal)}</color>"
                     : $"<color=#8E9AC8>par {Ui.Secs(par)}s</color>\n<color=#8E9AC8>not yet settled</color>";
                 infoStats.richText = true;
-                if (open != lastOpen || infoKeys.childCount == 0)
+                var keyNames = GameRoot.I.Input;
+                string turn = pages > 1 ? $"<b>{keyNames.KeyName(KeyAction.AimPrev)} {keyNames.KeyName(KeyAction.AimNext)}</b> page " : "";
+                string keys = turn + (open ? "<b>Space</b> play <b>Esc</b> back" : "<b>Esc</b> back");
+                if (keys != lastKeys)
                 {
-                    string turn = pages > 1 ? "<b>Q E</b> page " : "";
-                    float w = Kit.Keycaps(infoKeys, turn + (open ? "<b>Space</b> play <b>Esc</b> back" : "<b>Esc</b> back"));
+                    lastKeys = keys;
+                    float w = Kit.Keycaps(infoKeys, keys);
                     foreach (RectTransform c in infoKeys) c.anchoredPosition += new Vector2(330 - w, 0);
                     lastOpen = open;
                 }
@@ -889,8 +896,12 @@ namespace BorrowedSeconds.UI
         readonly RectTransform footRow;
         readonly CanvasGroup footGroup;
 
-        public SettingsScreen(Transform canvas, SaveData save, Action apply, Action onBack)
-            : base(canvas, "Settings", new Vector2(860, 868), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
+        /// <summary>Index of the Controls row (after the original rows, which scripted tours select by index).</summary>
+        public const int ControlsRow = 8;
+        string footText;
+
+        public SettingsScreen(Transform canvas, SaveData save, Action apply, Action onBack, Action onControls)
+            : base(canvas, "Settings", new Vector2(860, 936), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
         {
             this.onBack = onBack;
             menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -180), 740, 68, 27, true);
@@ -909,6 +920,7 @@ namespace BorrowedSeconds.UI
             int SpeedStep() { int k = 0; for (int i = 0; i < speeds.Length; i++) if (Mathf.Abs(speeds[i] - save.speed) < Mathf.Abs(speeds[k] - save.speed)) k = i; return k; }
             menu.AddSlider("Game speed", () => SpeedStep() / (float)(speeds.Length - 1), () => Pct(speeds[SpeedStep()]),
                 d => { save.speed = speeds[Mathf.Clamp(SpeedStep() + d, 0, speeds.Length - 1)]; apply(); });
+            menu.Add("Controls", onControls, () => "keyboard  ›");
             menu.Add("Back", onBack);
             menu.IntroDelay = 0.25f;
             footRow = Ui.Rect("Foot", Body, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 22), new Vector2(700, 34));
@@ -922,11 +934,94 @@ namespace BorrowedSeconds.UI
         protected override void Tick(InputReader input, float dt, bool hasInput)
         {
             float a = AnimateWindow();
-            if (footRow.childCount == 0) Kit.Keycaps(footRow, "<b>W S</b> choose <b>A D</b> adjust <b>Esc</b> back", 1f, true);
+            string foot = $"<b>{input.KeyName(KeyAction.Up)} {input.KeyName(KeyAction.Down)}</b> choose <b>{input.KeyName(KeyAction.Left)} {input.KeyName(KeyAction.Right)}</b> adjust <b>Esc</b> back";
+            if (foot != footText) { footText = foot; Kit.Keycaps(footRow, foot, 1f, true); }
             footGroup.alpha = Ease.OutCubic((a - 0.8f) * 2f);
             if (hasInput && input.Back) { Sfx.Play("ui_back"); onBack(); return; }
             menu.Update(input, dt, hasInput, a);
         }
+    }
+
+    // ==================================================================== controls
+
+    /// <summary>Settings > Controls: rebinds the keyboard (KeyBindings). Pick a row, press a key.</summary>
+    public sealed class ControlsScreen : WindowScreen
+    {
+        readonly MenuList menu;
+        readonly Action onBack;
+        readonly Action<KeyAction, Key> bind;
+        readonly RectTransform footRow;
+        readonly CanvasGroup footGroup;
+        string footText;
+        int listening = -1;
+        float listenAge;
+        public string Notice = "";
+        float noticeT;
+        readonly TextMeshProUGUI notice;
+
+        public ControlsScreen(Transform canvas, Func<Key[]> keys, Action<KeyAction, Key> bind, Action reset, Action onBack)
+            : base(canvas, "Controls", new Vector2(860, 1000), "KEYBOARD", "CONTROLS", 0.35f)
+        {
+            this.onBack = onBack;
+            this.bind = bind;
+            menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -172), 740, 52, 24, true);
+            for (int i = 0; i < KeyBindings.Count; i++)
+            {
+                int a = i;
+                menu.Add(KeyBindings.Labels[i], () => { listening = a; listenAge = 0f; },
+                    () => listening == a ? "press a key" : InputReader.KeyLabel(keys()[a]));
+            }
+            menu.Add("Reset to defaults", () => { reset(); Say("Default keys restored"); });
+            menu.Add("Back", onBack);
+            menu.IntroDelay = 0.25f;
+            notice = Ui.Text("Notice", Body, "", Ui.Semi, 18, Palette.Ice, TextAlignmentOptions.Center);
+            Ui.Place(notice.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 64), new Vector2(760, 26));
+            footRow = Ui.Rect("Foot", Body, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 22), new Vector2(700, 34));
+            footGroup = footRow.gameObject.AddComponent<CanvasGroup>();
+        }
+
+        public MenuList Menu => menu;
+        public bool Listening => listening >= 0;
+
+        public override void Show() { base.Show(); menu.Selected = 0; listening = -1; Say(""); }
+
+        void Say(string text) { Notice = text; noticeT = 0f; }
+
+        protected override void Tick(InputReader input, float dt, bool hasInput)
+        {
+            float a = AnimateWindow();
+            noticeT += dt;
+            notice.text = Notice;
+            notice.alpha = Notice.Length > 0 ? Mathf.Clamp01(3f - noticeT * 0.6f) : 0f;
+            string foot = listening >= 0 ? "<b>Esc</b> cancel" : "<b>↑ ↓</b> choose <b>Enter</b> rebind <b>Esc</b> back";
+            if (foot != footText) { footText = foot; Kit.Keycaps(footRow, foot, 1f, true); }
+            footGroup.alpha = Ease.OutCubic((a - 0.8f) * 2f);
+            if (listening >= 0)
+            {
+                listenAge += dt;
+                if (hasInput && listenAge > 0.1f)
+                {
+                    var key = input.PressedKey;
+                    if (input.Back) { listening = -1; Sfx.Play("ui_back"); Say(""); }
+                    else if (key != Key.None && KeyBindings.Reserved(key)) { Sfx.Play("denied", 0.7f); Say($"{InputReader.KeyLabel(key)} keeps its own job: pick another key"); }
+                    else if (key != Key.None)
+                    {
+                        var action = (KeyAction)listening;
+                        listening = -1;
+                        bind(action, key);
+                        Sfx.Play("ui_click");
+                        Say($"{KeyBindings.Labels[(int)action]}: {InputReader.KeyLabel(key)}");
+                    }
+                }
+                menu.Update(input, dt, false, a);
+                return;
+            }
+            if (hasInput && input.Back) { Sfx.Play("ui_back"); onBack(); return; }
+            menu.Update(input, dt, hasInput, a);
+        }
+
+        /// <summary>Scripted runs: start listening on a row as if it had been chosen.</summary>
+        public void ListenFor(KeyAction action) { menu.Selected = (int)action; listening = (int)action; listenAge = 0f; }
     }
 
     // ==================================================================== level complete

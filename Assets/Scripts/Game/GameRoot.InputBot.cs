@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using BorrowedSeconds.Sim;
+using BorrowedSeconds.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
@@ -112,13 +113,136 @@ namespace BorrowedSeconds.Game
             log.Add(ok ? $"PASS 1-1 played through virtual keyboard + mouse, won at tick {Session.Cur.Tick}" : "FAIL keyboard + mouse");
             bool kbOk = ok;
 
-            bool padOk = false;
+            bool padOk = false, rebindOk = false;
             yield return PadPass(dir, log, r => padOk = r);
+            yield return RebindPass(dir, log, r => rebindOk = r);
             log.Add($"info frames {Time.frameCount} over {Time.realtimeSinceStartup:0.0}s real");
-            log.Add(kbOk && padOk ? "RESULT PASS keyboard + mouse and gamepad" : "RESULT FAIL");
+            bool all = kbOk && padOk && rebindOk;
+            log.Add(all ? "RESULT PASS keyboard + mouse, gamepad, rebound keyboard" : "RESULT FAIL");
             File.WriteAllLines(Path.Combine(dir, "inputbot.log"), log);
             Debug.Log("[InputBot] " + string.Join(" | ", log));
-            Application.Quit(kbOk && padOk ? 0 : 1);
+            Application.Quit(all ? 0 : 1);
+        }
+
+        // ---------------------------------------------------------------- rebound keyboard pass
+
+        IEnumerator KeyTap(Key k, int n = 1, float gap = 0.12f)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                InputSystem.QueueStateEvent(botKb, new KeyboardState(k));
+                yield return null;
+                InputSystem.QueueStateEvent(botKb, new KeyboardState());
+                yield return new WaitForSecondsRealtime(gap);
+            }
+        }
+
+        /// <summary>
+        /// Rebinds keys through the real menus (Esc, pause > Settings > Controls, choose a row, Enter,
+        /// press the new key), then plays 1-1 keyboard-only on the new keys: J/L to move, Tab to aim,
+        /// F held to focus, K to borrow. The old keys must no longer act, and the hints must follow.
+        /// </summary>
+        IEnumerator RebindPass(string dir, List<string> log, System.Action<bool> result)
+        {
+            botDrivesFlow = true;
+            InputSystem.DisableDevice(botPad);
+            InputSystem.EnableDevice(botKb);
+            botKb.MakeCurrent();
+            InputSystem.QueueStateEvent(botKb, new KeyboardState());
+            complete.Hide();
+            StartLevel(0, false);
+            yield return new WaitForSecondsRealtime(2.6f);
+            bool ok = true;
+            void Fail(string why) { if (ok) log.Add("FAIL rebind " + why); ok = false; }
+
+            yield return KeyTap(Key.Escape);
+            yield return new WaitForSecondsRealtime(0.6f);
+            yield return KeyTap(Key.DownArrow, 4);              // Resume, Restart, Watch solution, Levels, Settings
+            yield return KeyTap(Key.Enter);
+            yield return new WaitForSecondsRealtime(0.7f);
+            yield return KeyTap(Key.DownArrow, SettingsScreen.ControlsRow);
+            yield return KeyTap(Key.Enter);
+            yield return new WaitForSecondsRealtime(0.8f);
+            if (!controls.Visible) Fail("pause > Settings > Controls did not open the Controls page");
+            var binds = new (KeyAction action, Key key)[] { (KeyAction.Down, Key.J), (KeyAction.Right, Key.L), (KeyAction.Borrow, Key.K), (KeyAction.Focus, Key.F), (KeyAction.Hint, Key.U) };
+            int row = 0;
+            foreach (var (action, key) in binds)
+            {
+                if (!ok) break;
+                int to = (int)action;
+                yield return KeyTap(to > row ? Key.DownArrow : Key.UpArrow, Mathf.Abs(to - row));
+                row = to;
+                yield return KeyTap(Key.Enter);
+                yield return new WaitForSecondsRealtime(0.2f);
+                if (action == KeyAction.Focus)
+                {
+                    ScreenCapture.CaptureScreenshot(Path.Combine(dir, "rebind_1_listening.png"));
+                    yield return null;
+                }
+                yield return KeyTap(key);
+                if (Input.Keys[to] != key) Fail($"{action} -> {key}: bound to {Input.Keys[to]}");
+            }
+            yield return new WaitForSecondsRealtime(0.6f);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "rebind_2_controls.png"));
+            yield return null;
+            bool saved = ok && KeyBindings.Load(Save.keys)[(int)KeyAction.Borrow] == Key.K;
+            if (!saved) Fail("the bindings did not reach the save");
+            yield return KeyTap(Key.Escape);                     // Controls -> Settings
+            yield return new WaitForSecondsRealtime(0.5f);
+            yield return KeyTap(Key.Escape);                     // Settings -> Pause
+            yield return new WaitForSecondsRealtime(0.5f);
+            yield return KeyTap(Key.Escape);                     // resume
+            yield return new WaitForSecondsRealtime(0.5f);
+            if (State != Flow.Playing) Fail($"Esc did not back out to play (state {State})");
+            string hints = Hud.HintsText ?? "";
+            bool hintRow = hints.Contains("<b>F</b> focus") && hints.Contains("<b>U</b> hint") && hints.Contains("<b>WAJL</b> move");
+            if (ok && !hintRow) Fail("key hints did not follow the bindings: " + hints);
+            if (ok) log.Add("ok   rebind: Down J, Right L, Borrow K, Focus F, Hint U via pause > Settings > Controls; saved; hints follow");
+
+            // the old keys are dead, the new ones play 1-1
+            var def = Session.Def;
+            int p0 = Session.Cur.P;
+            yield return KeyTap(Key.S);
+            yield return new WaitForSecondsRealtime(0.3f);
+            if (ok && Session.Cur.P != p0) Fail("S still moves after Down was rebound to J");
+            if (ok) yield return BotSteps(Key.J, 2, log, r => ok &= r);
+            if (ok && Session.Cur.P != def.Idx(3, 3)) Fail($"walk: player at {def.X(Session.Cur.P)},{def.Y(Session.Cur.P)}");
+            if (ok) yield return KeyTap(Key.Tab);
+            if (ok && Session.Aim != 0) Fail("Tab did not aim at the slider");
+            InputSystem.QueueStateEvent(botKb, new KeyboardState(Key.F));
+            int loans = Session.Cur.Loans;
+            float deadline = Time.realtimeSinceStartup + 20f, focus = 0f;
+            while (ok && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+                focus = Mathf.Max(focus, Session.FocusBlend);
+                var st = Session.Cur;
+                if (focus >= 0.9f && Session.Aim == 0 && (st.SIdx[0] >= 13 || (st.SIdx[0] == 12 && st.SDir[0] > 0)))
+                {
+                    InputSystem.QueueStateEvent(botKb, new KeyboardState(Key.F, Key.K));
+                    yield return null;
+                    InputSystem.QueueStateEvent(botKb, new KeyboardState(Key.F));
+                    yield return null;
+                    break;
+                }
+            }
+            InputSystem.QueueStateEvent(botKb, new KeyboardState());
+            deadline = Time.realtimeSinceStartup + 2f;
+            while (ok && Session.Cur.Loans == loans && Time.realtimeSinceStartup < deadline) yield return null;
+            if (ok && focus < 0.9f) Fail($"F never focused (blend {focus:0.00})");
+            if (ok && Session.Cur.Loans == loans) Fail("K did not borrow");
+            if (ok) yield return BotSteps(Key.J, 1, log, r => ok &= r);
+            // counted taps, not a hold: a held key can start the next step on the tick the last one lands
+            if (ok) yield return BotSteps(Key.L, 11 - def.X(Session.Cur.P), log, r => ok &= r);
+            if (ok) ScreenCapture.CaptureScreenshot(Path.Combine(dir, "rebind_3_hud.png"));
+            if (ok) yield return BotSteps(Key.J, 3, log, r => ok &= r);
+            deadline = Time.realtimeSinceStartup + 10f;
+            while (ok && Session.State != LevelSession.Mode.Won && !Session.Cur.Dead && Time.realtimeSinceStartup < deadline) yield return null;
+            if (ok && Session.State != LevelSession.Mode.Won) Fail($"no win (dead={Session.Cur.Dead})");
+            log.Add(ok ? $"PASS 1-1 played keyboard-only on rebound keys (J/L move, Tab aim, F focus, K borrow), won at tick {Session.Cur.Tick}" : "FAIL rebound keyboard");
+            ResetKeys();
+            botDrivesFlow = false;
+            result(ok);
         }
 
         // ---------------------------------------------------------------- gamepad pass

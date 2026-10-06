@@ -44,6 +44,7 @@ namespace BorrowedSeconds.Game
         LevelSelectScreen levels;
         PauseScreen pause;
         SettingsScreen settings;
+        ControlsScreen controls;
         CompleteScreen complete;
         ChapterCard card;
         EndingScreen ending;
@@ -100,7 +101,8 @@ namespace BorrowedSeconds.Game
             levels = new LevelSelectScreen(root, Catalog, Save, i => Go(() => StartLevel(i, true)), () => Go(ShowTitle, 0.7f));
             pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); }, WatchFromPause,
                 () => { pause.Hide(); Go(() => ShowLevels(LevelIndex)); }, () => OpenSettings(Flow.Paused), () => { pause.Hide(); Go(ShowTitle); });
-            settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, CloseSettings);
+            settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, CloseSettings, OpenControls);
+            controls = new ControlsScreen(root, () => Input.Keys, BindKey, ResetKeys, CloseControls);
             complete = new CompleteScreen(root, () => Go(Next), () => { complete.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); },
                 () => { complete.Hide(); Go(() => ShowLevels(LevelIndex)); }, amount => Rig.Shake(amount));
             card = new ChapterCard(root);
@@ -123,6 +125,7 @@ namespace BorrowedSeconds.Game
             Rig.ShakeEnabled = Save.shake;
             Env.ReduceFlashing = Save.reduceFlashing;
             LevelSession.FocusScale = Save.focus;
+            Input.Keys = KeyBindings.Load(Save.keys);
             LevelSession.GameSpeed = capturing ? 1f : Mathf.Clamp(Save.speed, 0.5f, 1f);
             if (!Application.isEditor && !capturing)
             {
@@ -144,6 +147,7 @@ namespace BorrowedSeconds.Game
             promptDemo = System.Array.IndexOf(args, "-bsPrompts") >= 0;
             if (promptDemo) Save.learned = 0;
             Save.ReadOnly = capturing;
+            if (capturing) Input.Keys = KeyBindings.DefaultKeys(); // scripted runs never use the player's bindings
             // scripted runs play at full speed unless asked (-bsSpeed checks that slow play is still exact)
             LevelSession.GameSpeed = float.TryParse(Arg(args, "-bsSpeed"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float speed)
                 ? Mathf.Clamp(speed, 0.1f, 4f) : capturing ? 1f : LevelSession.GameSpeed;
@@ -349,7 +353,7 @@ namespace BorrowedSeconds.Game
             string hint = Input.UsingGamepad && !string.IsNullOrEmpty(def.HintPad) ? def.HintPad : def.Hint;
             string text = tipOpen || string.IsNullOrEmpty(def.Hint)
                 ? hint
-                : Input.UsingGamepad ? "Stuck? Press <color=#FFD27A>Select</color> for a hint." : "Stuck? Press <color=#FFD27A>H</color> for a hint.";
+                : $"Stuck? Press <color=#FFD27A>{(Input.UsingGamepad ? "Select" : Input.KeyName(KeyAction.Hint))}</color> for a hint.";
             if (State == Flow.Watching) text = "<color=#7CF4FF>The solver's route, at par.</color>  " + (Input.UsingGamepad ? "<color=#FFD27A>B</color>" : "<color=#FFD27A>Esc</color>") + " to stop watching.";
             else if (attemptDeaths >= NudgeAfterDeaths)
                 text += (text.Length > 0 ? "\n" : "") + "<size=20><color=#C9D3F0>Still stuck? Pause and choose <b>Watch solution</b>.</color></size>";
@@ -386,8 +390,12 @@ namespace BorrowedSeconds.Game
             if (State == Flow.Playing && Session != null && Session.State != LevelSession.Mode.Won && !pendingComplete.HasValue) Pause();
         }
 
+        // the frame the pause menu closed: its Esc/Start press must not reopen it in the same Update
+        int resumedFrame = -1;
+
         void Resume()
         {
+            resumedFrame = Time.frameCount;
             pause.Hide();
             State = Flow.Playing;
             Session.Paused = false;
@@ -401,6 +409,35 @@ namespace BorrowedSeconds.Game
             title.Hide();
             pause.Hide();
             settings.Show();
+        }
+
+        void OpenControls()
+        {
+            settings.Hide();
+            controls.Show();
+        }
+
+        void CloseControls()
+        {
+            controls.Hide();
+            settings.Show();
+            settings.Menu.Selected = SettingsScreen.ControlsRow;
+        }
+
+        void BindKey(KeyAction action, UnityEngine.InputSystem.Key key)
+        {
+            KeyBindings.Assign(Input.Keys, action, key);
+            Save.keys = KeyBindings.Save(Input.Keys);
+            Save.Save();
+            if (Session != null) { ShowControlHints(); RefreshTip(false); }
+        }
+
+        void ResetKeys()
+        {
+            Input.Keys = KeyBindings.DefaultKeys();
+            Save.keys = new string[0];
+            Save.Save();
+            if (Session != null) { ShowControlHints(); RefreshTip(false); }
         }
 
         void CloseSettings()
@@ -459,12 +496,13 @@ namespace BorrowedSeconds.Game
             Cursors.Set(State == Flow.Playing && Session != null && Session.Aim >= 0 && Session.LoanAvailable && Session.State == LevelSession.Mode.Playing
                 ? Cursors.Kind.Aim : Cursors.Kind.Arrow);
             Prompts.Tick(Session, Save, Input, State == Flow.Playing && Session != null && !Session.Muted && (promptDemo || (!capturing && Session.Autoplay == null)), dt);
-            Env.MenuBlur = Mathf.Max(Mathf.Max(Mathf.Max(levels.BlurNow, pause.BlurNow), trailerBlur), Mathf.Max(Mathf.Max(settings.BlurNow, complete.BlurNow), Mathf.Max(card.BlurNow, ending.BlurNow)));
-            Hud.Dim = Mathf.Max(pause.BlurNow, Mathf.Max(complete.BlurNow, settings.BlurNow));
+            Env.MenuBlur = Mathf.Max(Mathf.Max(Mathf.Max(levels.BlurNow, pause.BlurNow), trailerBlur), Mathf.Max(Mathf.Max(Mathf.Max(settings.BlurNow, controls.BlurNow), complete.BlurNow), Mathf.Max(card.BlurNow, ending.BlurNow)));
+            Hud.Dim = Mathf.Max(pause.BlurNow, Mathf.Max(complete.BlurNow, Mathf.Max(settings.BlurNow, controls.BlurNow)));
             title.Update(Input, dt, top(title));
             levels.Update(Input, dt, top(levels));
             pause.Update(Input, dt, top(pause));
             settings.Update(Input, dt, top(settings));
+            controls.Update(Input, dt, top(controls));
             complete.Update(Input, dt, top(complete));
             card.Update(Input, dt, top(card));
             ending.Update(Input, dt, top(ending));
@@ -497,7 +535,7 @@ namespace BorrowedSeconds.Game
                     if ((Session.State == LevelSession.Mode.Won && Clock.Now - wonAt > 2.5f) || attractTimer > 40f) LoadAttract();
                     break;
                 case Flow.Playing:
-                    if (Input.Pause) { Pause(); break; }
+                    if (Input.Pause && Time.frameCount != resumedFrame) { Pause(); break; }
                     if (Input.Hint) ToggleTip();
                     if (Input.Restart && Session.State != LevelSession.Mode.Won) { Sfx.Play("ui_back"); StartLevel(LevelIndex, false); break; }
                     if (pendingComplete.HasValue && Clock.Now - wonAt > 1.1f)
@@ -515,7 +553,7 @@ namespace BorrowedSeconds.Game
         {
             MenuScreen best = null;
             int order = -1;
-            foreach (var s in new MenuScreen[] { title, levels, pause, settings, complete, card, ending })
+            foreach (var s in new MenuScreen[] { title, levels, pause, settings, controls, complete, card, ending })
                 if (s.Visible && s.Root.GetSiblingIndex() > order) { order = s.Root.GetSiblingIndex(); best = s; }
             return best;
         }
@@ -570,7 +608,8 @@ namespace BorrowedSeconds.Game
             else
                 Hud.SetHints(hintsForPad
                     ? "<b>Stick</b> move     <b>LB/RB</b> aim     <b>A</b> borrow     <b>LT</b> focus     <b>X</b> rewind     <b>Y</b> restart     <b>Select</b> hint     <b>Start</b> pause"
-                    : "<b>WASD</b> move     <b>Click</b> borrow     <b>Shift</b> focus     <b>Z</b> rewind     <b>R</b> restart     <b>H</b> hint     <b>Esc</b> pause");
+                    : $"<b>{Input.MoveKeysName()}</b> move     <b>Click</b> borrow     <b>{Input.KeyName(KeyAction.Focus)}</b> focus     <b>{Input.KeyName(KeyAction.Rewind)}</b> rewind     "
+                      + $"<b>{Input.KeyName(KeyAction.Restart)}</b> restart     <b>{Input.KeyName(KeyAction.Hint)}</b> hint     <b>Esc</b> pause");
             if (changed && Session != null) RefreshTip(false); // the folded tip names the device's hint key
         }
 

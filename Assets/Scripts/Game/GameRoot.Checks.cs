@@ -37,6 +37,7 @@ namespace BorrowedSeconds.Game
                 yield return CheckChannels(dir, "2-2", new[] { 2 }, Report);
             }
             if (Want("game-speed")) yield return CheckSpeed(dir, Report);
+            if (Want("key-bindings")) yield return CheckBindings(dir, Report);
             if (Want("audio")) yield return RecordAudio(dir, Report);
             if (Want("watch")) yield return CheckWatch(dir, Report);
 
@@ -81,6 +82,39 @@ namespace BorrowedSeconds.Game
             Audio.Music = m1;
             Audio.Effects = m2;
             report("audio-log", played == 3, $"{played}/3 scripted runs recorded to audio.log (checks.sh runs Tools/audio/balance.py on it)");
+        }
+
+        /// <summary>
+        /// The binding table's rules: rebinding to a taken key swaps instead of duplicating, reserved
+        /// keys are refused, and a damaged save (unknown, reserved or duplicate names) loads as
+        /// defaults for those actions; bindings survive a save round trip. Screenshots the Controls page.
+        /// </summary>
+        IEnumerator CheckBindings(string dir, System.Action<string, bool, string> report)
+        {
+            var keys = KeyBindings.DefaultKeys();
+            int lost = KeyBindings.Assign(keys, KeyAction.Hint, UnityEngine.InputSystem.Key.Space); // Space is Borrow's
+            bool swapped = lost == (int)KeyAction.Borrow && keys[(int)KeyAction.Hint] == UnityEngine.InputSystem.Key.Space
+                && keys[(int)KeyAction.Borrow] == UnityEngine.InputSystem.Key.H;
+            bool reserved = KeyBindings.Reserved(UnityEngine.InputSystem.Key.Escape) && KeyBindings.Reserved(UnityEngine.InputSystem.Key.UpArrow)
+                && !KeyBindings.Reserved(UnityEngine.InputSystem.Key.F);
+            var damaged = KeyBindings.Load(new[] { "Banana", "Escape", "W", "D", "Space" });
+            bool repaired = damaged[0] == UnityEngine.InputSystem.Key.W && damaged[1] == UnityEngine.InputSystem.Key.S && damaged[2] == UnityEngine.InputSystem.Key.A;
+            var save = new SaveData { keys = KeyBindings.Save(keys) };
+            var back = KeyBindings.Load(JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(save)).keys);
+            bool roundTrip = System.Linq.Enumerable.SequenceEqual(back, keys);
+            bool unique = System.Linq.Enumerable.Count(System.Linq.Enumerable.Distinct(keys)) == keys.Length;
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "1-3"), false);
+            Pause();
+            OpenSettings(Flow.Paused);
+            OpenControls();
+            controls.ListenFor(KeyAction.Rewind);
+            yield return new WaitForSecondsRealtime(1.3f);
+            yield return Shot(dir, "controls_listening");
+            CloseControls();
+            CloseSettings();
+            Resume();
+            report("key-bindings", swapped && reserved && repaired && roundTrip && unique,
+                $"swap={swapped} reserved={reserved} damaged-save repaired={repaired} round-trip={roundTrip} unique={unique}");
         }
 
         /// <summary>Losing window focus mid-level opens the pause menu and stops the clock.</summary>
