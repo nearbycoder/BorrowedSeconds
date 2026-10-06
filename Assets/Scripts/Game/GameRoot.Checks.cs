@@ -41,6 +41,7 @@ namespace BorrowedSeconds.Game
             if (Want("audio")) yield return RecordAudio(dir, Report);
             if (Want("chapter-cards")) yield return CheckChapterCards(dir, Report);
             if (Want("watch")) yield return CheckWatch(dir, Report);
+            if (Want("run-watch")) yield return CheckRunWatch(Report);
 
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
@@ -73,8 +74,8 @@ namespace BorrowedSeconds.Game
                 Hud.SkipIntro();
                 bool death = id == "1-2";
                 Session.Autoplay = death ? FindThawDeath(Catalog.Levels[index], out _) : Catalog.SolutionFor(Catalog.Levels[index]).Actions;
-                float deadline = Time.realtimeSinceStartup + 40f;
-                while (Time.realtimeSinceStartup < deadline && (death ? Session.Deaths == 0 : Session.State != LevelSession.Mode.Won)) yield return null;
+                var run = new RunWatch(Session);
+                while (run.Alive() && (death ? Session.Deaths == 0 : Session.State != LevelSession.Mode.Won)) yield return null;
                 yield return new WaitForSecondsRealtime(1.5f); // let the last stinger ring out
                 if (death ? Session.Deaths > 0 : Session.State == LevelSession.Mode.Won) played++;
             }
@@ -296,16 +297,18 @@ namespace BorrowedSeconds.Game
                 WatchFromPause();
                 if (State != Flow.Watching || Session.Autoplay == null) { bad.Add(def.Id + " did not start"); continue; }
                 Session.Speed = shoot ? 1f : 4f;
-                float deadline = Time.realtimeSinceStartup + 40f;
+                var watched = Session;
+                var run = new RunWatch(watched);
                 bool shot = false;
-                while (Session.State != LevelSession.Mode.Won && !Session.Cur.Dead && Time.realtimeSinceStartup < deadline)
+                while (Session == watched && Session.State != LevelSession.Mode.Won && !Session.Cur.Dead && run.Alive())
                 {
                     if (shoot && !shot && Session.Tick >= 120) { shot = true; Session.Paused = true; yield return Shot(dir, "watch_playing"); Session.Paused = false; }
                     yield return null;
                 }
-                int won = Session.State == LevelSession.Mode.Won ? Session.Tick : -1;
-                string why = won < 0 ? $" (dead={Session.Cur.Dead} tick={Session.Tick} mode={Session.State} flow={State} {Time.realtimeSinceStartup - (deadline - 40f):0.0}s)" : "";
-                while (State == Flow.Watching && Time.realtimeSinceStartup < deadline) yield return null;
+                int won = Session == watched && Session.State == LevelSession.Mode.Won ? Session.Tick : -1;
+                string why = won < 0 ? $" ({run.Why(Session)} flow={State})" : "";
+                float handBack = Time.realtimeSinceStartup + 20f;
+                while (State == Flow.Watching && Time.realtimeSinceStartup < handBack) yield return null;
                 bool fresh = State == Flow.Playing && Session.Autoplay == null && Session.Tick < 5 && !Hud.Watching;
                 if (won == par && fresh) ok++;
                 else bad.Add($"{def.Id} won={won} par={par} fresh={fresh}{why}");
@@ -313,6 +316,36 @@ namespace BorrowedSeconds.Game
             bool untouched = Progress() == before;
             report("watch-solution", ok == Catalog.Levels.Count && untouched,
                 $"{ok}/{Catalog.Levels.Count} won at par and returned fresh; progress untouched={untouched}" + (bad.Count > 0 ? "; " + string.Join("; ", bad) : ""));
+        }
+
+        /// <summary>
+        /// The scripted-run timeout itself: a replay crawling at one tick a second (a loaded machine)
+        /// stays alive past the 10 s stall limit, and one whose tick stops dead is caught.
+        /// </summary>
+        IEnumerator CheckRunWatch(System.Action<string, bool, string> report)
+        {
+            int index = Catalog.Levels.FindIndex(l => l.Id == "2-3");
+            StartLevel(index, false);
+            Hud.SkipIntro();
+            Session.Autoplay = Catalog.SolutionFor(Session.Def).Actions;
+            Session.IntroTime = 0f;
+            while (Session.State != LevelSession.Mode.Playing) yield return null;
+            Session.Speed = 1f / 20f / LevelSession.GameSpeed; // one tick a second
+            var slow = new RunWatch(Session);
+            int t0 = Session.Tick;
+            bool slowAlive = true;
+            float until = Time.realtimeSinceStartup + 13f;
+            while (Time.realtimeSinceStartup < until) { slowAlive &= slow.Alive(); yield return null; }
+            int crawled = Session.Tick - t0;
+            Session.Speed = 0f; // stopped dead while Playing: a hang
+            var stuck = new RunWatch(Session);
+            float limit = Time.realtimeSinceStartup + 30f;
+            while (stuck.Alive() && Time.realtimeSinceStartup < limit) yield return null;
+            bool caught = Time.realtimeSinceStartup < limit && stuck.Elapsed >= 10f;
+            string why = stuck.Why(Session);
+            Session.Speed = 1f;
+            report("run-watch", slowAlive && crawled >= 8 && caught,
+                $"crawl: {crawled} ticks in 13 s, alive={slowAlive}; hang caught={caught} after {stuck.Elapsed:0.0}s ({why})");
         }
 
         /// <summary>Seeded random play on the bare simulation until the player thaws inside a hazard.</summary>
