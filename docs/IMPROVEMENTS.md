@@ -121,3 +121,61 @@ All six items shipped on `improvements`, one commit per item. Each was verified 
 Infrastructure: `066d850` caps scripted-run log files at 512 MB. A player stuck in a GL-context retry loop once wrote a 6 GB log into the shared `/tmp`; the same full disk is the likely cause of one native crash during an autopilot run, which didn't recur once output moved to disk.
 
 Still open from the ranked list: chapter VII content, WebGL, Windows (needs the module), an audio mix pass by ear, small polish (#11), key rebinding, touch, and human playtesting.
+
+## Round 2 scope
+
+Picked from the ranked list (#8 chapter VII, #10 audio, #11 polish, #12 rebinding) plus two things round 1 turned up:
+- The gamepad bindings for the hint and for leaving *Watch solution* were never exercised.
+- Reading `AudioDirector` for the audio item showed that **music ducking never fires**. `Play` only ducks for `world` one-shots at volume ≥ 0.9, but borrow, freeze, death, latch and win all go through `Sfx.Play`, which passes `world = false`, and no `Sfx.World` call is that loud. So PLAN §9's "music ducks under big SFX" doesn't actually happen.
+
+The order runs smallest and most certain first, with the new chapter last because it's the biggest and riskiest. All scratch output goes to `Builds/` (gitignored), never `/tmp`.
+
+### 1. Audio balance: working duck plus a measured mix
+- **Change:**
+  - The key gameplay stingers (borrow, freeze, thaw, death, dial latch, exit open, win) duck the music, whichever route they're played through.
+  - Rebalance the music against the effects using numbers, not taste: a new `Tools/audio/balance.py` renders music and effects stems from the game's own audio event log (reusing `Tools/demo/mix.py`) and reports, for every key stinger, how far the effects sit above the music in the 400 ms after it fires.
+- **Acceptance:**
+  - `checks.sh` records an audio log over three levels at default settings.
+  - Median stinger-over-music ≥ +6 dB, and no key stinger below +3 dB.
+  - The mixed peak stays under the soft-clip knee (0.9).
+  - Before/after numbers are recorded in this file.
+- **Verify:** `balance.py` on before and after logs from the same scripted run. **Limit:** this is measured, not listened to. The owner should still give the mix a listen.
+
+### 2. Gamepad input bot
+- **Change:** `Tools/inputbot.sh` gains a gamepad pass that plays 1-1 on a *virtual* gamepad. It walks with the stick, aims with RB, focuses with LT and borrows with A, and also checks Select (hint), Start (pause) and B (stop watching).
+- **Acceptance:** PASS for keyboard+mouse and for the gamepad, with the bindings listed in the log.
+- **Verify:** `Tools/inputbot.sh`. Honest limit: virtual devices, not real hardware.
+
+### 3. Key rebinding (keyboard)
+- **Change:**
+  - Settings gets a **Controls** page that rebinds Borrow, Focus, Rewind, Restart, Hint and Pause/Back's key, plus an alternate key for each move direction. The arrow keys and mouse always keep working.
+  - Bindings persist in the save.
+  - The key hints, keycaps and onboarding prompts show the bound key names.
+  - A reset-to-defaults row.
+  - Conflicts swap rather than duplicate.
+- **Acceptance:**
+  - A binding survives a save round trip.
+  - The input bot passes 1-1 with rebound keys (e.g. Focus on F, Borrow on K, Rewind on X).
+  - The HUD hint row shows the new names.
+- **Verify:** an input-bot variant with rebinds, a `checks.sh` round-trip check, and screenshots of the Controls page and HUD.
+
+### 4. Small polish
+- **Change:**
+  - The pocket watch's status label ("LOAN READY", "REPAYING") no longer sits under the watch hand.
+  - `R` restarts instantly in the first 3 s, but after that you **hold** R for 0.6 s, with a fill ring, so a stray key can't throw away a long attempt.
+  - Shift+Tab no longer flips aim cycling while Focus (Shift) is held.
+- **Acceptance:**
+  - A screenshot shows the label clear of the hand in the READY, DUE and REPAYING states.
+  - A check shows a tap of R late in a level does nothing and a hold restarts.
+  - The input bot still passes.
+- **Verify:** `checks.sh` (restart-hold) and screenshots.
+
+### 5. Chapter VII: five solver-proven levels
+- **Change:** five new levels built with the existing lab pipeline (`Tools/lab/designs`, `sweep.py`, `assemble.py`). Each is proven to need a loan, with at least two proven to need the debt, a margin of at least ±3 ticks, par between 6 and 20 s, and each adding one idea. The levels get chapter card text, tips, music routing and Ledger paging, which already exist for 12 chapters.
+- **Acceptance:**
+  - `validate.sh --level 7-x` reports OK for each, with the claimed B/D proofs.
+  - EditMode replay tests cover 35 levels.
+  - The autopilot wins 35/35 and `checks.sh` *Watch solution* passes 35/35.
+  - The README level table and counts are updated.
+- **Verify:** the solver per level (never the full 4-5 run), tests, autopilot, checks, and screenshots of each new level and the chapter card.
+- **Fallback:** if a level can't reach these proofs in reasonable sweep time, the chapter doesn't ship (`assemble.py` only ships complete chapters) and the designs stay in `Tools/lab/` with notes.
