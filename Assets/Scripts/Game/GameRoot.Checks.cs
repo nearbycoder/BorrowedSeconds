@@ -27,10 +27,36 @@ namespace BorrowedSeconds.Game
             foreach (var id in new[] { "1-2", "2-1", "4-5" })
                 yield return CheckDefaultRewind(dir, id, Report);
 
+            yield return CheckFocusPause(dir, Report);
+
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
             yield return new WaitForSecondsRealtime(0.3f);
             Application.Quit(fail == 0 ? 0 : 1);
+        }
+
+        /// <summary>Losing window focus mid-level opens the pause menu and stops the clock.</summary>
+        IEnumerator CheckFocusPause(string dir, System.Action<string, bool, string> report)
+        {
+            int index = Catalog.Levels.FindIndex(l => l.Id == "1-3");
+            LoadLevel(index);
+            State = Flow.Playing;
+            Hud.SetVisible(true);
+            Session.IntroTime = 0.2f;
+            Session.Autoplay = Catalog.SolutionFor(Catalog.Levels[index]).Actions;
+            float deadline = Time.realtimeSinceStartup + 10f;
+            while (Session.Tick < 40 && Time.realtimeSinceStartup < deadline) yield return null;
+            FocusLost(true);
+            int tick = Session.Tick;
+            yield return new WaitForSecondsRealtime(2f);
+            bool ok = State == Flow.Paused && pause.Visible && Session.Tick == tick;
+            report("focus-pause", ok, $"paused at tick {tick}; after 2 s state={State}, menu={pause.Visible}, tick={Session.Tick}");
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "focus-pause.png"));
+            yield return null;
+            yield return null;
+            Resume();
+            yield return new WaitForSecondsRealtime(0.5f);
+            report("focus-resume", State == Flow.Playing && Session.Tick > tick, $"resumed: state={State}, tick={Session.Tick}");
         }
 
         /// <summary>Seeded random play on the bare simulation until the player thaws inside a hazard.</summary>

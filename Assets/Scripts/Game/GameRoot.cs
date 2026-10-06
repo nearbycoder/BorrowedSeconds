@@ -308,6 +308,18 @@ namespace BorrowedSeconds.Game
             Sfx.Play("ui_click");
         }
 
+        // the game keeps running in the background (runInBackground), so a real-time level must
+        // not: alt-tabbing away mid-level opens the pause menu instead of letting the debt fall due
+        void OnApplicationFocus(bool focus) { if (!focus) FocusLost(false); }
+        void OnApplicationPause(bool paused) { if (paused) FocusLost(false); }
+
+        /// <summary>Pauses a level in play when the window loses focus (scripted runs only when forced).</summary>
+        void FocusLost(bool force)
+        {
+            if (capturing && !force) return;
+            if (State == Flow.Playing && Session != null && Session.State != LevelSession.Mode.Won && !pendingComplete.HasValue) Pause();
+        }
+
         void Resume()
         {
             pause.Hide();

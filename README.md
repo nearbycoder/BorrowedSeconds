@@ -66,6 +66,7 @@ Menus work with keyboard, mouse or gamepad, and on-screen key hints switch to ma
 - **Medals against a proven par.** Par is the solver's optimal time. Finish within par + 1 s for gold (*Time Thief*), within par + 4 s for silver, or anywhere for bronze.
 - **Teaches without text walls.** Keycap prompts float in the world over the thing they mean, such as *Hover + click, freeze it* over the nearest slider, then retire for good once you've done it. Each level adds one idea, along with a one-line tip.
 - **Juice everywhere.** Hit-stop on every borrow, a full-screen time-ripple with chromatic split, a rewind smear, screen shake, dial-latch flashes, a medal coin that drops and stamps, and clock-hand wipes between screens.
+- **Pauses when you look away.** If the window loses focus mid-level, the pause menu opens, so the debt never falls due while you're in another window.
 - **Comfort settings.** Master, music and effects volume, fullscreen, screen shake, reduced flashing and Focus strength. Progress and settings save automatically.
 
 <img src="docs/media/screenshots/04_in-the-beams.png" width="49%" alt="Frozen on a gold dial at the crossing of two laser beams, which pass harmlessly through"> <img src="docs/media/screenshots/06_crystal-bar.png" width="49%" alt="A laser frozen mid-shot becomes a cyan crystal bar that blocks the other beam">
