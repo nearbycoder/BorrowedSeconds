@@ -1,0 +1,70 @@
+{
+ "id": "7-2",
+ "name": "Float",
+ "chapter": 7,
+ "term": 50,
+ "loans": 1,
+ "hint": "Freeze the lane's beam while it is dark and run it. Two and a half seconds later the debt lands you on the dial, in the light.",
+ "spoiler": true,
+ "map": [
+  "     .          ",
+  "...  .          ",
+  ".S.  .          ",
+  "... ..          ",
+  "#.........L....X",
+  "    ..          ",
+  "    .           ",
+  "    .           ",
+  "    .           "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     4,
+     3
+    ],
+    [
+     4,
+     8
+    ]
+   ],
+   "loop": false,
+   "speed": 2,
+   "phase": 15
+  },
+  {
+   "path": [
+    [
+     5,
+     0
+    ],
+    [
+     5,
+     5
+    ]
+   ],
+   "loop": false,
+   "speed": 2,
+   "phase": 5
+  }
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    4
+   ],
+   "dir": "E",
+   "on": 30,
+   "off": 20,
+   "phase": 19
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 3,
+  "startDelay": 20
+ }
+}

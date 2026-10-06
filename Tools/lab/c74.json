@@ -1,0 +1,82 @@
+{
+ "id": "7-4",
+ "name": "Cutoff",
+ "chapter": 7,
+ "term": 50,
+ "loans": 1,
+ "hint": "Two chutes, a crossbeam and a beam down the lane: one loan opens the lane, and the debt has to hold the dial.",
+ "spoiler": true,
+ "map": [
+  "         .   . ",
+  "         .   . ",
+  "...  #   .   . ",
+  ".S.      .   .X",
+  "...      .   ..",
+  "#...........L..",
+  "         .   . ",
+  "         .   . ",
+  "     #   .   . ",
+  "         .   . ",
+  "         .   . "
+ ],
+ "sliders": [
+  {
+   "path": [
+    [
+     9,
+     0
+    ],
+    [
+     9,
+     10
+    ]
+   ],
+   "loop": false,
+   "speed": 2,
+   "phase": 10
+  },
+  {
+   "path": [
+    [
+     13,
+     0
+    ],
+    [
+     13,
+     10
+    ]
+   ],
+   "loop": false,
+   "speed": 2,
+   "phase": 4
+  }
+ ],
+ "lasers": [
+  {
+   "at": [
+    0,
+    5
+   ],
+   "dir": "E",
+   "on": 20,
+   "off": 10,
+   "phase": 11
+  },
+  {
+   "at": [
+    5,
+    2
+   ],
+   "dir": "S",
+   "on": 20,
+   "off": 10,
+   "phase": 21
+  }
+ ],
+ "expect": {
+  "borrow": true,
+  "debt": true,
+  "margin": 3,
+  "startDelay": 20
+ }
+}

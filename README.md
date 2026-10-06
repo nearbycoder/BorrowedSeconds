@@ -9,7 +9,7 @@
 <p align="center">
   <img alt="Unity 6000.6.2f1" src="https://img.shields.io/badge/Unity-6000.6.2f1%20URP-222c37?logo=unity&logoColor=white">
   <img alt="Platform: Linux" src="https://img.shields.io/badge/platform-Linux%20x86__64-f6c915?logo=linux&logoColor=black">
-  <img alt="30 levels, every one solver-proven" src="https://img.shields.io/badge/levels-30%2C%20all%20solver--proven-ffd27a">
+  <img alt="35 levels, every one solver-proven" src="https://img.shields.io/badge/levels-35%2C%20all%20solver--proven-ffd27a">
   <img alt="Models: Blender 4.5" src="https://img.shields.io/badge/models-Blender%204.5-e87d0d?logo=blender&logoColor=white">
   <img alt="Audio: procedural" src="https://img.shields.io/badge/audio-100%25%20procedural-7cf4ff">
 </p>
@@ -35,7 +35,7 @@ Freeze any moving obstacle for three seconds. The catch is that the time is **bo
 
 While you're frozen, nothing can hurt you. Sliders, laser beams and rotor arms pass straight through. But if you thaw inside a hazard, you **default** and time rewinds. The best solutions turn the debt into the plan: you pay it back standing on a gold dial, or exactly as a laser sweeps over you.
 
-Every level is a single screen, the rules are fully deterministic, and an exhaustive solver has proven every one of the 30 levels solvable. Where a level is built around a trick, the solver also proves the trick is required.
+Every level is a single screen, the rules are fully deterministic, and an exhaustive solver has proven every one of the 35 levels solvable. Where a level is built around a trick, the solver also proves the trick is required.
 
 ## How to play
 
@@ -75,7 +75,7 @@ Every keyboard action (movement, Borrow, Focus, Rewind, Restart, Hint, aiming an
 
 ## Content
 
-Thirty single-screen levels in six chapters. Each chapter opens with a title card, and each level unlocks when the previous one is settled. The Ledger tracks medals and best times for each level.
+Thirty-five single-screen levels in seven chapters. Each chapter opens with a title card, and each level unlocks when the previous one is settled. The Ledger tracks medals and best times for each level.
 
 | Chapter | Introduces | Levels |
 |---|---|---|
@@ -85,8 +85,9 @@ Thirty single-screen levels in six chapters. Each chapter opens with a title car
 | IV · Compound | Everything at once, short and long terms, loan caps | Double Entry, Refinance, Crystal Bar, Long Term, Settlement |
 | V · Leverage | Crystal pushing back: pens, rebounds, backswings | Rebound, Backswing, Crossbar, Pendulum, Fulcrum |
 | VI · Escrow | Leaving things behind to hold doors | Lockout, Gatekeeper, Doorstop, Two Keys, Escrow |
+| VII · Overdraft | Short terms: 1.5 to 2.5 s between loan and debt | Short Notice, Float, Same Day, Cutoff, Payroll |
 
-Thirteen levels are proven to need *the debt itself*. Even with unlimited debt-free loans they can't be solved, so your own freeze has to be part of the solution. Every level also has a timing margin of at least ±150 ms around its intended solution.
+Eighteen levels are proven to need *the debt itself*. Even with unlimited debt-free loans they can't be solved, so your own freeze has to be part of the solution. Every level also has a timing margin of at least ±150 ms around its intended solution.
 
 <details>
 <summary><b>Every level, and what the solver proves about it</b> (mild spoilers)</summary>
@@ -123,6 +124,11 @@ Thirteen levels are proven to need *the debt itself*. Even with unlimited debt-f
 | 6-3 | Doorstop | 2 sliders, plates + gate, dial | B, D |
 | 6-4 | Two Keys | 2 sliders, 2 plates + 2 gates, dial | B |
 | 6-5 | Escrow | 2 sliders, plate + gate, dial | B, D |
+| 7-1 | Short Notice | slider, 2 dials (1.5 s term) | B, D |
+| 7-2 | Float | 2 sliders, laser, dial (2.5 s term) | B, D |
+| 7-3 | Same Day | laser, 2 dials, 2 loans (2 s term) | B, D |
+| 7-4 | Cutoff | 2 sliders, 2 lasers, dial (2.5 s term) | B, D |
+| 7-5 | Payroll | laser, 3 dials, 3 loans (2 s term) | B, D |
 
 *B*: unsolvable without borrowing. *D*: unsolvable even with unlimited debt-free loans, so your own freeze has to be part of the solution. Every level keeps a timing margin of at least ±3 ticks (150 ms); all but 2-4 have ±4.
 
@@ -169,7 +175,7 @@ Everything generated is checked in, so none of the following is needed just to b
 | Levels | Edit `Tools/lab/cXY.json`, then `python3 Tools/lab/assemble.py` | `python3 Tools/lab/lab.py Tools/lab/c15.json` solves one design without touching the game. |
 | Proofs and replays | `Tools/validate.sh` (or `--level 4-5`, or `--quick`) | Proves every level and writes `solutions.json`. Level 4-5 searches up to 150M states and needs a lot of RAM. |
 | Unit tests | `unity test . --mode EditMode`, or the Test Runner | 94 EditMode tests. They replay every saved solution under Unity's Mono runtime and check that each one wins at exactly its par tick, and check that the automatic rewind after a death always hands control back. |
-| Self-test | `Tools/devcap.sh /tmp/bs-cap` | Development build, then autoplays all 30 levels and prints PASS/FAIL for each. |
+| Self-test | `Tools/devcap.sh Builds/capture` | Development build, then autoplays all 35 levels and prints PASS/FAIL for each. |
 | Controls test | `Tools/inputbot.sh` | Plays 1-1 through virtual keyboard and mouse devices, then again on a virtual gamepad (D-pad, stick, RB aim, LT focus, A borrow), and drives the hint toggle, pause menu and *Watch solution* with the pad. |
 | Behaviour checks | `Tools/checks.sh [dir] [dev] [-bsOnly name]` | The built game dies, rewinds and opens menus on purpose, and prints PASS/FAIL for each check. It also records an audio event log over three levels, and `Tools/audio/balance.py` measures how far each key stinger sits above the music. |
 | Release zip | `Tools/package.sh 0.1.0 [linux\|macos]` | Zips the Linux or macOS build with a short README and the font licenses into `Builds/Release/`. The macOS README explains how to open an unnotarized app. |
@@ -216,7 +222,7 @@ Built with Unity 6 (URP, Input System, TextMesh Pro), Blender 4.5, Python with n
 
 Version 0.1.0. The game is complete and playable from start to finish, but it's young. Here's what is and isn't verified:
 
-- ✅ The release build autoplays all 30 levels from the solver's replays and wins every one (`Tools/capture.sh`), so the in-game loop matches the solver tick for tick.
+- ✅ The release build autoplays all 35 levels from the solver's replays and wins every one (`Tools/capture.sh`), so the in-game loop matches the solver tick for tick.
 - ✅ The solver proves every level solvable and proves each "needs a borrow" and "needs the debt" claim. 94 EditMode tests pass.
 - ✅ `Tools/checks.sh` passes on the release build. The game dies by thawing inside a hazard and gets control back, pauses on a (simulated) focus loss, folds and unfolds hints, wires plates to gates and lasers, slows to 70 % game speed, and plays *Watch solution* at par on all 30 levels without touching progress. The autopilot also wins every level at its exact par tick at 50 % game speed.
 - ✅ The input bot wins 1-1 through the real input path. On the development machine (AMD Radeon 8060S iGPU, 1600×900), the busiest levels run at 300+ fps.
@@ -224,5 +230,6 @@ Version 0.1.0. The game is complete and playable from start to finish, but it's 
 - ⚠️ **Not playtested by humans yet.** Difficulty and timing margins come from the solver, not from people. Some levels may be harder than they look.
 - ⚠️ **The audio mix hasn't been tuned by ear.** It is balanced by measurement instead. The music now ducks under the key stingers (borrow, freeze, thaw, latch, exit, win, default), stinger pile-ups are trimmed, and the music sits 2 dB lower. On a scripted run, `balance.py` measures every key stinger at least +5 dB over the music (median +10.6 dB; before: median +3.5 dB, with borrow 1 dB *under* the music), and the mix peaks at 0.85 instead of 0.97. Nobody has listened to it yet.
 - ⚠️ **Released for Linux only.** `Tools/unity.sh build-mac` builds a universal macOS app (Intel and Apple silicon, Mono, bundle id `com.nearbycoder.borrowedseconds`). Unity ad-hoc signs it, but it isn't Developer-ID signed or notarized, and it has never been run on a Mac, so it isn't published. Windows needs Unity's Windows Build Support module, which isn't installed on the build machine; `Tools/unity.sh build-windows` is ready for it but untested. There's no web build.
-- ⚠️ **Work in progress beyond chapter VI.** Chapters VII–XII (a 60-level total) are named in `LevelCatalog.cs` (*Exposure*, *Amortize*, *Overdraft*, *Maturity*, *Arbitrage*, *Solvency*) but not designed yet; `docs/PLAN.md` only covers the first four chapters. A few finished designs for them sit in `Tools/lab/` and aren't in the game.
+- ⚠️ **Work in progress beyond chapter VII.** Chapters VIII–XII (a 60-level total) are named in `LevelCatalog.cs` (*Amortize*, *Exposure*, *Maturity*, *Arbitrage*, *Solvency*) but not designed yet; `docs/PLAN.md` only covers the first four chapters. One finished design for chapter VIII (8-1 *Instalments*) sits in `Tools/lab/` and isn't in the game. Chapter VII's five levels are solver-proven but, like the rest, have never been played by a person; two of them (7-2, 7-4) came out of an automated sweep and were checked only by the solver and by watching their replays.
+- ⚠️ **The trailer and README screenshots predate chapter VII** and round 2's interface changes (the Ledger shows 30 levels).
 - ⚠️ **No license has been chosen yet.** All rights are reserved until a `LICENSE` file is added.

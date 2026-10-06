@@ -39,6 +39,7 @@ namespace BorrowedSeconds.Game
             if (Want("game-speed")) yield return CheckSpeed(dir, Report);
             if (Want("key-bindings")) yield return CheckBindings(dir, Report);
             if (Want("audio")) yield return RecordAudio(dir, Report);
+            if (Want("chapter-cards")) yield return CheckChapterCards(dir, Report);
             if (Want("watch")) yield return CheckWatch(dir, Report);
 
             log.Add($"done fail={fail}");
@@ -63,6 +64,7 @@ namespace BorrowedSeconds.Game
             var writer = new StreamWriter(Path.Combine(dir, "audio.log"));
             BorrowedSeconds.Audio.AudioDirector.Log = writer;
             writer.WriteLine($"V {Clock.Now.ToString(System.Globalization.CultureInfo.InvariantCulture)} 60");
+            BorrowedSeconds.Audio.AudioDirector.LogPlaying();
             int played = 0;
             foreach (var id in new[] { "1-5", "4-5", "1-2" })
             {
@@ -115,6 +117,29 @@ namespace BorrowedSeconds.Game
             Resume();
             report("key-bindings", swapped && reserved && repaired && roundTrip && unique,
                 $"swap={swapped} reserved={reserved} damaged-save repaired={repaired} round-trip={roundTrip} unique={unique}");
+        }
+
+        /// <summary>Every chapter's first level opens on its card (screenshot of the newest chapter's).</summary>
+        IEnumerator CheckChapterCards(string dir, System.Action<string, bool, string> report)
+        {
+            int chapters = 0, shown = 0;
+            for (int i = 0; i < Catalog.Levels.Count; i++)
+            {
+                if (i > 0 && Catalog.Levels[i - 1].Chapter == Catalog.Levels[i].Chapter) continue;
+                chapters++;
+                bool last = Catalog.Levels[i].Chapter == Catalog.Levels[Catalog.Levels.Count - 1].Chapter;
+                StartLevel(i, true);
+                if (State == Flow.Card) shown++;
+                if (last)
+                {
+                    yield return new WaitForSecondsRealtime(2.9f); // the epigraph has typed out; cards leave at 3.6 s
+                    var info = LevelCatalog.Chapters[Catalog.Levels[i].Chapter - 1];
+                    yield return Shot(dir, $"chapter-card_{BorrowedSeconds.UI.Hud.Roman(Catalog.Levels[i].Chapter)}_{info.Title}");
+                }
+                card.Hide();
+                yield return null;
+            }
+            report("chapter-cards", shown == chapters, $"{shown}/{chapters} chapters open on their card");
         }
 
         /// <summary>Losing window focus mid-level opens the pause menu and stops the clock.</summary>
@@ -279,10 +304,11 @@ namespace BorrowedSeconds.Game
                     yield return null;
                 }
                 int won = Session.State == LevelSession.Mode.Won ? Session.Tick : -1;
+                string why = won < 0 ? $" (dead={Session.Cur.Dead} tick={Session.Tick} mode={Session.State} flow={State} {Time.realtimeSinceStartup - (deadline - 40f):0.0}s)" : "";
                 while (State == Flow.Watching && Time.realtimeSinceStartup < deadline) yield return null;
                 bool fresh = State == Flow.Playing && Session.Autoplay == null && Session.Tick < 5 && !Hud.Watching;
                 if (won == par && fresh) ok++;
-                else bad.Add($"{def.Id} won={won} par={par} fresh={fresh}");
+                else bad.Add($"{def.Id} won={won} par={par} fresh={fresh}{why}");
             }
             bool untouched = Progress() == before;
             report("watch-solution", ok == Catalog.Levels.Count && untouched,

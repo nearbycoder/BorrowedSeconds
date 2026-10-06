@@ -726,6 +726,121 @@
       ],
       "expect": {"borrow": true, "margin": 3, "startDelay": 20, "debt": true},
       "notes": "from d63: g170 term=80 loans=1 {'gates': [(12, 'a')], 'ring': (10, 'n', 2, 10, 1, [(4, 'a')]), 'lane': (2, 14, 3, 2), 'pockets': [], 'dial': 5, 'exit': 'n'}"
+    },
+    {
+      "id": "7-1",
+      "name": "Short Notice",
+      "chapter": 7,
+      "term": 30,
+      "loans": 2,
+      "hint": "Freeze the block on one dial and its weight holds it. A term this short lands you on the other.",
+      "map": [
+        "...             ",
+        ".S.             ",
+        "...             ",
+        " ......L...L...X"
+      ],
+      "sliders": [
+        {"path": [[2, 3], [14, 3]], "loop": false, "speed": 3}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 3, "startDelay": 20}
+    },
+    {
+      "id": "7-2",
+      "name": "Float",
+      "chapter": 7,
+      "term": 50,
+      "loans": 1,
+      "hint": "Freeze the lane's beam while it is dark and run it. Two and a half seconds later the debt lands you on the dial, in the light.",
+      "spoiler": true,
+      "map": [
+        "     .          ",
+        "...  .          ",
+        ".S.  .          ",
+        "... ..          ",
+        "#.........L....X",
+        "    ..          ",
+        "    .           ",
+        "    .           ",
+        "    .           "
+      ],
+      "sliders": [
+        {"path": [[4, 3], [4, 8]], "loop": false, "speed": 2, "phase": 15},
+        {"path": [[5, 0], [5, 5]], "loop": false, "speed": 2, "phase": 5}
+      ],
+      "lasers": [
+        {"at": [0, 4], "dir": "E", "on": 30, "off": 20, "phase": 19}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 3, "startDelay": 20}
+    },
+    {
+      "id": "7-3",
+      "name": "Same Day",
+      "chapter": 7,
+      "term": 40,
+      "loans": 2,
+      "hint": "A two-second term: borrow where you want to be standing.",
+      "map": [
+        "...            ",
+        ".S.            ",
+        "...            ",
+        "#....L....L....",
+        "              .",
+        "              X"
+      ],
+      "lasers": [
+        {"at": [0, 3], "dir": "E", "on": 20, "off": 20, "phase": 5}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 3, "startDelay": 20}
+    },
+    {
+      "id": "7-4",
+      "name": "Cutoff",
+      "chapter": 7,
+      "term": 50,
+      "loans": 1,
+      "hint": "Two chutes, a crossbeam and a beam down the lane: one loan opens the lane, and the debt has to hold the dial.",
+      "spoiler": true,
+      "map": [
+        "         .   . ",
+        "         .   . ",
+        "...  #   .   . ",
+        ".S.      .   .X",
+        "...      .   ..",
+        "#...........L..",
+        "         .   . ",
+        "         .   . ",
+        "     #   .   . ",
+        "         .   . ",
+        "         .   . "
+      ],
+      "sliders": [
+        {"path": [[9, 0], [9, 10]], "loop": false, "speed": 2, "phase": 10},
+        {"path": [[13, 0], [13, 10]], "loop": false, "speed": 2, "phase": 4}
+      ],
+      "lasers": [
+        {"at": [0, 5], "dir": "E", "on": 20, "off": 10, "phase": 11},
+        {"at": [5, 2], "dir": "S", "on": 20, "off": 10, "phase": 21}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 3, "startDelay": 20}
+    },
+    {
+      "id": "7-5",
+      "name": "Payroll",
+      "chapter": 7,
+      "term": 40,
+      "loans": 3,
+      "hint": "Three dials, two-second terms. Borrow, step, settle, and again.",
+      "map": [
+        "...            ",
+        ".S.           X",
+        "...           .",
+        "#...L...L...L.."
+      ],
+      "lasers": [
+        {"at": [0, 3], "dir": "E", "on": 20, "off": 20, "phase": 5}
+      ],
+      "expect": {"borrow": true, "debt": true, "margin": 3, "startDelay": 20}
     }
   ]
 }

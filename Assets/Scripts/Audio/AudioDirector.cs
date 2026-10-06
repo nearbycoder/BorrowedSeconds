@@ -124,6 +124,18 @@ namespace BorrowedSeconds.Audio
             I.duckHold = DuckHold;
         }
 
+        /// <summary>
+        /// For a log started mid-track: records the loops already playing as if they had started
+        /// (deck.time seconds ago), so the offline mixer renders them in phase instead of silence.
+        /// </summary>
+        public static void LogPlaying()
+        {
+            if (Log == null || I == null) return;
+            for (int i = 0; i < I.decks.Length; i++)
+                if (I.decks[i].isPlaying && I.decks[i].clip != null)
+                    Log.WriteLine($"M {F(Clock.Now - I.decks[i].time / Mathf.Max(0.01f, I.decks[i].pitch))} {i} {I.decks[i].clip.name}");
+        }
+
         public static bool Has(string name) => I != null && I.clips.ContainsKey(name);
 
         /// <summary>Crossfades to a music loop (no-op if already playing).</summary>

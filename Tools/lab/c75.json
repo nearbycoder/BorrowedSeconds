@@ -1,17 +1,15 @@
 {
- "id": "9-1",
- "name": "Same Day",
- "chapter": 9,
+ "id": "7-5",
+ "name": "Payroll",
+ "chapter": 7,
  "term": 40,
- "loans": 2,
- "hint": "A two-second term: borrow where you want to be standing.",
+ "loans": 3,
+ "hint": "Three dials, two-second terms. Borrow, step, settle, and again.",
  "map": [
   "...            ",
-  ".S.            ",
-  "...            ",
-  "#....L....L....",
-  "              .",
-  "              X"
+  ".S.           X",
+  "...           .",
+  "#...L...L...L.."
  ],
  "lasers": [
   {
