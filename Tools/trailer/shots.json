@@ -126,6 +126,10 @@
       "sfx": [[0.05, "chapter", 0.8]]
     },
     {
+      "name": "s-payroll", "level": "7-5", "seek": 150, "until": 212, "stillsOnly": true,
+      "stills": [{"tick": 200, "name": "11_payroll"}]
+    },
+    {
       "name": "titlescreen", "type": "titlescreen", "level": "1-5", "stillsOnly": true, "dur": 4.5,
       "stills": [{"at": 4.0, "name": "01_title"}]
     }
