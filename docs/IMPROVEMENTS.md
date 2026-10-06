@@ -104,3 +104,20 @@ Six items, ordered so the cheap, high-impact fixes land first. Every item keeps 
 - **WebGL:** worth a dedicated round (it needs an audio-muffle fallback and touch)? It's the best fit for the blog and itch.io reach.
 - **Solutions in-game:** is a *Watch solution* button acceptable design-wise, or should it unlock only after N defaults or minutes on a level?
 - **Audio:** a human listen to the default mix (music vs. effects) would settle item 10.
+
+## Round 1 results
+
+All six items shipped on `improvements`, one commit per item. Each was verified in the built game, not just in the editor. `Tools/checks.sh` is a new scripted check run that makes the built game die, rewind, pause and open menus on purpose; it uses the `-bsChecks` flag (`GameRoot.Checks.cs`). Screenshots are in `docs/media/improvements/`.
+
+| # | Item | Commit | Verification |
+|---|---|---|---|
+| 1 | Default loop fixed (`Sim/Rewind.cs`) | `d5b3525` | 32 new EditMode tests (94/94 pass): every seeded thaw death on every level rewinds to a state the player can act from, and some play from there survives. In-game check `default-rewind` on 1-2, 2-1 and 4-5: rewound to 1 s before the freeze, no repeat death. Shot 01. |
+| 2 | Pause on focus loss | `06bed62` | In-game check `focus-pause`: the tick stays frozen for 2 s with the menu up, then resumes. The focus loss is simulated by calling the handler; nobody alt-tabbed a real window, to avoid taking focus on a shared desktop. Shot 02. |
+| 3 | `H` hint (8 spoiler tips folded) and *Watch solution* | `1ee5f0f`, `f035713` | Check `hint-toggle` (folded, open, nudge after 3 defaults, refold, non-spoiler stays open). Check `watch-solution`: all 30 levels via the pause-menu path win at par, return fresh, and leave progress untouched. Shots 03–06. |
+| 4 | Channel-coded plates, gates and laser links | `f80af4e` | Check `channels` on 6-4 (one link per plate) and 2-2 (gate + laser). Colour and greyscale captures show the 1-dot/2-dot pairing. Shots 07–09. |
+| 5 | Game-speed assist | `4b30947` | Check `game-speed`: the row steps to 70 %, survives a save round trip, and the level runs at 13.8–14.0 ticks/s (expected 14.0). An autopilot at `-bsSpeed 0.5` wins all 30 levels at exactly their par ticks. Shots 10–11. |
+| 6 | macOS build | `c676a2a` | The batch build succeeds. The executable and dylibs are universal Mach-O (x86_64 + arm64) with Unity's ad-hoc signature. `Info.plist` reads `com.nearbycoder.borrowedseconds` 0.1.0. `package.sh 0.1.0 macos` zips it. **Not run on a Mac; not published.** `build-windows` fails cleanly without the module. |
+
+Infrastructure: `066d850` caps scripted-run log files at 512 MB. A player stuck in a GL-context retry loop once wrote a 6 GB log into the shared `/tmp`; the same full disk is the likely cause of one native crash during an autopilot run, which didn't recur once output moved to disk.
+
+Still open from the ranked list: chapter VII content, WebGL, Windows (needs the module), an audio mix pass by ear, small polish (#11), key rebinding, touch, and human playtesting.
