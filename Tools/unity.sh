@@ -7,6 +7,8 @@
 #   Tools/unity.sh                 open the project in the editor (GUI)
 #   Tools/unity.sh batch <Method>  run a static editor method in batch mode and quit
 #   Tools/unity.sh build-linux     batch-build Builds/Linux/BorrowedSeconds.x86_64
+#   Tools/unity.sh build-mac       batch-build Builds/macOS/BorrowedSeconds.app (universal, unsigned)
+#   Tools/unity.sh build-windows   batch-build Builds/Windows/BorrowedSeconds.exe (needs Windows Build Support)
 set -euo pipefail
 UNITY="${UNITY:-$HOME/Unity/Hub/Editor/6000.6.2f1/Editor/Unity}"
 PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,8 +26,16 @@ case "${1:-open}" in
     exec "$UNITY" -batchmode -nographics -quit -projectPath "$PROJECT" \
       -executeMethod BorrowedSeconds.EditorTools.BuildScript.BuildLinux -logFile "${2:--}"
     ;;
+  build-mac)
+    exec "$UNITY" -batchmode -nographics -quit -projectPath "$PROJECT" \
+      -executeMethod BorrowedSeconds.EditorTools.BuildScript.BuildMac -logFile "${2:--}"
+    ;;
+  build-windows)
+    exec "$UNITY" -batchmode -nographics -quit -projectPath "$PROJECT" \
+      -executeMethod BorrowedSeconds.EditorTools.BuildScript.BuildWindows -logFile "${2:--}"
+    ;;
   *)
-    echo "usage: $0 [open|batch <Method> [log]|build-linux [log]]" >&2
+    echo "usage: $0 [open|batch <Method> [log]|build-linux|build-mac|build-windows [log]]" >&2
     exit 2
     ;;
 esac

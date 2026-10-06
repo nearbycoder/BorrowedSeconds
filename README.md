@@ -143,6 +143,8 @@ Thirteen levels are proven to need *the debt itself*. Even with unlimited debt-f
 
 Requirements: 64-bit Linux and an OpenGL 4.5-capable GPU. The game starts fullscreen; you can switch to windowed in Settings. On Wayland desktops where XWayland is unreliable, add `-force-wayland` to use Unity's native Wayland backend. This build has only been tested on Linux (CachyOS, AMD iGPU).
 
+There's no published macOS or Windows build yet. You can make a macOS app yourself with `Tools/unity.sh build-mac` (see below), but it has never been run on a Mac.
+
 ## Build from source
 
 You need **Unity 6000.6.2f1** (Universal Render Pipeline) to build the game. **Blender 4.5** is only needed to regenerate the models and audio, and **ffmpeg** and **ImageMagick** only for the trailer.
@@ -151,6 +153,7 @@ You need **Unity 6000.6.2f1** (Universal Render Pipeline) to build the game. **B
 git clone https://github.com/nearbycoder/BorrowedSeconds.git
 cd BorrowedSeconds
 Tools/unity.sh build-linux        # batch build -> Builds/Linux/BorrowedSeconds.x86_64
+Tools/unity.sh build-mac          # macOS, universal (Intel + Apple silicon) -> Builds/macOS/BorrowedSeconds.app
 Tools/play.sh                     # run it windowed at 1600x900
 ```
 
@@ -169,7 +172,7 @@ Everything generated is checked in, so none of the following is needed just to b
 | Self-test | `Tools/devcap.sh /tmp/bs-cap` | Development build, then autoplays all 30 levels and prints PASS/FAIL for each. |
 | Controls test | `Tools/inputbot.sh` | Plays 1-1 through virtual keyboard and mouse devices. |
 | Behaviour checks | `Tools/checks.sh [dir] [dev]` | The built game dies, rewinds and opens menus on purpose, and prints PASS/FAIL for each check. |
-| Release zip | `Tools/package.sh 0.1.0` | Zips the Linux build with a short README and the font licenses into `Builds/Release/`. |
+| Release zip | `Tools/package.sh 0.1.0 [linux\|macos]` | Zips the Linux or macOS build with a short README and the font licenses into `Builds/Release/`. The macOS README explains how to open an unnotarized app. |
 | Trailer and media | `Tools/trailer/make_trailer.sh` | Records the scripted trailer from the release build, then cuts, scores and encodes it. See [Tools/trailer/README.md](Tools/trailer/README.md). |
 
 ## Project structure
@@ -218,6 +221,6 @@ Version 0.1.0. The game is complete and playable from start to finish, but it's 
 - ✅ The input bot wins 1-1 through the real input path. On the development machine (AMD Radeon 8060S iGPU, 1600×900), the busiest levels run at 300+ fps.
 - ⚠️ **Not playtested by humans yet.** Difficulty and timing margins come from the solver, not from people. Some levels may be harder than they look.
 - ⚠️ **The audio mix hasn't been tuned by ear.** The sound is fully procedural and was checked numerically (levels, clipping, loop seams), but the balance between effects and music may need work.
-- ⚠️ **Linux only.** No Windows or macOS builds have been made or tested, and there's no web build.
+- ⚠️ **Released for Linux only.** `Tools/unity.sh build-mac` builds a universal macOS app (Intel and Apple silicon, Mono, bundle id `com.nearbycoder.borrowedseconds`). Unity ad-hoc signs it, but it isn't Developer-ID signed or notarized, and it has never been run on a Mac, so it isn't published. Windows needs Unity's Windows Build Support module, which isn't installed on the build machine; `Tools/unity.sh build-windows` is ready for it but untested. There's no web build.
 - ⚠️ **Work in progress beyond chapter VI.** Chapters VII–XII (a 60-level total) are planned in `docs/PLAN.md` but not designed yet. A few finished designs for them sit in `Tools/lab/` and aren't in the game.
 - ⚠️ **No license has been chosen yet.** All rights are reserved until a `LICENSE` file is added.
