@@ -46,7 +46,7 @@ Every level is a single screen, the rules are fully deterministic, and an exhaus
 | **Borrow** (freeze the aimed obstacle for 3 s) | Left click or Space | A |
 | **Focus** (time runs at 20 % while you line up a shot) | Hold Shift or right mouse button | Hold LT |
 | **Rewind** | Hold Z or Backspace | Hold X |
-| Restart the level | R | Y |
+| Restart the level (tap in the first 3 s, then hold for 0.6 s) | R | Y |
 | Show or fold the level's hint | H | Select / View |
 | Pause | Esc / P | Start |
 

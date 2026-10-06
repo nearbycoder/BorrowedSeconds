@@ -27,6 +27,8 @@ namespace BorrowedSeconds.UI
         public float Frost;
         public float Scale = 1f;
         public bool MainHands = true;
+        /// <summary>The sub-dial's small seconds hand (the HUD hides it: its label sits over the sub-dial).</summary>
+        public bool SmallHand = true;
         /// <summary>The UI image showing this stage; the camera only renders while it is visible.</summary>
         public Graphic Viewer;
 
@@ -187,6 +189,7 @@ namespace BorrowedSeconds.UI
             if (hour != null) hour.gameObject.SetActive(MainHands);
             if (minute != null) minute.gameObject.SetActive(MainHands);
             if (second != null) second.gameObject.SetActive(MainHands);
+            if (small != null) small.gameObject.SetActive(SmallHand);
             if (hour != null) hour.localRotation = Quaternion.Euler(0, 0, -HourDeg);
             if (minute != null) minute.localRotation = Quaternion.Euler(0, 0, -MinuteDeg);
             if (second != null) second.localRotation = Quaternion.Euler(0, 0, -SecondDeg);

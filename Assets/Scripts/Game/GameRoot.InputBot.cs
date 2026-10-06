@@ -116,9 +116,12 @@ namespace BorrowedSeconds.Game
             bool padOk = false, rebindOk = false;
             yield return PadPass(dir, log, r => padOk = r);
             yield return RebindPass(dir, log, r => rebindOk = r);
+            bool restartOk = false;
+            yield return RestartPass(dir, log, r => restartOk = r);
+            rebindOk &= restartOk;
             log.Add($"info frames {Time.frameCount} over {Time.realtimeSinceStartup:0.0}s real");
             bool all = kbOk && padOk && rebindOk;
-            log.Add(all ? "RESULT PASS keyboard + mouse, gamepad, rebound keyboard" : "RESULT FAIL");
+            log.Add(all ? "RESULT PASS keyboard + mouse, gamepad, rebound keyboard, restart" : "RESULT FAIL");
             File.WriteAllLines(Path.Combine(dir, "inputbot.log"), log);
             Debug.Log("[InputBot] " + string.Join(" | ", log));
             Application.Quit(all ? 0 : 1);
@@ -241,6 +244,49 @@ namespace BorrowedSeconds.Game
             if (ok && Session.State != LevelSession.Mode.Won) Fail($"no win (dead={Session.Cur.Dead})");
             log.Add(ok ? $"PASS 1-1 played keyboard-only on rebound keys (J/L move, Tab aim, F focus, K borrow), won at tick {Session.Cur.Tick}" : "FAIL rebound keyboard");
             ResetKeys();
+            botDrivesFlow = false;
+            result(ok);
+        }
+
+        // ---------------------------------------------------------------- restart pass
+
+        /// <summary>
+        /// R restarts at once in a level's first three seconds; later a tap does nothing (the HOLD R
+        /// tag appears) and only a held R restarts.
+        /// </summary>
+        IEnumerator RestartPass(string dir, List<string> log, System.Action<bool> result)
+        {
+            botDrivesFlow = true;
+            bool ok = true;
+            void Fail(string why) { if (ok) log.Add("FAIL restart " + why); ok = false; }
+            complete.Hide();
+            StartLevel(0, false);
+            float deadline = Time.realtimeSinceStartup + 6f;
+            while ((Session.State != LevelSession.Mode.Playing || Session.Tick < 20) && Time.realtimeSinceStartup < deadline) yield return null;
+            var first = Session;
+            yield return KeyTap(Key.R);
+            if (Session == first) Fail("an early tap did not restart");
+            deadline = Time.realtimeSinceStartup + 8f;
+            while ((Session.State != LevelSession.Mode.Playing || Session.Tick < 80) && Time.realtimeSinceStartup < deadline) yield return null;
+            var late = Session;
+            int tick = Session.Tick;
+            InputSystem.QueueStateEvent(botKb, new KeyboardState(Key.R));
+            yield return new WaitForSecondsRealtime(0.2f);
+            float shown = Hud.RestartHold;
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "restart_hold.png"));
+            yield return null;
+            InputSystem.QueueStateEvent(botKb, new KeyboardState());
+            yield return new WaitForSecondsRealtime(0.5f);
+            if (Session != late) Fail($"a short tap at tick {tick} restarted the level");
+            if (shown <= 0f) Fail("no HOLD R TO RESTART progress while R was down");
+            InputSystem.QueueStateEvent(botKb, new KeyboardState(Key.R));
+            float peak = 0f;
+            deadline = Time.realtimeSinceStartup + 0.9f;
+            while (Time.realtimeSinceStartup < deadline && Session == late) { peak = Mathf.Max(peak, Hud.RestartHold); yield return null; }
+            InputSystem.QueueStateEvent(botKb, new KeyboardState());
+            yield return null;
+            if (Session == late) Fail($"holding R for 0.9 s did not restart (hold peaked at {peak:0.00}, state {State}, held={Input.RestartHeld})");
+            log.Add(ok ? $"PASS restart: early tap restarts; at tick {tick} a tap only shows the hold tag ({shown:0.00}); a hold restarts" : "FAIL restart");
             botDrivesFlow = false;
             result(ok);
         }

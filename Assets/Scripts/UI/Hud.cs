@@ -50,6 +50,13 @@ namespace BorrowedSeconds.UI
         public bool TrailerMode;
         /// <summary>The solver's solution is playing: the top tag reads SOLUTION instead of FOCUS.</summary>
         public bool Watching;
+        /// <summary>Hold-to-restart progress 0..1, or below 0 when no restart is being held.</summary>
+        public float RestartHold = -1f;
+        /// <summary>The restart tag's text, e.g. "HOLD R TO RESTART".</summary>
+        public string RestartLabel = "HOLD R TO RESTART";
+        RectTransform restartRoot, restartFill;
+        CanvasGroup restartGroup;
+        TextMeshProUGUI restartText;
         // 3D pocket watch + level title intro + banner band
         WatchStage watch3d;
         RawImage watchImg;
@@ -112,6 +119,7 @@ namespace BorrowedSeconds.UI
             watch3d = WatchStage.Create(transform, 512);
             watchImg = watch3d.Show(watch, new Vector2(272, 272));
             watch3d.MainHands = false; // the ice ring is the countdown; hands would cross the digits
+            watch3d.SmallHand = false; // nor the sub-dial's hand, which sat right under the READY / DUE IN label
             Ui.Place(watchImg.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 20), new Vector2(272, 272));
             watchFace = null;
             watchFill = Ui.Img("Fill", watch, Ui.Ring, Palette.Ice);
@@ -124,7 +132,7 @@ namespace BorrowedSeconds.UI
             Ui.Place(watchBig.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 6), new Vector2(160, 60));
             watchSmall = Ui.Text("Small", watch, "", Ui.Semi, 16, dim);
             Ui.Place(watchSmall.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -30), new Vector2(160, 24));
-            watchSmall.characterSpacing = 10;
+            watchSmall.characterSpacing = 3; // "LOAN READY" must fit inside the ring
             termText = Ui.Text("Term", root, "", Ui.Semi, 18, dim);
             Ui.Place(termText.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 6), new Vector2(400, 26));
             termText.characterSpacing = 10;
@@ -187,6 +195,21 @@ namespace BorrowedSeconds.UI
             Ui.Fill(rewindText.rectTransform);
             rewindText.rectTransform.offsetMin = new Vector2(40, 0);
             rewindText.characterSpacing = 22;
+
+            // ---- hold-to-restart tag (below the focus/rewind tags)
+            restartRoot = Ui.Rect("RestartTag", root, new Vector2(0.5f, 1), new Vector2(0.5f, 0.5f), new Vector2(0, -124), new Vector2(360, 50));
+            restartGroup = restartRoot.gameObject.AddComponent<CanvasGroup>();
+            restartGroup.alpha = 0f;
+            var restartTag = new Panel("Tag", restartRoot, new Vector2(360, 50), Panel.Style.Tag);
+            restartTag.Rt.anchoredPosition = Vector2.zero;
+            restartText = Ui.Text("Text", restartRoot, "", Ui.Semi, 19, Palette.Coral);
+            Ui.Place(restartText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 4), new Vector2(340, 30));
+            restartText.characterSpacing = 12;
+            var track = Ui.Img("Track", restartRoot, Ui.Pill, new Color(0.02f, 0.025f, 0.06f, 0.95f));
+            Ui.Place(track.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0.5f), new Vector2(0, 9), new Vector2(300, 5));
+            var fill = Ui.Img("Fill", restartRoot, Ui.Pill, Palette.Coral);
+            restartFill = fill.rectTransform;
+            Ui.Place(restartFill, new Vector2(0.5f, 0), new Vector2(0f, 0.5f), new Vector2(-150, 9), new Vector2(0, 5));
 
             // ---- banner
             var bannerRoot = Ui.Rect("Banner", root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 160), new Vector2(1200, 200));
@@ -390,6 +413,9 @@ namespace BorrowedSeconds.UI
             focusTag.Glow = 0.35f + 0.25f * Mathf.Sin(Clock.Now * 4f);
             focusTag.Apply();
             rewindGroup.alpha = Mathf.MoveTowards(rewindGroup.alpha, session.State == LevelSession.Mode.Rewinding ? 1f : 0f, dt * 8f);
+            restartGroup.alpha = Mathf.MoveTowards(restartGroup.alpha, RestartHold >= 0f ? 1f : 0f, dt * (RestartHold >= 0f ? 12f : 4f));
+            if (RestartHold >= 0f) restartFill.sizeDelta = new Vector2(300f * Mathf.Clamp01(RestartHold), 5f);
+            if (restartText.text != RestartLabel) restartText.text = RestartLabel;
             rewindRoot.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, Ease.OutBack(rewindGroup.alpha, 2f));
             rewindDial.localRotation = Quaternion.Euler(0, 0, Clock.Now * 540f); // hands run backwards
             rewindTag.Glow = 0.5f;

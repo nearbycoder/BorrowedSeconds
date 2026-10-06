@@ -373,6 +373,8 @@ namespace BorrowedSeconds.Game
             if (State != Flow.Playing || Session == null) return;
             State = Flow.Paused;
             Session.Paused = true;
+            Hud.RestartHold = -1f;
+            restartArmed = false;
             Session.AllowInput = false;
             pause.Show();
             Sfx.Play("ui_click");
@@ -537,7 +539,7 @@ namespace BorrowedSeconds.Game
                 case Flow.Playing:
                     if (Input.Pause && Time.frameCount != resumedFrame) { Pause(); break; }
                     if (Input.Hint) ToggleTip();
-                    if (Input.Restart && Session.State != LevelSession.Mode.Won) { Sfx.Play("ui_back"); StartLevel(LevelIndex, false); break; }
+                    if (Session.State != LevelSession.Mode.Won && UpdateRestart(dt)) { Sfx.Play("ui_back"); StartLevel(LevelIndex, false); break; }
                     if (pendingComplete.HasValue && Clock.Now - wonAt > 1.1f)
                     {
                         var (t, p, prev) = pendingComplete.Value;
@@ -547,6 +549,28 @@ namespace BorrowedSeconds.Game
                     }
                     break;
             }
+        }
+
+        // restart is instant in a level's first seconds; later it must be held, so a stray key can't
+        // throw away a long attempt
+        const int QuickRestartTicks = 3 * Rules.TicksPerSecond;
+        const float RestartHoldSeconds = 0.6f;
+        float restartHeld;
+        bool restartArmed;
+
+        bool UpdateRestart(float dt)
+        {
+            if (Input.Restart && Session.Tick < QuickRestartTicks) { restartArmed = false; Hud.RestartHold = -1f; return true; }
+            if (Input.Restart) { restartArmed = true; restartHeld = 0f; } // a fresh press, not a hold carried over from a restart
+            // real time, not the clamped menu dt: a hold must take 0.6 s even at a low frame rate
+            if (restartArmed && Input.RestartHeld) restartHeld += Mathf.Min(Clock.Dt, 0.25f);
+            else restartArmed = false;
+            Hud.RestartLabel = $"HOLD {(Input.UsingGamepad ? "Y" : Input.KeyName(KeyAction.Restart))} TO RESTART";
+            Hud.RestartHold = restartArmed ? restartHeld / RestartHoldSeconds : -1f;
+            if (!restartArmed || restartHeld < RestartHoldSeconds) return false;
+            restartArmed = false;
+            Hud.RestartHold = -1f;
+            return true;
         }
 
         MenuScreen TopScreen()
@@ -573,6 +597,8 @@ namespace BorrowedSeconds.Game
             Session.Died += _ => diedSinceRewind = true;
             attemptDeaths = 0;
             Hud.Watching = false;
+            Hud.RestartHold = -1f;
+            restartArmed = false;
             Session.Died += _ => { if (++attemptDeaths == NudgeAfterDeaths && State == Flow.Playing) RefreshTip(false); };
             Session.RewindChanged += on =>
             {

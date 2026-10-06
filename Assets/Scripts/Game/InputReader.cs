@@ -14,6 +14,8 @@ namespace BorrowedSeconds.Game
         public int HeldDir = -1;      // direction currently held (most recent wins)
         public int PressedDir = -1;   // direction newly pressed this frame
         public bool Borrow, Focus, Rewind, Restart, Pause, Confirm, Back, CycleNext, CyclePrev, Hint;
+        /// <summary>The restart key/button is down this frame (Restart is only the press).</summary>
+        public bool RestartHeld;
         public bool PointerMoved, Click;
         /// <summary>Mouse wheel this frame: +1 up, -1 down, 0 none.</summary>
         public int Scroll;
@@ -34,7 +36,7 @@ namespace BorrowedSeconds.Game
             var mouse = Mouse.current;
             var pad = Gamepad.current;
             PressedDir = -1;
-            Borrow = Focus = Rewind = Restart = Pause = Confirm = Back = CycleNext = CyclePrev = Hint = Click = false;
+            Borrow = Focus = Rewind = Restart = Pause = Confirm = Back = CycleNext = CyclePrev = Hint = Click = RestartHeld = false;
             AnyKey = false;
             Scroll = 0;
             PressedKey = Key.None;
@@ -51,6 +53,7 @@ namespace BorrowedSeconds.Game
                 Focus |= Held(kb, KeyAction.Focus);
                 Rewind |= Held(kb, KeyAction.Rewind) || kb.backspaceKey.isPressed;
                 Restart |= Pressed(kb, KeyAction.Restart);
+                RestartHeld |= Held(kb, KeyAction.Restart);
                 Pause |= kb.escapeKey.wasPressedThisFrame || Pressed(kb, KeyAction.Pause);
                 Confirm |= kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame;
                 Back |= kb.escapeKey.wasPressedThisFrame;
@@ -100,6 +103,7 @@ namespace BorrowedSeconds.Game
                 Focus |= pad.leftTrigger.ReadValue() > 0.4f;
                 Rewind |= pad.buttonWest.isPressed;
                 Restart |= pad.buttonNorth.wasPressedThisFrame;
+                RestartHeld |= pad.buttonNorth.isPressed;
                 Pause |= pad.startButton.wasPressedThisFrame;
                 Back |= pad.buttonEast.wasPressedThisFrame;
                 CycleNext |= pad.rightShoulder.wasPressedThisFrame;
