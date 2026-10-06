@@ -10,7 +10,7 @@ name = sys.argv[1]
 limit = int(sys.argv[2]) if len(sys.argv) > 2 else 6
 filt = sys.argv[3] if len(sys.argv) > 3 else ""
 mod = importlib.import_module(name)
-log = open(f"/tmp/sw_{name}.txt").read().splitlines()
+log = open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "Builds", "sweeps", f"{name}.txt")).read().splitlines()
 passing = []
 for l in log:
     if l.startswith("PASS "):

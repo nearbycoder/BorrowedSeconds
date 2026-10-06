@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Self-test: the built game plays every level from the solver's replays, saves screenshots to
-# ${1:-/tmp/bs-capture} and prints PASS/FAIL per level.
+# ${1:-Builds/capture} and prints PASS/FAIL per level.
 #   Tools/capture.sh [dir] [dev] [-bsOnly 1-1] [-bsShots 10,40]
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="${1:-/tmp/bs-capture}"; shift || true
+OUT="${1:-$ROOT/Builds/capture}"; shift || true
 MODE=()
 if [ "${1:-}" = "dev" ]; then MODE=(dev); shift; fi
 rm -rf "$OUT"; mkdir -p "$OUT"

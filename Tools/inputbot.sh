@@ -4,7 +4,7 @@
 #   Tools/inputbot.sh [dir] [dev]
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="${1:-/tmp/bs-inputbot}"
+OUT="${1:-$ROOT/Builds/inputbot}"
 MODE=(); [ "${2:-}" = "dev" ] && MODE=(dev)
 rm -rf "$OUT"; mkdir -p "$OUT"
 timeout 180 "$ROOT/Tools/play.sh" "${MODE[@]}" -logFile "$OUT/player.log" -bsInputBot "$OUT" > /dev/null 2>&1 || true

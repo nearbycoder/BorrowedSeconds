@@ -4,7 +4,7 @@
 #   Tools/checks.sh [dir] [dev]
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="${1:-/tmp/bs-checks}"
+OUT="${1:-$ROOT/Builds/checks}"
 MODE=(); [ "${2:-}" = "dev" ] && MODE=(dev)
 rm -rf "$OUT"; mkdir -p "$OUT"
 ulimit -f 524288 # 512 MB per file: a player stuck logging in a loop must not fill the disk
