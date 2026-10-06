@@ -887,7 +887,7 @@ namespace BorrowedSeconds.UI
         readonly CanvasGroup footGroup;
 
         public SettingsScreen(Transform canvas, SaveData save, Action apply, Action onBack)
-            : base(canvas, "Settings", new Vector2(860, 800), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
+            : base(canvas, "Settings", new Vector2(860, 868), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
         {
             this.onBack = onBack;
             menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -180), 740, 68, 27, true);
@@ -901,6 +901,11 @@ namespace BorrowedSeconds.UI
             menu.AddToggle("Reduce flashing", () => save.reduceFlashing, () => { save.reduceFlashing = !save.reduceFlashing; apply(); });
             menu.AddSlider("Focus slow-motion", () => (save.focus - 0.1f) / 0.5f, () => Pct(save.focus),
                 d => { save.focus = Mathf.Clamp(Mathf.Round((save.focus + d * 0.1f) * 10f) / 10f, 0.1f, 0.6f); apply(); });
+            // after the existing rows, so scripted tours (the trailer) keep their indices
+            float[] speeds = { 0.5f, 0.7f, 0.85f, 1f };
+            int SpeedStep() { int k = 0; for (int i = 0; i < speeds.Length; i++) if (Mathf.Abs(speeds[i] - save.speed) < Mathf.Abs(speeds[k] - save.speed)) k = i; return k; }
+            menu.AddSlider("Game speed", () => SpeedStep() / (float)(speeds.Length - 1), () => Pct(speeds[SpeedStep()]),
+                d => { save.speed = speeds[Mathf.Clamp(SpeedStep() + d, 0, speeds.Length - 1)]; apply(); });
             menu.Add("Back", onBack);
             menu.IntroDelay = 0.25f;
             footRow = Ui.Rect("Foot", Body, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 22), new Vector2(700, 34));

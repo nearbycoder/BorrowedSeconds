@@ -12,7 +12,7 @@ namespace BorrowedSeconds.UI
     {
         Canvas canvas;
         CanvasGroup group;
-        TextMeshProUGUI chapterText, numberText, nameText, timeText, parText;
+        TextMeshProUGUI chapterText, numberText, nameText, timeText, parText, speedText;
         // pocket watch
         RectTransform watch;
         Image watchFill, watchGlow, watchFace;
@@ -101,6 +101,9 @@ namespace BorrowedSeconds.UI
             parText = Ui.Text("Par", tr, "", Ui.Semi, 22, dim, TextAlignmentOptions.TopRight);
             Ui.Place(parText.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(0, -66), new Vector2(400, 30));
             parText.characterSpacing = 8;
+            speedText = Ui.Text("Speed", tr, "", Ui.Semi, 18, Palette.Ice, TextAlignmentOptions.TopRight);
+            Ui.Place(speedText.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(0, -96), new Vector2(400, 26));
+            speedText.characterSpacing = 8;
 
             // ---- bottom centre: pocket watch
             watch = Ui.Rect("Watch", root, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 46), new Vector2(170, 170));
@@ -280,6 +283,8 @@ namespace BorrowedSeconds.UI
             var s = session.Cur;
             var d = session.Def;
             timeText.text = $"<mspace=0.6em>{Ui.Secs(s.Tick)}</mspace>";
+            string speedTag = LevelSession.GameSpeed < 0.999f && !session.Muted ? $"SPEED {Mathf.RoundToInt(LevelSession.GameSpeed * 100)}%" : "";
+            if (speedText.text != speedTag) speedText.text = speedTag;
             timeText.richText = true;
             AnimateIntro(dt);
             if (titleGroup.gameObject.activeSelf == TrailerMode)

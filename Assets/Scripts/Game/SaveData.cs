@@ -18,6 +18,7 @@ namespace BorrowedSeconds.Game
         public int learned;                     // onboarding prompts retired (UI.Prompts bits)
 
         public float master = 0.8f, music = 0.7f, sfx = 0.9f, focus = 0.2f;
+        public float speed = 1f;                // game-speed assist; medals count sim ticks, so they stay fair
         public bool fullscreen = true, shake = true, reduceFlashing;
 
         public static SaveData Load()

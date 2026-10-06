@@ -123,6 +123,7 @@ namespace BorrowedSeconds.Game
             Rig.ShakeEnabled = Save.shake;
             Env.ReduceFlashing = Save.reduceFlashing;
             LevelSession.FocusScale = Save.focus;
+            LevelSession.GameSpeed = capturing ? 1f : Mathf.Clamp(Save.speed, 0.5f, 1f);
             if (!Application.isEditor && !capturing)
             {
                 var mode = Save.fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
@@ -143,6 +144,9 @@ namespace BorrowedSeconds.Game
             promptDemo = System.Array.IndexOf(args, "-bsPrompts") >= 0;
             if (promptDemo) Save.learned = 0;
             Save.ReadOnly = capturing;
+            // scripted runs play at full speed unless asked (-bsSpeed checks that slow play is still exact)
+            LevelSession.GameSpeed = float.TryParse(Arg(args, "-bsSpeed"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float speed)
+                ? Mathf.Clamp(speed, 0.1f, 4f) : capturing ? 1f : LevelSession.GameSpeed;
             string fps = Arg(args, "-bsFps");
             if (fps != null)
             {
@@ -698,7 +702,7 @@ namespace BorrowedSeconds.Game
                     foreach (var a in sol.Actions) if (Act.IsBorrow(a.Action)) { wanted.Add(a.Tick + 4); wanted.Add(a.Tick + 30); }
                     wanted.Add(Mathf.Max(1, sol.Par - 2));
                 }
-                float timeout = Time.realtimeSinceStartup + sol.Par * LevelSession.TickDt * 2f + 10f;
+                float timeout = Time.realtimeSinceStartup + sol.Par * LevelSession.TickDt * 2f / LevelSession.GameSpeed + 10f;
                 int dueShots = 0;
                 Session.Events += (st, evs) =>
                 {

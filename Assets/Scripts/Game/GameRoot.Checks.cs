@@ -31,6 +31,7 @@ namespace BorrowedSeconds.Game
             yield return CheckHint(dir, Report);
             yield return CheckChannels(dir, "6-4", new[] { 1, 1 }, Report);
             yield return CheckChannels(dir, "2-2", new[] { 2 }, Report);
+            yield return CheckSpeed(dir, Report);
             yield return CheckWatch(dir, Report);
 
             log.Add($"done fail={fail}");
@@ -103,6 +104,44 @@ namespace BorrowedSeconds.Game
                 Session.Paused = false;
             }
             report("channels " + id, wired && pressed >= 0, $"links per plate={string.Join(",", System.Linq.Enumerable.Select(System.Linq.Enumerable.Range(0, board.Plates.Count), board.LinkCount))} (expected {string.Join(",", expectLinks)}), first press at tick {pressed}");
+        }
+
+        /// <summary>
+        /// Settings > Game speed steps through 100/85/70/50 %, survives a save round trip, and slows the
+        /// level in real time (ticks per real second) with a SPEED tag on the HUD.
+        /// </summary>
+        IEnumerator CheckSpeed(string dir, System.Action<string, bool, string> report)
+        {
+            float saved = Save.speed;
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "2-1"), false);
+            Session.Autoplay = Catalog.SolutionFor(Session.Def).Actions;
+            Hud.SkipIntro();
+            Pause();
+            OpenSettings(Flow.Paused);
+            var item = settings.Menu.Items[7];
+            bool labelled = item.Label == "Game speed";
+            settings.Menu.Selected = 7;
+            item.Adjust(-1);
+            item.Adjust(-1);
+            bool stepped = Mathf.Approximately(Save.speed, 0.7f) && item.Value() == "70%";
+            bool persists = Mathf.Approximately(JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(Save)).speed, 0.7f);
+            yield return new WaitForSecondsRealtime(1.2f);
+            yield return Shot(dir, "speed_settings");
+            CloseSettings();
+            Resume();
+            LevelSession.GameSpeed = Save.speed; // what ApplySettings does outside scripted runs
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (Session.State != LevelSession.Mode.Playing && Time.realtimeSinceStartup < deadline) yield return null;
+            int t0 = Session.Tick;
+            float r0 = Time.realtimeSinceStartup;
+            yield return new WaitForSecondsRealtime(3f);
+            float rate = (Session.Tick - t0) / (Time.realtimeSinceStartup - r0);
+            bool slowed = Mathf.Abs(rate - Rules.TicksPerSecond * 0.7f) < 2f;
+            yield return Shot(dir, "speed_hud");
+            LevelSession.GameSpeed = 1f;
+            Save.speed = saved;
+            report("game-speed", labelled && stepped && persists && slowed,
+                $"row={item.Label} stepped={stepped} persists={persists} rate={rate:0.0} ticks/s (expected {Rules.TicksPerSecond * 0.7f:0.0})");
         }
 
         /// <summary>A spoiler tip starts folded behind H, unfolds on H, and defaults add a Watch solution pointer.</summary>

@@ -30,6 +30,9 @@ namespace BorrowedSeconds.Game
         public float IntroTime = 0.6f;
         /// <summary>Simulation speed while focusing (a setting).</summary>
         public static float FocusScale = 0.2f;
+        /// <summary>Game-speed assist (a setting): the whole level runs slower in real time. The sim
+        /// and its tick count are unchanged, so times and medals mean the same thing.</summary>
+        public static float GameSpeed = 1f;
 
         public event Action<SimState, List<SimEvent>> Events;
         public event Action Won;
@@ -125,7 +128,7 @@ namespace BorrowedSeconds.Game
             focusBlend = Mathf.MoveTowards(focusBlend, Focusing ? 1f : 0f, dt * 6f);
             Board.SetHighlight(LoanAvailable ? Aim : -1);
 
-            float scale = Mathf.Lerp(1f, FocusScale, focusBlend) * Speed;
+            float scale = Mathf.Lerp(1f, FocusScale, focusBlend) * Speed * (Muted ? 1f : GameSpeed);
             if (Paused) scale = 0f;
             if (hitstop > 0f)
             {
