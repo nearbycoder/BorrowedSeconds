@@ -229,3 +229,36 @@ Written 2026-10-06 on `improvements-3`, after confirming `main` matched `origin/
 - 7-2 *Float* and 7-4 *Cutoff* both freeze the lane laser and let the debt hold a dial. **Only if** items 1–4 are done and a sweep finds a proven short-term level with a different idea, it replaces 7-4. If not, it's deferred with notes. Round 2's chapter VII hasn't been released, so no player save has a 7-4 time yet.
 
 **Not this round:** chapters IX–XII, touch controls (no touch platform ships), WebGL, Windows (blocked on the module), re-cutting the trailer, the audio mix by ear, and human playtesting.
+
+## Round 3 results
+
+Three of the five items shipped on `improvements-3`. Chapter VIII (item 2) did **not** ship: three of its five levels are proven and kept in the lab, but no fourth or fifth design with an idea of its own turned up. The stretch item (5) wasn't attempted. Final verification ran on the **release** build with this round's code: EditMode 109/109, autopilot 35/35 at par, `checks.sh` all PASS (*Watch solution* 35/35, the new `run-watch` check, audio balance median +10.4 dB, worst +5.0 dB, peak 0.84), the input bot's four passes PASS, and `Tools/docs_check.py` clean. Images are in `docs/media/improvements/round3/`.
+
+| # | Item | Commit | Verification |
+|---|---|---|---|
+| 1 | Scripted runs time out on a stalled tick, not wall-clock time (`RunWatch`, used by the autopilot, *Watch solution* and the audio log) | `2e9b2ac` | New check `run-watch`: a replay crawling at 1 tick/s stays alive past the 10 s limit (12 ticks in 13 s), and a replay stopped dead is caught (after 300 frames and 10 s; 25.7 s at 12 fps). *Watch solution* 35/35 on the dev and release builds. |
+| 2 | Chapter VIII *Amortize* | not shipped; designs in `8020465` | See below. `levels.json` is unchanged and `assemble.py` skips the incomplete chapter. |
+| 3 | README screenshots regenerated from the current build, plus a chapter VII still (7-5 *Payroll*) | `7a56e01` | `make_trailer.sh --stills` from the release build. Every image was looked at: the Ledger shows 35 levels and pages I–IV / V–VII, and the HUD shows the hint key and folded spoiler tips. Before/after sheets: shots 01–02. The trailer was not re-cut. |
+| 4 | Docs accuracy: PLAN §6 covers chapters V–VII; `Tools/docs_check.py`; README status | `0a5f4ff`, `ee528f9`, `7a56e01` | `docs_check.py` matches 35 README rows, 7 chapter rows and 35 PLAN rows against `levels.json`/`solutions.json`. It caught both errors planted to test it (a dropped D claim and a wrong debt count). For V–VII, PLAN quotes each level's tip as the intended trick rather than claiming routes nobody has traced. |
+| 5 | Stretch: separate 7-2 and 7-4's shared idea | — | Not attempted; the solver time went to chapter VIII. |
+
+**About item 1.** Scope called a wall-clock deadline on a slow machine the likely cause of round 2's one 2-3 failure. That is still a hypothesis. The failure didn't recur this round, so nothing confirms it, but the machine did run the checks at 11–12 fps under load, which is the condition the old deadline handled badly. A failure now logs whether the replay died, stalled, ran over the cap or was replaced, with its tick and frame rate.
+
+**Chapter VIII: what was tried.** All runs used 3–6 niced solver jobs while the machine's load ran between 10 and 85.
+- **The lab's "ready" 8-1 *Instalments* wasn't new.** Its map and laser are 7-3 *Same Day*'s, with a 5 s term instead of 2 s, so it was dropped.
+- **Proven and kept** (`Tools/lab/c81`, `c82`, `c85`; margin ±4 each):
+  - *Shade* (hand-made, `d88`): two always-lit lanes and one chute. Proven: B, needs ≥ 2 loans. In the solver's route, lane 1 is shaded by freezing its laser while the chute blocks the beam, and lane 2 by freezing the chute.
+  - *Bridge* (`d85`): the first debt lands you inside a dead-end shuttle corridor and the shuttle passes through you; a second loan, taken on the thaw, freezes the lane shuttle. Proven: B, needs ≥ 2 loans. The forgiven-debt search runs past 30M states, so D isn't claimed.
+  - *Joint Account* (`d84`): your debt holds one dial, and a frozen chute's weight holds the other. Proven: B, D, needs ≥ 2 loans (30M-state budget).
+- **Families that produced nothing usable:**
+  - Crossings (`d82`): about 90 of 200 candidates in 55 min, 0 passes; stopped.
+  - A loop block on a ring of dials: one loan still covered three dials.
+  - A single loop block walked twice: on a closed ring the short way round is at most half the ring (45 ticks), so one freeze or none covers it.
+  - The Escrow gate family with two loans (36 candidates, 0 passes).
+  - Two three-tile gates held by one plate: all 16 were solvable without a loan, because a gate held by someone standing in it lets you through on a single opening.
+  - The two-lane U family (`dtwo8`, 52 of 60): 4 passes, all blinking-beam-and-dial lanes that repeat 7-2, 7-3 and 4-2. Rejected.
+- **The real obstacle is design, not compute.** "Two loans" is already chapter VII's texture: 7-1, 7-3 and 7-5 take two or three loans, and 1-3 and 4-2 chain loans too. Most two-loan layouts collapse into 1-3 *Grace Period* (two obstacles in a row, settle up between them). Whether VIII keeps this theme is an owner decision.
+
+**Save safety.** The real save (`~/.config/unity3d/Borrowed Seconds/…/prefs`) has the same content before and after every run. One write did happen: Unity's EditMode test runner always saves a copy of its results to `persistentDataPath/TestResults.xml`, even when given `-testResults`. That file (a test report from earlier rounds) now holds this round's report. Running the tests with `XDG_CONFIG_HOME` pointed into `Builds/` should avoid it next time; untested.
+
+Still open: chapter VIII (two more designs, or a new theme) and IX–XII, chapter VII's shared idea, a trailer re-cut, human playtesting, a listen to the mix, WebGL, Windows (needs the module) and touch.
