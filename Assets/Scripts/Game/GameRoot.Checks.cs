@@ -29,6 +29,8 @@ namespace BorrowedSeconds.Game
 
             yield return CheckFocusPause(dir, Report);
             yield return CheckHint(dir, Report);
+            yield return CheckChannels(dir, "6-4", new[] { 1, 1 }, Report);
+            yield return CheckChannels(dir, "2-2", new[] { 2 }, Report);
             yield return CheckWatch(dir, Report);
 
             log.Add($"done fail={fail}");
@@ -67,6 +69,40 @@ namespace BorrowedSeconds.Game
             ScreenCapture.CaptureScreenshot(Path.Combine(dir, name + ".png"));
             yield return null;
             yield return null;
+        }
+
+        /// <summary>
+        /// Each plate is wired (link arcs) to exactly the gates and lasers on its channel, and pulses
+        /// when pressed. Screenshots the board at rest and mid-pulse for review.
+        /// </summary>
+        IEnumerator CheckChannels(string dir, string id, int[] expectLinks, System.Action<string, bool, string> report)
+        {
+            int index = Catalog.Levels.FindIndex(l => l.Id == id);
+            LoadLevel(index);
+            State = Flow.Playing;
+            Hud.SetVisible(true);
+            Hud.SkipIntro();
+            Session.IntroTime = 0.2f;
+            Session.Autoplay = Catalog.SolutionFor(Catalog.Levels[index]).Actions;
+            var board = Session.Board;
+            bool wired = board.Plates.Count == expectLinks.Length;
+            for (int i = 0; wired && i < expectLinks.Length; i++) wired = board.LinkCount(i) == expectLinks[i];
+            Session.Paused = true;
+            yield return new WaitForSecondsRealtime(0.6f);
+            yield return Shot(dir, $"channels_{id}_rest");
+            Session.Paused = false;
+            int pressed = -1;
+            Session.Events += (st, evs) => { foreach (var e in evs) if (e.Type == Ev.PlateDown && pressed < 0) pressed = st.Tick; };
+            float deadline = Time.realtimeSinceStartup + 20f;
+            while (pressed < 0 && Session.State != LevelSession.Mode.Won && Time.realtimeSinceStartup < deadline) yield return null;
+            if (pressed >= 0)
+            {
+                yield return new WaitForSecondsRealtime(0.22f); // the spark is mid-arc
+                Session.Paused = true;
+                yield return Shot(dir, $"channels_{id}_pulse");
+                Session.Paused = false;
+            }
+            report("channels " + id, wired && pressed >= 0, $"links per plate={string.Join(",", System.Linq.Enumerable.Select(System.Linq.Enumerable.Range(0, board.Plates.Count), board.LinkCount))} (expected {string.Join(",", expectLinks)}), first press at tick {pressed}");
         }
 
         /// <summary>A spoiler tip starts folded behind H, unfolds on H, and defaults add a Watch solution pointer.</summary>

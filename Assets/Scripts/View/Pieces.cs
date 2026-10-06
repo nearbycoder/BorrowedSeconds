@@ -21,6 +21,77 @@ namespace BorrowedSeconds.View
 
         protected static float Smooth(float current, float target, float speed, float dt)
             => Mathf.Lerp(current, target, 1f - Mathf.Exp(-speed * dt));
+
+        /// <summary>Channel marks: channel+1 pips in a row along <paramref name="axis"/>, so a plate, its
+        /// gates and its linked lasers pair up even without colour.</summary>
+        protected static Transform ChannelPips(Transform parent, int channel, Vector3 center, Vector3 axis, float spacing, float size, Material mat)
+        {
+            var g = Shapes.Group("ChannelPips", parent, center).transform;
+            int n = channel + 1;
+            for (int k = 0; k < n; k++) Shapes.Ball("Pip" + k, g, axis * ((k - (n - 1) * 0.5f) * spacing), size, mat, false);
+            return g;
+        }
+
+        protected static Material ChannelGlow(int channel)
+        {
+            var c = Palette.Channel(channel);
+            return Mats.Emissive(c * 0.6f, c * 2.2f, 0.6f);
+        }
+    }
+
+    /// <summary>A brief arc of light from a pressed plate to something on its channel.</summary>
+    public sealed class LinkPulse
+    {
+        const int Segments = 14;
+        const float Life = 0.75f, Travel = 0.4f;
+        readonly GameObject root, spark;
+        readonly Material lineMat, sparkMat;
+        readonly Color color;
+        readonly Vector3[] points = new Vector3[Segments + 1];
+        float age = 99f;
+
+        public LinkPulse(Transform parent, Vector3 from, Vector3 to, Color color)
+        {
+            this.color = color;
+            root = Shapes.Group("LinkPulse", parent);
+            lineMat = Mats.Instance("BS_GlowAdd");
+            sparkMat = Mats.Instance("BS_GlowAdd");
+            float lift = 0.45f + 0.1f * Vector3.Distance(from, to);
+            for (int k = 0; k <= Segments; k++)
+            {
+                float s = k / (float)Segments;
+                points[k] = Vector3.Lerp(from, to, s) + Vector3.up * (Mathf.Sin(Mathf.PI * s) * lift);
+            }
+            for (int k = 0; k < Segments; k++)
+            {
+                var a = points[k];
+                var b = points[k + 1];
+                var seg = Shapes.Box("Seg" + k, root.transform, (a + b) * 0.5f, new Vector3(0.025f, 0.025f, Vector3.Distance(a, b) + 0.01f), lineMat, false);
+                seg.transform.localRotation = Quaternion.LookRotation(b - a);
+            }
+            spark = Shapes.Ball("Spark", root.transform, from, 0.12f, sparkMat, false);
+            root.SetActive(false);
+        }
+
+        public void Fire() => age = 0f;
+
+        public void Render(float dt)
+        {
+            age += dt;
+            bool on = age < Life;
+            if (root.activeSelf != on) root.SetActive(on);
+            if (!on) return;
+            float fade = 1f - age / Life;
+            Glow(lineMat, 2.2f * fade * fade);
+            float s = Mathf.Clamp01(age / Travel);
+            spark.SetActive(s < 1f);
+            float f = s * Segments;
+            int k = Mathf.Min(Segments - 1, (int)f);
+            spark.transform.localPosition = Vector3.Lerp(points[k], points[k + 1], f - k);
+            Glow(sparkMat, 6f * (1f - s * 0.5f));
+        }
+
+        void Glow(Material m, float intensity) => m.SetColor("_Color", new Color(color.r * intensity, color.g * intensity, color.b * intensity, color.a));
     }
 
     /// <summary>The crystal shell + floor timer ring shown on anything frozen.</summary>
@@ -265,6 +336,8 @@ namespace BorrowedSeconds.View
             ghost = Shapes.Box("Hover", Root.transform, new Vector3(0, baseH + 0.2f, 0.05f), new Vector3(0.8f, 0.6f, 0.9f), Inst("BS_Ghost"), false);
             ghost.SetActive(false);
             shell = new FrozenShell(Root.transform, new Vector3(0, baseH + 0.22f, 0.05f), new Vector3(0.8f, 0.6f, 0.86f), 0f);
+            // a laser a plate switches off wears that plate's marks
+            if (ld.Plate >= 0) ChannelPips(Root.transform, ld.Plate, new Vector3(0, baseH + 0.44f, -0.04f), Vector3.right, 0.1f, 0.075f, ChannelGlow(ld.Plate));
             var col = Root.AddComponent<BoxCollider>();
             col.center = new Vector3(0, baseH * 0.5f + 0.3f, 0);
             col.size = new Vector3(1f, baseH + 0.7f, 1f);
@@ -413,7 +486,8 @@ namespace BorrowedSeconds.View
             index = i;
             var pd = board.Def.Plates[i];
             Root = Shapes.Group("Plate" + i, board.transform, board.At(pd.Tile));
-            mat = new Material(Mats.Emissive(Palette.Mint * 0.6f, Palette.Mint * 0.4f, 0.6f));
+            color = Palette.Channel(pd.Channel);
+            mat = new Material(Mats.Emissive(color * 0.6f, color * 0.4f, 0.6f));
             var model = Shapes.Model("Plate", Root.transform, (part, m) => m == "Pad" ? mat : null);
             if (model != null)
             {
@@ -426,9 +500,12 @@ namespace BorrowedSeconds.View
                 pad = Shapes.Box("Pad", Root.transform, new Vector3(0, 0.04f, 0), new Vector3(0.72f, 0.06f, 0.72f), mat).transform;
                 padUp = 0.04f;
             }
+            pips = ChannelPips(Root.transform, pd.Channel, new Vector3(0, 0.05f, 0), Vector3.right, 0.16f, 0.1f, Mats.Lit(Palette.Ink, 0.5f));
         }
 
         readonly float padUp;
+        readonly Color color;
+        readonly Transform pips;
 
         public override void Render(SimState a, SimState b, float t, float dt, float time)
         {
@@ -436,7 +513,8 @@ namespace BorrowedSeconds.View
             press = Smooth(press, pressed ? 1f : 0f, 20f, dt);
             var lp = pad.localPosition;
             pad.localPosition = new Vector3(lp.x, padUp - 0.028f * press, lp.z);
-            Mats.SetEmission(mat, Palette.Mint * Mathf.Lerp(0.35f, 2.6f, press));
+            pips.localPosition = new Vector3(0, 0.05f - 0.028f * press, 0);
+            Mats.SetEmission(mat, color * Mathf.Lerp(0.35f, 2.6f, press));
         }
     }
 
@@ -456,7 +534,8 @@ namespace BorrowedSeconds.View
             int e = board.Def.Neighbor(gd.Tile, Dirs.E), w = board.Def.Neighbor(gd.Tile, Dirs.W);
             bool ewWalls = (e < 0 || board.Def.Tiles[e] != Tile.Floor) && (w < 0 || board.Def.Tiles[w] != Tile.Floor);
             Root.transform.localRotation = Quaternion.Euler(0, ewWalls ? 0 : 90, 0);
-            mat = new Material(Mats.Emissive(Palette.Mint * 0.5f, Palette.Mint * 0.8f, 0.7f));
+            color = Palette.Channel(gd.Channel);
+            mat = new Material(Mats.Emissive(color * 0.5f, color * 0.8f, 0.7f));
             var slabModel = Shapes.Model("GateSlab", Root.transform, (part, m) => m == "MintGlass" ? mat : null);
             if (slabModel != null && Shapes.Model("GatePosts", Root.transform) != null)
             {
@@ -472,16 +551,21 @@ namespace BorrowedSeconds.View
                 slab = Shapes.Box("Slab", Root.transform, new Vector3(0, 0.38f, 0), new Vector3(0.86f, 0.76f, 0.16f), mat).transform;
                 slabUp = 0.38f;
             }
+            // dark dots on the glowing caps, matching the dots on the plate
+            var ink = Mats.Lit(Palette.Ink, 0.5f);
+            foreach (float x in new[] { -0.47f, 0.47f })
+                ChannelPips(Root.transform, gd.Channel, new Vector3(x, 0.91f, 0), Vector3.forward, 0.1f, 0.085f, ink);
         }
 
         readonly float slabUp;
+        readonly Color color;
 
         public override void Render(SimState a, SimState b, float t, float dt, float time)
         {
             bool isOpen = b.GateOpen[index];
             open = Smooth(open, isOpen ? 1f : 0f, 14f, dt);
             slab.localPosition = new Vector3(0, slabUp - 0.8f * open, 0);
-            Mats.SetEmission(mat, Palette.Mint * Mathf.Lerp(0.8f, 0.2f, open));
+            Mats.SetEmission(mat, color * Mathf.Lerp(0.8f, 0.2f, open));
         }
     }
 

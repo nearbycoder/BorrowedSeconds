@@ -626,6 +626,7 @@ namespace BorrowedSeconds.Game
                         break;
                     case Ev.PlateDown:
                         Fx.Plate(board.At(def.Plates[e.A].Tile), true);
+                        board.PulseLinks(e.A);
                         if (loud) Sfx.World("plate", 0.7f);
                         break;
                     case Ev.PlateUp:

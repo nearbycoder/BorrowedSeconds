@@ -31,5 +31,10 @@ namespace BorrowedSeconds.View
         public static readonly Color Danger = Hex("#FF3048");
         public static readonly Color Ink = Hex("#151A33");
         public static readonly Color Paper = Hex("#F6F1E7");
+
+        // plate/gate channels a-f: mint first, so single-channel levels keep their look; each
+        // channel also carries channel+1 pips, so pairs read without colour
+        static readonly Color[] channels = { Mint, Hex("#B58CFF"), Hex("#F2E66B"), Hex("#FF8FC8"), Hex("#FFA25C"), Hex("#9FE36A") };
+        public static Color Channel(int c) => channels[Mathf.Clamp(c, 0, channels.Length - 1)];
     }
 }

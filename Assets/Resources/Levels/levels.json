@@ -141,7 +141,7 @@
       "name": "Counterweight",
       "chapter": 2,
       "term": 100,
-      "hint": "A plate holds the gate of its colour open while anything rests on it, blocks included.",
+      "hint": "A plate works everything with its colour and marks: it holds gates open and lasers dark while anything rests on it, blocks included.",
       "map": [
         " ...    .a.   ",
         " .S.    .#.   ",
@@ -688,7 +688,7 @@
       "chapter": 6,
       "term": 120,
       "loans": 1,
-      "hint": "Each plate holds its own gate. The loop steps on one, then the other.",
+      "hint": "Each plate holds open the gate with its colour and marks. The loop steps on one, then the other.",
       "map": [
         "      ....     ",
         "...   .##.     ",

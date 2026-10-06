@@ -47,6 +47,34 @@ namespace BorrowedSeconds.View
             for (int i = 0; i < d.Lasers.Length; i++) Lasers.Add(new LaserView(this, i));
             for (int i = 0; i < d.Rotors.Length; i++) Rotors.Add(new RotorView(this, i));
             Player = new PlayerView(this);
+            BuildLinks();
+        }
+
+        // arcs from each plate to the gates and lasers on its channel, fired when it goes down
+        List<LinkPulse>[] links = new List<LinkPulse>[0];
+
+        void BuildLinks()
+        {
+            links = new List<LinkPulse>[Def.Plates.Length];
+            for (int i = 0; i < Def.Plates.Length; i++)
+            {
+                var pd = Def.Plates[i];
+                var color = Palette.Channel(pd.Channel);
+                var from = At(pd.Tile, 0.08f);
+                links[i] = new List<LinkPulse>();
+                foreach (var gd in Def.Gates)
+                    if (gd.Channel == pd.Channel) links[i].Add(new LinkPulse(transform, from, At(gd.Tile, 0.95f), color));
+                foreach (var ld in Def.Lasers)
+                    if (ld.Plate == pd.Channel) links[i].Add(new LinkPulse(transform, from, At(ld.Tile, (Def.Tiles[ld.Tile] == Tile.Wall ? 0.6f : 0f) + 0.45f), color));
+            }
+        }
+
+        public int LinkCount(int plate) => plate >= 0 && plate < links.Length ? links[plate].Count : 0;
+
+        /// <summary>Shows what a plate drives: a pulse of light to every gate and laser on its channel.</summary>
+        public void PulseLinks(int plate)
+        {
+            if (plate >= 0 && plate < links.Length) foreach (var l in links[plate]) l.Fire();
         }
 
         void BuildTerrain()
@@ -100,6 +128,7 @@ namespace BorrowedSeconds.View
             foreach (var v in Gates) v.Render(a, b, t, dt, time);
             foreach (var v in Locks) v.Render(a, b, t, dt, time);
             Exit.Render(a, b, t, dt, time);
+            foreach (var list in links) foreach (var l in list) l.Render(dt);
         }
 
         public int Pick(Ray ray)

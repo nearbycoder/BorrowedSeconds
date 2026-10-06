@@ -4,7 +4,7 @@
  "chapter": 6,
  "term": 120,
  "loans": 1,
- "hint": "Each plate holds its own gate. The loop steps on one, then the other.",
+ "hint": "Each plate holds open the gate with its colour and marks. The loop steps on one, then the other.",
  "map": [
   "      ....     ",
   "...   .##.     ",
