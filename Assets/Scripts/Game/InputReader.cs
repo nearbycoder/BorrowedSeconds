@@ -94,7 +94,11 @@ namespace BorrowedSeconds.Game
                 CycleNext |= pad.rightShoulder.wasPressedThisFrame;
                 CyclePrev |= pad.leftShoulder.wasPressedThisFrame;
                 Hint |= pad.selectButton.wasPressedThisFrame;
-                bool padAny = pad.buttonSouth.wasPressedThisFrame || pad.startButton.wasPressedThisFrame || v.magnitude > 0.5f;
+                // any button, trigger or stick switches the hints to the pad (Select alone must, too)
+                bool padAny = v.magnitude > 0.5f || pad.leftTrigger.ReadValue() > 0.4f || pad.rightTrigger.ReadValue() > 0.4f
+                    || pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame || pad.buttonWest.wasPressedThisFrame
+                    || pad.buttonNorth.wasPressedThisFrame || pad.startButton.wasPressedThisFrame || pad.selectButton.wasPressedThisFrame
+                    || pad.leftShoulder.wasPressedThisFrame || pad.rightShoulder.wasPressedThisFrame;
                 AnyKey |= pad.buttonSouth.wasPressedThisFrame || pad.startButton.wasPressedThisFrame;
                 if (padAny) UsingGamepad = true;
             }

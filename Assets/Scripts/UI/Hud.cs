@@ -273,6 +273,8 @@ namespace BorrowedSeconds.UI
 
         /// <summary>Swaps the tip's text in place (no slide-in), e.g. when the player unfolds a hint.</summary>
         public void SetTipText(string text) => tipText.text = text ?? "";
+        /// <summary>The control-hint row as last set ("&lt;b&gt;Key&lt;/b&gt; label" pairs).</summary>
+        public string HintsText => hintSource;
         public string TipText => tipText.text;
 
         void LateUpdate()

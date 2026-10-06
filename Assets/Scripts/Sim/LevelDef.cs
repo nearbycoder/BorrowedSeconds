@@ -53,6 +53,8 @@ namespace BorrowedSeconds.Sim
     public sealed class LevelDef
     {
         public string Id = "", Name = "", Hint = "";
+        /// <summary>The hint as worded for a gamepad, where it names controls (empty: same as Hint).</summary>
+        public string HintPad = "";
         /// <summary>The hint gives the trick away: the HUD keeps it folded until the player asks (H).</summary>
         public bool Spoiler;
         public int Chapter, Number;
@@ -142,6 +144,7 @@ namespace BorrowedSeconds.Sim
                 Id = MiniJson.Str(d, "id", "?"),
                 Name = MiniJson.Str(d, "name", "Untitled"),
                 Hint = MiniJson.Str(d, "hint", ""),
+                HintPad = MiniJson.Str(d, "hintPad", ""),
                 Spoiler = MiniJson.Bool(d, "spoiler", false),
                 Notes = MiniJson.Str(d, "notes", ""),
                 Chapter = MiniJson.Int(d, "chapter", 1),

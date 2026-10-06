@@ -346,8 +346,9 @@ namespace BorrowedSeconds.Game
         void RefreshTip(bool slideIn)
         {
             var def = Session.Def;
+            string hint = Input.UsingGamepad && !string.IsNullOrEmpty(def.HintPad) ? def.HintPad : def.Hint;
             string text = tipOpen || string.IsNullOrEmpty(def.Hint)
-                ? def.Hint
+                ? hint
                 : Input.UsingGamepad ? "Stuck? Press <color=#FFD27A>Select</color> for a hint." : "Stuck? Press <color=#FFD27A>H</color> for a hint.";
             if (State == Flow.Watching) text = "<color=#7CF4FF>The solver's route, at par.</color>  " + (Input.UsingGamepad ? "<color=#FFD27A>B</color>" : "<color=#FFD27A>Esc</color>") + " to stop watching.";
             else if (attemptDeaths >= NudgeAfterDeaths)
@@ -487,7 +488,7 @@ namespace BorrowedSeconds.Game
             lastCountdown = cd;
 
             if (State == Flow.Watching) UpdateWatch(); // only ever entered from the pause menu
-            if (capturing) return;
+            if (capturing && !botDrivesFlow) return;
             switch (State)
             {
                 case Flow.Title:

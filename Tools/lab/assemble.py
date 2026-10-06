@@ -15,7 +15,7 @@ _partial = sorted({n[1:-1] for n in ORDER if _counts[n[1:-1]] < 5}, key=int)
 if _partial:
     print("skipping unfinished chapters:", ", ".join(_partial), file=sys.stderr)
 ORDER = [n for n in ORDER if _counts[n[1:-1]] >= 5]
-KEYS = ["id","name","chapter","term","loans","hint","spoiler","map","sliders","lasers","rotors","expect","notes"]
+KEYS = ["id","name","chapter","term","loans","hint","hintPad","spoiler","map","sliders","lasers","rotors","expect","notes"]
 
 def fmt(level):
     lines = ["    {"]

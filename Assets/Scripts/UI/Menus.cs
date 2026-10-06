@@ -110,7 +110,8 @@ namespace BorrowedSeconds.UI
         readonly bool left, horizontal;
         readonly Panel selector;
         readonly RectTransform pip;
-        Spring2 selPos;
+        // (a default Spring2 has zero stiffness and never moves: the plate only ever snapped on Show)
+        Spring2 selPos = Spring2.Make(Vector2.zero, 280f, 24f);
         Spring selW = Spring.Make(0f, 280f, 24f), selH = Spring.Make(0f, 280f, 24f), pipSpin = Spring.Make(0f, 240f, 13f);
         float pipTarget;
         float flash, sheenT = 2f, lastAge;
@@ -205,6 +206,8 @@ namespace BorrowedSeconds.UI
         bool IsEnabled(Item it) => it.Enabled == null || it.Enabled();
 
         public void Flash() { flash = 1f; }
+        public float SelectorY => selector.Rt.anchoredPosition.y;
+        public float RowHeight => rowH;
 
         /// <summary>Returns true if an item was activated this frame. <paramref name="age"/> drives the entrance.</summary>
         public bool Update(InputReader input, float dt, bool hasInput, float age)
