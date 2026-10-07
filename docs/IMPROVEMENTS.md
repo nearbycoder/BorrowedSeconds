@@ -362,3 +362,29 @@ Items run cheapest first. Scratch output stays in `Builds/r5/`. Every tool run h
 - **Verify:** regenerate the stills from the release build and look at every one before committing; before/after sheet.
 
 **Not this round:** chapter VIII, replacing 7-4, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio mix by ear, human playtesting.
+
+## Round 5 results
+
+All five items shipped on `improvements-5`. Final verification ran on the **release** build with this round's code: EditMode 109/109 (`Tools/test.sh`), autopilot 35/35 at par, `checks.sh` with every in-game check PASS (including the new `ledger-tips` check and the extended `watch-solution` check), the input bot's six passes PASS, the solver on 1-1 (whose tip changed) OK, and `Tools/docs_check.py` clean. Images are in `docs/media/improvements/round5/`.
+
+| # | Item | Commit | Verification |
+|---|---|---|---|
+| 1 | The Ledger keeps spoiler tips folded | `fc96dfd` | New check `ledger-tips`: on an empty save, all 10 spoiler tips are folded in the info panel; on a settled save every tip shows (60 panels checked). Shot 01. |
+| 2 | Button names that match the controller, pad-aware menu footers | `5225f8a` | New input-bot pass with virtual DualSense, DualShock 4, Switch Pro and plain pads: key hints, 1-1's tip, the folded tip, the restart tag, the move, borrow and focus prompts, and the title, Ledger and Settings footers all use that pad's names. Shot 02. |
+| 3 | Pause when the controller is unplugged | `5225f8a` | The same pass removes the pad mid-level: the pause menu opens, the tick holds for 1 s, and the hints fall back to the keyboard. |
+| 4 | *Watch solution* at your own pace | `0a1cf6a` | `watch-solution`: 35/35 at par, with every borrow in every replay aimed when it fires, and progress untouched. Input bot: 20.0 ticks/s, 3.9 with LT held; X rewound the replay from tick 44 to 13; it still won at 163 (par 163) and handed the level back. Shot 03. |
+| 5 | README stills in the game's own framing | `b177dca` | Regenerated from the release build. 03 *Exactly Now*, 04 *In the beams* (2-4) and 10 *Settlement* changed framing; in each, no floor tile sits under the watch any more. The other stills differed only in noise (under 0.1 % of pixels; the title's watch shows the real time) and were kept as they were. Shot 04. |
+
+**Found along the way, and fixed:**
+- On a pad, the "A, freeze it" onboarding prompt never appeared, because a pad is always aiming at something. It now shows over the aimed obstacle, above the aim tag.
+- With *Toggle Focus* on, round 4 changed the wrong prompt: the rewind prompt said "Press" (rewind is always held) and the focus prompt "Hold". Swapped.
+- The focus/solution tag and the rewind tag share a spot and overlapped when both showed, in play too (holding Focus while rewinding). The focus tag now fades under the rewind tag.
+- `inputbot.sh` and stills runs of `record.sh` lacked the 512 MB log cap the other tools have. Added. Clip recording stays uncapped because it writes long videos.
+
+**Notes and limits.**
+- **Audio peak, one failure.** The full `checks.sh` run failed `balance.py` on the mixed peak: 0.90x against a limit of 0.90 (every other number passed: median +10.0 dB, worst +5.1 dB). A rerun of the same scripted audio passed at 0.86. No audio code or asset changed this round. Round 2 already noted the limit has only 0.01–0.06 of headroom, and this run went past it. The threshold wasn't loosened; whether to lower the mix slightly or relax the limit is a judgement call (ideally by ear).
+- **Controllers are virtual.** PlayStation and Switch names were checked on virtual devices created with Unity's own layouts, not real controllers. On Linux, Unity reads PlayStation pads as HID devices; without hidraw access (restricted on some distributions, per Unity's docs for the DualSense) it reports a plain gamepad, which gets Xbox names. The unplug pause was checked by removing a virtual device, not by pulling a cable.
+- **Watch solution.** Rewinding a replay replays the same solver actions from the rewound tick, so it can't drift: the sim is deterministic and the check shows it still ends at par. The 0.8 s aim lead is real time at full speed, and longer while Focus slows the replay.
+- **Load.** Input-bot and `checks.sh` runs waited for a load average under 24. The machine ran at load 12–54 during the round. The real save's SHA-256 and mtimes were the same before and after the round (`Builds/r5/save-*.sha`).
+
+Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4, waiting on a playtest), a trailer re-cut (it still says 30 levels and keeps the old framing), human playtesting (including real PlayStation and Switch controllers), a listen to the mix (and the peak margin above), WebGL, Windows (needs the module) and touch.
