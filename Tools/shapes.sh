@@ -10,6 +10,7 @@ SIZES=("$@"); [ ${#SIZES[@]} -gt 0 ] || SIZES=(2560x1080 1600x900 1280x800 1024x
 LEVEL="${BS_LEVEL:-4-5}"
 rm -rf "$OUT"; mkdir -p "$OUT"
 ulimit -f 524288
+export BS_NESTED="${BS_NESTED:-1}" # the game window opens in a private headless KWin (Tools/nested.sh), not on the desktop
 for size in "${SIZES[@]}"; do
   D="$OUT/$size"; mkdir -p "$D/menus" "$D/level"
   BS_SIZE="$size" BS_CONFIG="$D/config" timeout 300 "$ROOT/Tools/play.sh" "${MODE[@]}" -logFile "$D/menus.log" -bsMenus "$D/menus" > /dev/null 2>&1 || true

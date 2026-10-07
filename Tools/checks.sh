@@ -9,6 +9,7 @@ MODE=(); [ "${2:-}" = "dev" ] && MODE=(dev)
 EXTRA=("${@:3}")
 rm -rf "$OUT"; mkdir -p "$OUT"
 ulimit -f 524288 # 512 MB per file: a player stuck logging in a loop must not fill the disk
+export BS_NESTED="${BS_NESTED:-1}" # the game window opens in a private headless KWin (Tools/nested.sh), not on the desktop
 BS_CONFIG="${BS_CONFIG:-$OUT/config}" timeout 600 "$ROOT/Tools/play.sh" "${MODE[@]}" -logFile "$OUT/player.log" -bsChecks "$OUT" "${EXTRA[@]}" > /dev/null 2>&1 || true
 cat "$OUT/checks.log" 2>/dev/null || echo "no checks.log"
 grep -E "Exception" "$OUT/player.log" | head -10 || true
