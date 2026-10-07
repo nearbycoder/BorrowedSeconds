@@ -45,6 +45,7 @@ namespace BorrowedSeconds.Game
             if (Want("run-watch")) yield return CheckRunWatch(Report);
             if (Want("forecast")) yield return CheckForecast(dir, Report);
             if (Want("aim-reach")) yield return CheckAimReach(dir, Report);
+            if (Want("display")) yield return CheckDisplay(dir, Report);
 
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
@@ -292,6 +293,86 @@ namespace BorrowedSeconds.Game
                 + $"{covered} skipped behind another piece" + (misses.Count > 0 ? "; misses: " + string.Join(", ", misses.GetRange(0, Mathf.Min(8, misses.Count))) : ""));
         }
 
+        /// <summary>
+        /// Settings > Display picks a real window size: stepping the row through every size that fits
+        /// the desktop resizes the window to it. Settings > Render resolution sets URP's render scale
+        /// (screenshot at 50 %: the 3D scene softens, the HUD stays sharp). Both survive a save round
+        /// trip. Real fullscreen is never entered: on a shared desktop it would cover other windows.
+        /// </summary>
+        IEnumerator CheckDisplay(string dir, System.Action<string, bool, string> report)
+        {
+            var saved = JsonUtility.ToJson(Save);
+            int w0 = Screen.width, h0 = Screen.height;
+            forceDisplay = true;
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "4-5"), false);
+            Session.Autoplay = Catalog.SolutionFor(Session.Def).Actions;
+            Hud.SkipIntro();
+            Pause();
+            OpenSettings(Flow.Paused);
+            var desk = DisplayOptions.Desktop;
+            var fit = DisplayOptions.Fitting(desk);
+            var row = settings.Menu.Items.Find(i => i.Label == "Display");
+            var scaleRow = settings.Menu.Items.Find(i => i.Label == "Render resolution");
+            bool rows = row != null && scaleRow != null && settings.Menu.Items.IndexOf(row) == 3 && settings.Menu.Items.IndexOf(scaleRow) == 4
+                && settings.Menu.Items[UI.SettingsScreen.ControlsRow].Label == "Controls";
+            var sizes = new List<string>();
+            bool resized = rows;
+            if (rows)
+            {
+                settings.Menu.Selected = 3;
+                DisplayOptions.Choose(Save, desk, 1);
+                ApplyDisplay(true);
+                for (int k = 1; k <= fit.Count; k++)
+                {
+                    if (k > 1) row.Adjust(1); // the row's own step: one size up, applied at once
+                    var want = fit[k - 1];
+                    // the compositor answers in its own time: allow 8 s and 60 frames under load
+                    float t0 = Time.realtimeSinceStartup, deadline = t0 + 8f;
+                    int frames = 0;
+                    while ((Screen.width != want.x || Screen.height != want.y) && (Time.realtimeSinceStartup < deadline || frames < 60)) { frames++; yield return null; }
+                    bool hit = Screen.width == want.x && Screen.height == want.y && !Save.fullscreen && row.Value() == $"Window {want.x}×{want.y}";
+                    sizes.Add($"{want.x}x{want.y} in {Time.realtimeSinceStartup - t0:0.0}s{(hit ? "" : $" (got {Screen.width}x{Screen.height}, row '{row.Value()}')")}");
+                    resized &= hit;
+                }
+            }
+            var back = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(Save));
+            bool persists = back.windowW == Save.windowW && back.windowH == Save.windowH && !back.fullscreen;
+
+            // render resolution: down to 50 %
+            bool scaled = false;
+            float scaleSeen = -1f;
+            if (scaleRow != null)
+            {
+                settings.Menu.Selected = 4;
+                for (int i = 0; i < 4; i++) scaleRow.Adjust(-1);
+                scaleSeen = DisplayOptions.CurrentRenderScale;
+                scaled = Mathf.Approximately(Save.renderScale, 0.5f) && Mathf.Approximately(scaleSeen, 0.5f) && scaleRow.Value() == "50%"
+                    && Mathf.Approximately(JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(Save)).renderScale, 0.5f);
+            }
+            // back to the run's own window size before the screenshots
+            Save.fullscreen = false;
+            Save.windowW = w0;
+            Save.windowH = h0;
+            Screen.SetResolution(w0, h0, FullScreenMode.Windowed);
+            float until = Time.realtimeSinceStartup + 3f;
+            while ((Screen.width != w0 || Screen.height != h0) && Time.realtimeSinceStartup < until) yield return null;
+            yield return new WaitForSecondsRealtime(1.2f);
+            yield return Shot(dir, "display_settings");
+            CloseSettings();
+            Resume();
+            yield return new WaitForSecondsRealtime(2.5f);
+            yield return Shot(dir, "display_render-50");
+            DisplayOptions.ApplyRenderScale(1f);
+            yield return null;
+            yield return Shot(dir, "display_render-100");
+            float restored = DisplayOptions.CurrentRenderScale;
+            JsonUtility.FromJsonOverwrite(saved, Save);
+            forceDisplay = false;
+            report("display", rows && resized && persists && scaled && Mathf.Approximately(restored, 1f),
+                $"desktop {desk.x}x{desk.y}; rows at 3 and 4: {rows}; the Display row stepped the window through {string.Join(", ", sizes)}; "
+                + $"saved {persists}; render scale 50% -> URP {scaleSeen:0.00}, saved {scaled}; back to {Screen.width}x{Screen.height} at {restored:0.00}");
+        }
+
         IEnumerator Shot(string dir, string name)
         {
             yield return null;
@@ -346,9 +427,9 @@ namespace BorrowedSeconds.Game
             Hud.SkipIntro();
             Pause();
             OpenSettings(Flow.Paused);
-            var item = settings.Menu.Items[7];
-            bool labelled = item.Label == "Game speed";
-            settings.Menu.Selected = 7;
+            var item = settings.Menu.Items.Find(i => i.Label == "Game speed");
+            bool labelled = item != null;
+            settings.Menu.Selected = settings.Menu.Items.IndexOf(item);
             item.Adjust(-1);
             item.Adjust(-1);
             bool stepped = Mathf.Approximately(Save.speed, 0.7f) && item.Value() == "70%";

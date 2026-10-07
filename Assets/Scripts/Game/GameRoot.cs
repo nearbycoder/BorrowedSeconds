@@ -52,6 +52,7 @@ namespace BorrowedSeconds.Game
         float wonAt = -1f, attractTimer;
         int attractIndex;
         bool capturing;
+        static readonly string[] ScriptedFlags = { "-bsCapture", "-bsMenus", "-bsDemo", "-bsInputBot", "-bsChecks", "-bsTrailer", "-bsStills", "-bsFps" };
         static readonly string[] AttractLevels = { "1-5", "3-5", "2-4", "4-1", "3-2" };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -68,6 +69,9 @@ namespace BorrowedSeconds.Game
             Application.targetFrameRate = 144;
             Catalog = new LevelCatalog();
             Save = SaveData.Load();
+            // known before the first ApplySettings, so a scripted run never resizes its window
+            var argv = System.Environment.GetCommandLineArgs();
+            capturing = System.Array.Exists(ScriptedFlags, f => System.Array.IndexOf(argv, f) >= 0);
 
             Cam = Camera.main;
             if (Cam == null)
@@ -116,7 +120,7 @@ namespace BorrowedSeconds.Game
             levels = new LevelSelectScreen(root, Catalog, Save, i => Go(() => StartLevel(i, true)), () => Go(ShowTitle, 0.7f));
             pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); }, WatchFromPause,
                 () => { pause.Hide(); Go(() => ShowLevels(LevelIndex)); }, () => OpenSettings(Flow.Paused), () => { pause.Hide(); Go(ShowTitle); });
-            settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, CloseSettings, OpenControls);
+            settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, () => { ApplyDisplay(true); Save.Save(); }, CloseSettings, OpenControls);
             controls = new ControlsScreen(root, () => Input.Keys, BindKey, ResetKeys, CloseControls);
             complete = new CompleteScreen(root, () => Go(Next), () => { complete.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); },
                 () => { complete.Hide(); Go(() => ShowLevels(LevelIndex)); }, amount => Rig.Shake(amount));
@@ -144,11 +148,19 @@ namespace BorrowedSeconds.Game
             Input.FocusToggle = Save.focusToggle && !capturing;
             if (Session != null) ShowControlHints(true);
             LevelSession.GameSpeed = capturing ? 1f : Mathf.Clamp(Save.speed, 0.5f, 1f);
-            if (!Application.isEditor && !capturing)
-            {
-                var mode = Save.fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
-                if (UnityEngine.Screen.fullScreenMode != mode) UnityEngine.Screen.fullScreenMode = mode;
-            }
+            if (!capturing || forceDisplay) DisplayOptions.ApplyRenderScale(Save.renderScale);
+            ApplyDisplay(false);
+        }
+
+        /// <summary>Set by the display check: scripted runs otherwise keep the window and render
+        /// scale they were started with.</summary>
+        bool forceDisplay;
+
+        /// <summary>Fullscreen or the saved window size (<see cref="DisplayOptions.Apply"/>).</summary>
+        void ApplyDisplay(bool chosen)
+        {
+            if (Application.isEditor || (capturing && !forceDisplay)) return;
+            DisplayOptions.Apply(Save, chosen);
         }
 
         void Start()
@@ -168,6 +180,9 @@ namespace BorrowedSeconds.Game
             // scripted runs play at full speed unless asked (-bsSpeed checks that slow play is still exact)
             LevelSession.GameSpeed = float.TryParse(Arg(args, "-bsSpeed"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float speed)
                 ? Mathf.Clamp(speed, 0.1f, 4f) : capturing ? 1f : LevelSession.GameSpeed;
+            // -bsRenderScale 0.5: the fps probe measures a lower render resolution
+            if (float.TryParse(Arg(args, "-bsRenderScale"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float renderScale))
+                DisplayOptions.ApplyRenderScale(renderScale);
             string fps = Arg(args, "-bsFps");
             if (fps != null)
             {

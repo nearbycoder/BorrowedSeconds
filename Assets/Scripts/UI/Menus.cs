@@ -925,28 +925,38 @@ namespace BorrowedSeconds.UI
         readonly RectTransform footRow;
         readonly CanvasGroup footGroup;
 
-        /// <summary>Index of the Controls row (after the original rows, which scripted tours select by index).</summary>
-        public const int ControlsRow = 9;
+        /// <summary>Index of the Controls row (scripted tours select rows by index).</summary>
+        public const int ControlsRow = 10;
         string footText;
         /// <summary>The key row under the window (checks read it).</summary>
         public string Footer => footText;
 
-        public SettingsScreen(Transform canvas, SaveData save, Action apply, Action onBack, Action onControls)
+        public SettingsScreen(Transform canvas, SaveData save, Action apply, Action applyDisplay, Action onBack, Action onControls)
             : base(canvas, "Settings", new Vector2(860, 1004), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
         {
             this.onBack = onBack;
-            menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -180), 740, 68, 27, true);
+            menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -180), 740, 62, 27, true);
             string Pct(float v) => Mathf.RoundToInt(v * 100) + "%";
             float Step(float v, int d) => Mathf.Clamp01(Mathf.Round((v + d * 0.1f) * 10f) / 10f);
             menu.AddSlider("Master volume", () => save.master, () => Pct(save.master), d => { save.master = Step(save.master, d); apply(); });
             menu.AddSlider("Music", () => save.music, () => Pct(save.music), d => { save.music = Step(save.music, d); apply(); });
             menu.AddSlider("Effects", () => save.sfx, () => Pct(save.sfx), d => { save.sfx = Step(save.sfx, d); apply(); });
-            menu.AddToggle("Fullscreen", () => save.fullscreen, () => { save.fullscreen = !save.fullscreen; apply(); });
+            // Fullscreen, or a window of a size that fits the desktop (each step applies at once)
+            menu.Add("Display", null, () => DisplayOptions.Label(save, DisplayOptions.Desktop), d =>
+            {
+                var desk = DisplayOptions.Desktop;
+                int n = DisplayOptions.Fitting(desk).Count + 1;
+                DisplayOptions.Choose(save, desk, (DisplayOptions.Choice(save, desk) + d + n) % n);
+                applyDisplay();
+            });
+            var scales = DisplayOptions.RenderScales;
+            menu.AddSlider("Render resolution", () => DisplayOptions.ScaleStep(save.renderScale) / (float)(scales.Length - 1),
+                () => Pct(scales[DisplayOptions.ScaleStep(save.renderScale)]),
+                d => { save.renderScale = scales[Mathf.Clamp(DisplayOptions.ScaleStep(save.renderScale) + d, 0, scales.Length - 1)]; apply(); });
             menu.AddToggle("Screen shake", () => save.shake, () => { save.shake = !save.shake; apply(); });
             menu.AddToggle("Reduce flashing", () => save.reduceFlashing, () => { save.reduceFlashing = !save.reduceFlashing; apply(); });
             menu.AddSlider("Focus slow-motion", () => (save.focus - 0.1f) / 0.5f, () => Pct(save.focus),
                 d => { save.focus = Mathf.Clamp(Mathf.Round((save.focus + d * 0.1f) * 10f) / 10f, 0.1f, 0.6f); apply(); });
-            // after the existing rows, so scripted tours (the trailer) keep their indices
             float[] speeds = { 0.5f, 0.7f, 0.85f, 1f };
             int SpeedStep() { int k = 0; for (int i = 0; i < speeds.Length; i++) if (Mathf.Abs(speeds[i] - save.speed) < Mathf.Abs(speeds[k] - save.speed)) k = i; return k; }
             menu.AddSlider("Game speed", () => SpeedStep() / (float)(speeds.Length - 1), () => Pct(speeds[SpeedStep()]),
