@@ -301,3 +301,25 @@ Items run cheapest first, and the stretch item comes last. Scratch output stays 
 - Only if items 1–4 are done and the machine is quiet. One bounded sweep looks for a short-term level whose trick isn't "freeze the lane beam, let the debt hold the dial" (7-2's). If nothing proven turns up, it's deferred with notes, as in round 3.
 
 **Not this round:** chapter VIII (owner), touch controls, WebGL, Windows (module), re-cutting the trailer, the audio mix by ear, human playtesting.
+
+## Round 4 results
+
+Items 1–4 shipped on `improvements-4`; the stretch item (5) wasn't attempted. Final verification ran on the **release** build with this round's code: EditMode 109/109 (`Tools/test.sh`), autopilot 35/35 at par, `checks.sh` all PASS (now including `forecast`; *Watch solution* 35/35; audio balance median +10.7 dB, worst +5.2 dB, peak 0.89), the input bot's five passes PASS, `Tools/shapes.sh` clean at four sizes, and `Tools/docs_check.py` clean. Images are in `docs/media/improvements/round4/`.
+
+| # | Item | Commits | Verification |
+|---|---|---|---|
+| 1 | Scripted runs, tests and batch editor runs keep Unity's config out of `~/.config/unity3d` | `ce132ce`, `729ef03` | Every tool run this round left the real save's SHA-256 unchanged. Found along the way: the **batch editor** (every build) rewrote the real `prefs` from memory, with the same content but a new mtime. It could have undone progress saved by a game played during a build. `unity.sh` now sandboxes batch runs, and a release build after the fix left the real file's mtime alone. |
+| 2 | A thaw forecast you can read without colour | `9a7b2f2` | New check `forecast`: aiming on 1-2, a thaw death on 1-2 and 1-5's solution. On every frame the HUD's verdict matches the ghost's, with the verdict spelled out under the watch and in the aim tag (296 frames, 0 mismatches, on the release build). Captures in colour, through a deuteranopia matrix and in greyscale: shot 07. |
+| 3 | Layout on any screen shape | `0180b80`, `7679d15`, `5770379` | `Tools/shapes.sh` (menu tour plus a level) at 2560×1080, 1600×900, 1280×800 and 1024×768: the Ledger's tabs no longer cover the cards at 21:9, Settings fits, and the hints clear the watch at 4:3 (shots 01–03, 06). The camera now keeps every floor tile out from under the HUD. Before, the watch hid 4-5's bottom dial and the tip hid 4-4's (shots 04–05). The autopilot logs how far each level's framing moved: 35/35 clear at 16:9 (seven levels pull back 2.5–10 %, the rest only slide or stay put) and at 4:3 (sliding alone). |
+| 4 | Focus: hold or toggle | `9037a4e` | New input-bot pass: the option goes on through its Settings row. A tap of Shift, the right mouse button or LT each holds Focus at 1.00 a second later, and a second tap returns it to 0.00. A pause ends it, and hold mode comes back. Shot 08. The key-hint row also scales down when it would reach the watch; it already touched the watch at 16:9. |
+| 5 | Stretch: give 7-4 its own idea | — | Not attempted. See below. |
+
+**Notes and limits.**
+- **Screen shapes were checked in windows on one 4K monitor**, not on real ultrawide, 4:3 or Steam Deck screens. The framing search tries pull-backs up to 1.4× and slides up to two tiles each way. If nothing is clear, it keeps the framing with the fewest covered tiles; no shipped level needs that at the four sizes tested.
+- **Framing changed on seven levels at 16:9** (1-3, 1-5, 4-2, 4-4, 5-2, 5-3, 6-3), by 2.5–10 % pull-back and a slide. The trailer and its stills frame levels the old way (they don't pass tiles), so the trailer cut stays reproducible.
+- **Colour-blind play was checked by simulation**, not by colour-blind players. The X marks a lethal or "hit just after" thaw. The words say which, plus *SAFE, DIAL LATCHES* when the thaw latches a dial; the scripted runs never produced that verdict, so the check didn't see it.
+- **README screenshots** were regenerated from the release build with `make_trailer.sh --stills`, so they show the new forecast line and aim-tag verdict. They keep the trailer's framing.
+- **Load.** Input-bot and `checks.sh` runs waited for a load average under 22. The machine ran at load 2–32 during the round.
+- **Stretch item.** Not attempted. Round 3 found the limit was design rather than compute: sweeps over the existing families kept collapsing into ideas the game already has. Replacing a shipped level also deserves a playtest that hasn't happened. It stays open.
+
+Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including colour-blind players and other screen shapes), a listen to the mix, WebGL, Windows (needs the module) and touch.

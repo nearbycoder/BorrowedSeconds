@@ -5,7 +5,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$(realpath -m "${1:-$ROOT/Builds/shapes}")"; shift || true
-MODE=(); if [ "${1:-}" = "dev" ]; then MODE=(dev); shift; fi
+MODE=(); if [ "${1:-}" = "dev" ]; then MODE=(dev); shift; elif [ $# -gt 0 ] && [ -z "$1" ]; then shift; fi
 SIZES=("$@"); [ ${#SIZES[@]} -gt 0 ] || SIZES=(2560x1080 1600x900 1280x800 1024x768)
 LEVEL="${BS_LEVEL:-4-5}"
 rm -rf "$OUT"; mkdir -p "$OUT"
