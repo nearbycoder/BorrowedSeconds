@@ -580,3 +580,42 @@ Items 1–3 shipped on `improvements-8`; the stretch item (4) didn't. Final veri
 - Settings has 16 rows. Further options (such as *Reset settings*) want a second page or a split into Audio / Display / Gameplay.
 
 Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including the native Wayland backend in fullscreen and on other desktops), a listen to the mix, WebGL and touch, and Windows (needs the module).
+
+## Round 9 scope
+
+Written 2026-10-07 on `improvements-9`, after confirming `main` matched `origin/main` (`7c8491b`) with a clean tree. These stay out because they wait on the owner or on a playtest: chapter VIII's theme, replacing 7-4, the unlock rule, rotor aim, the HUD-size default, *Mute in background*'s default, a second Settings page (so *Reset settings* waits too), the audio peak limit, the trailer re-cut and a release. WebGL and touch stay deferred. This round looked at what a player learns from a failure and at the paths the last rounds could only check by script, and found four things:
+
+- **A default doesn't say what happened.** Every death shows the same banner, *DEFAULTED, rewinding…*, for 0.85 s. The simulation already works out which obstacle killed you (`SimState.DeathCause`), but nothing reads it. On a level with two sliders and a laser, a new player has to work out from a rewind which one it was, and whether they thawed into it or it ran into them.
+- **The *Settled* screen gives medal rules, not times.** Its bar is labelled *TIME THIEF within par + 1.0s, SILVER within par + 4.0s*, so a player on silver has to add par and a second in their head to know what to beat on *Retry*. The Ledger has named the target time since round 8; the screen you're on when you decide to retry doesn't.
+- **Test windows open on the shared desktop, and so can't test some things.** Every scripted run opens a real window on the desktop the other sessions use. That has caused trouble (round 7's fullscreen runs, round 8's stray window), and it's why the focus-loss pause and background mute were only ever tested by calling their handler, and why fullscreen on the Wayland backend, 125 % scaling and the X11 path were never tried. A headless nested KWin (`kwin_wayland --virtual`, on its own D-Bus session and config folders) runs the game unchanged: a menu tour inside one took 24 s and produced the same captures as round 8's.
+- **`checks.sh` is close to its time cap.** It took 7 min 17 s of its 10 minutes in round 8, and its log doesn't say which checks take the time.
+
+Items run in this order; item 5 is a stretch. Scratch output stays in `Builds/r9/`. Every tool run has to leave the real save's SHA-256 and mtime unchanged (`Builds/r9/save-before.*`), and the real KWin config (`~/.config/kwinrc`, `kwinoutputconfig.json`) unchanged (`Builds/r9/kwin-before.sha`).
+
+### 1. Test windows in a private compositor
+- **Change:** `Tools/nested.sh` starts a headless `kwin_wayland --virtual` (its own socket, D-Bus session and config, cache and data folders under the output folder; optional size, scale and XWayland) and runs a command inside it, then stops it. The scripted tools (`checks.sh`, `inputbot.sh`, `capture.sh`, `devcap.sh`, `shapes.sh`) run the game through it when `kwin_wayland` is installed; `BS_NESTED=0` opts out. Plain `play.sh` (a person playing) is unchanged.
+- **Acceptance:** each tool passes as before with its game window inside the nested compositor: the player's environment names the private socket, its log says Wayland, and no game window opens on the shared desktop. The compositor and its D-Bus exit with the run (no leftover processes). The real KWin config hashes are unchanged.
+- **Verify:** run each tool; read `/proc/<pid>/environ` of the player during a run; the process list after; hashes before and after.
+
+### 2. Real focus loss, fullscreen, 125 % scaling and X11, in the private compositor
+- **Change:** checks that need a real compositor run only inside the nested one (the tools pass `-bsNested`; without it they're skipped, never run on the shared desktop):
+  - `real-focus`: mid-level, the game opens a second window (`kdialog`) that takes focus, as alt-tabbing would; then closes it.
+  - The `display` check also chooses *Fullscreen* and then a window size again.
+- **Acceptance:** a real focus loss pauses the level (the tick holds) and fades the sound out; focus coming back fades it in, and the level stays paused until resumed. Fullscreen fills the nested output and returns to the chosen window size. The same runs at 125 % scaling (a 3840×2160 output at scale 1.25) record what size the game renders at. A nested run with XWayland records whether Unity's X11 path starts there. Defects found are fixed if they can be fixed from the game, otherwise written up.
+- **Verify:** `checks.sh` inside the nested compositor at scale 1 and 1.25; a menu tour with `BS_X11=1` in a nested compositor with XWayland; captures looked at.
+
+### 3. Say what defaulted you
+- **Change:** the death banner names the obstacle and how: *you thawed inside the beam* when the debt's freeze ended inside a hazard, *the slider caught you* otherwise (slider, beam, rotor arm). The obstacle that did it glows red through the death pause and stops when the rewind starts.
+- **Acceptance:** the text comes from `DeathCause`, so it names the right kind on every death. Thaw deaths say *thawed*, other deaths don't. Exactly one piece is marked during the pause, and none after.
+- **Verify:** EditMode tests for the wording on every obstacle of every level; the `default-rewind` check (thaw deaths on 1-2, 2-1 and 4-5) reads the banner and the marked piece, and a new case dies by standing in 1-2's slider lane. Screenshots.
+
+### 4. Medal times on the *Settled* screen
+- **Change:** the bar's label names the times: *TIME THIEF 9.15s or better · SILVER 12.15s or better*.
+- **Acceptance:** on every level the two times match `SaveData.MedalFor`'s thresholds.
+- **Verify:** the `medal-pace` check reads the label for all 35 levels; screenshot.
+
+### 5. Stretch: `checks.sh` headroom
+- **Change:** each check logs how long it took; then the slowest part is cut down or the cap raised, whichever the numbers support.
+- **Acceptance:** a full run finishes with at least a third of its cap to spare at load ≤ 24, and every check still passes.
+
+**Not this round:** chapter VIII, replacing 7-4, the unlock rule, rotor aim, the HUD-size and background-mute defaults, a second Settings page and *Reset settings*, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio peak limit and the mix by ear, human playtesting.
