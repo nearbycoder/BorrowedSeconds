@@ -36,6 +36,22 @@ namespace BorrowedSeconds.EditorTools
         public static void BuildWindows() => Build(BuildTarget.StandaloneWindows64, "Builds/Windows/BorrowedSeconds.exe", false);
 
         const string BundleId = "com.nearbycoder.borrowedseconds";
+        /// <summary>Rendered by ArtSource/build_ui_assets.py (the "icon" group).</summary>
+        const string IconPath = "Assets/Icon/BorrowedSeconds.png";
+
+        /// <summary>
+        /// The pocket watch as the default application icon, so no player wears Unity's logo: the
+        /// Linux build writes it to UnityPlayer.png (window, taskbar, alt-tab), the macOS app to its .icns.
+        /// </summary>
+        static void EnsureIcon()
+        {
+            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(IconPath);
+            if (icon == null) { Debug.LogWarning($"[Build] no icon at {IconPath}; the player keeps Unity's default"); return; }
+            var current = PlayerSettings.GetIcons(UnityEditor.Build.NamedBuildTarget.Unknown, IconKind.Any);
+            if (current.Length == 1 && current[0] == icon) return;
+            PlayerSettings.SetIcons(UnityEditor.Build.NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
+            AssetDatabase.SaveAssets();
+        }
 
         static void Build(BuildTarget target, string path, bool dev)
         {
@@ -47,6 +63,7 @@ namespace BorrowedSeconds.EditorTools
             }
             if (PlayerSettings.GetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone) != BundleId)
                 PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone, BundleId);
+            EnsureIcon();
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
                 scenes = Scenes,

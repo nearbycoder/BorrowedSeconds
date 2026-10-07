@@ -30,12 +30,17 @@ case "$PLATFORM" in
 esac
 rm -rf "$ROOT/Builds/Release/stage" "$ZIP"
 mkdir -p "$STAGE/licenses"
-# everything but Unity's "don't ship" folder (debug symbols for crash reports)
-rsync -a --exclude '*_BackUpThisFolder_ButDontShipItWithYourGame' "$BUILD/" "$STAGE/"
+# everything but Unity's "don't ship" folder (debug symbols for crash reports) and Builds/, where
+# the player writes a relative -logFile path (it resolves it against its own folder)
+rsync -a --exclude '*_BackUpThisFolder_ButDontShipItWithYourGame' --exclude '/Builds' "$BUILD/" "$STAGE/"
 cp "$ROOT/THIRD_PARTY_NOTICES.md" "$STAGE/"
 cp "$ROOT/Assets/Resources/Fonts/OFL-FiraSans.txt" "$STAGE/licenses/"
 cp "$ROOT/Assets/TextMesh Pro/Fonts/LiberationSans - OFL.txt" "$STAGE/licenses/OFL-LiberationSans.txt"
 if [ "$PLATFORM" = linux ]; then
+# the launcher gives the game its icon in the applications menu, and on Wayland its window too
+if command -v magick > /dev/null; then magick "$ROOT/Assets/Icon/BorrowedSeconds.png" -resize 512x512 "$STAGE/icon.png"
+else cp "$ROOT/Assets/Icon/BorrowedSeconds.png" "$STAGE/icon.png"; fi
+install -m 755 "$ROOT/Tools/linux/install-launcher.sh" "$STAGE/install-launcher.sh"
 cat > "$STAGE/README.txt" <<EOF
 Borrowed Seconds $VERSION for Linux (x86_64)
 https://github.com/nearbycoder/BorrowedSeconds
@@ -43,6 +48,8 @@ https://github.com/nearbycoder/BorrowedSeconds
 Run:   ./BorrowedSeconds.x86_64
        (if it isn't executable: chmod +x BorrowedSeconds.x86_64)
        On Wayland, add -force-wayland if the game hangs at startup under XWayland.
+Menu:  ./install-launcher.sh adds the game, with its icon, to your applications menu
+       (--uninstall removes it; run it again if you move this folder).
 
 $CONTROLS
 

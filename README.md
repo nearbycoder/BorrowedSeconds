@@ -147,6 +147,7 @@ Eighteen levels are proven to need *the debt itself*. Even with unlimited debt-f
 
 1. Download `BorrowedSeconds-v0.1.0-linux-x86_64.zip` from the [latest release](https://github.com/nearbycoder/BorrowedSeconds/releases/latest).
 2. Unzip it and run `./BorrowedSeconds.x86_64`. If the file manager lost the executable bit, run `chmod +x BorrowedSeconds.x86_64` first.
+3. Optionally, run `./install-launcher.sh` in the same folder to add the game, with its icon, to your applications menu (`--uninstall` removes it; run it again if you move the folder). On Wayland desktops this is also what gives the game's window its icon.
 
 Requirements: 64-bit Linux and an OpenGL 4.5-capable GPU. The game starts fullscreen; *Settings > Display* switches to a window of 1280×720 up to the largest size that fits your screen. If it runs slowly, lower *Render resolution*. On Wayland desktops where XWayland is unreliable, add `-force-wayland` to use Unity's native Wayland backend. This build has only been tested on Linux (CachyOS, AMD iGPU).
 
@@ -171,7 +172,7 @@ Everything generated is checked in, so none of the following is needed just to b
 | What | Command | Notes |
 |---|---|---|
 | 3D models | `blender -b --factory-startup -P ArtSource/build_assets.py` | Writes `Assets/Resources/Models/*.fbx`, `ArtSource/*.blend` and preview renders. |
-| UI models | `blender -b --factory-startup -P ArtSource/build_ui_assets.py` | The 3D pocket watch, the medal coins and the padlock. |
+| UI models | `blender -b --factory-startup -P ArtSource/build_ui_assets.py` | The 3D pocket watch, the medal coins, the padlock and the application icon (`Assets/Icon/`). |
 | Audio | `Tools/audio/synth.sh` (or `sfx`, `music`, or one name) | Every effect and the four music loops, synthesised with numpy (via Blender's bundled Python). About 2 minutes. |
 | Levels | Edit `Tools/lab/cXY.json`, then `python3 Tools/lab/assemble.py` | `python3 Tools/lab/lab.py Tools/lab/c15.json` solves one design without touching the game. |
 | Proofs and replays | `Tools/validate.sh` (or `--level 4-5`, or `--quick`) | Proves every level and writes `solutions.json`. Level 4-5 searches up to 150M states and needs a lot of RAM. |
@@ -182,7 +183,7 @@ Everything generated is checked in, so none of the following is needed just to b
 | Behaviour checks | `Tools/checks.sh [dir] [dev] [-bsOnly name]` | The built game dies, rewinds and opens menus on purpose, and prints PASS/FAIL for each check. It also records an audio event log over three levels, and `Tools/audio/balance.py` measures how far each key stinger sits above the music. |
 | Docs check | `python3 Tools/docs_check.py` | Cross-checks every level the README and `docs/PLAN.md` name (titles, chapters, proof claims, par, margin, counts) against `levels.json` and `solutions.json`. |
 | Scripted runs | `BS_SIZE=2560x1080 Tools/play.sh …` | Every scripted tool (capture, checks, input bot, trailer and demo recorders) keeps Unity's config, including the screen-size prefs Unity writes on quit, in its own output folder, never in `~/.config/unity3d`. So do `Tools/unity.sh`'s batch builds: the editor shares the game's save file and rewrote it on every build. `BS_SIZE` picks another window size.|
-| Release zip | `Tools/package.sh 0.1.0 [linux\|macos]` | Zips the Linux or macOS build with a short README and the font licenses into `Builds/Release/`. The macOS README explains how to open an unnotarized app. |
+| Release zip | `Tools/package.sh 0.1.0 [linux\|macos]` | Zips the Linux or macOS build with a short README and the font licenses into `Builds/Release/`. The Linux zip adds the icon and `install-launcher.sh`; the macOS README explains how to open an unnotarized app. |
 | Trailer and media | `Tools/trailer/make_trailer.sh` | Records the scripted trailer from the release build, then cuts, scores and encodes it. See [Tools/trailer/README.md](Tools/trailer/README.md). |
 
 ## Project structure

@@ -9,6 +9,8 @@ Borrowed Seconds: UI hero assets, built procedurally in Blender.
 * Medal coins  : rendered straight-on with transparency to Assets/Resources/UI/medal_*.png
                  (gold "Time Thief", silver, bronze, and an empty socket).
 * Padlock      : rendered to Assets/Resources/UI/lock.png.
+* Icon         : the watch straight on, rendered to Assets/Icon/BorrowedSeconds.png (the application
+                 icon: window, taskbar, the macOS app, the Linux zip's launcher).
 Front faces -Y (Blender front view); the watch crown points +Z.
 """
 import math
@@ -24,6 +26,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_FBX = os.path.join(ROOT, "Assets", "Resources", "Models")
 OUT_UI = os.path.join(ROOT, "Assets", "Resources", "UI")
 OUT_PREVIEW = os.path.join(ROOT, "ArtSource", "previews")
+OUT_ICON = os.path.join(ROOT, "Assets", "Icon")
 
 
 def reset():
@@ -432,12 +435,53 @@ def do_lock():
     render(os.path.join(OUT_UI, "lock.png"))
 
 
+def do_icon():
+    # the title emblem as an application icon: straight on so it reads at 16 px, hands at 10:08,
+    # without the glass (its highlight washes the dark dial out at small sizes), on transparency
+    reset()
+    parts = build_watch()
+    for p in parts:
+        if p.name == "HandHour":
+            p.rotation_euler = (0, math.radians(-304), 0)
+        if p.name == "HandMinute":
+            p.rotation_euler = (0, math.radians(-48), 0)
+        if p.name == "HandSecond":
+            p.rotation_euler = (0, math.radians(-140), 0)
+    glass = bpy.data.objects.get("Glass")
+    if glass:
+        bpy.data.objects.remove(glass, do_unlink=True)
+    # the case's front cap (one 96-gon at the rim) sits just in front of the dial; open it up
+    case = bpy.data.objects["Case"]
+    bm = bmesh.new()
+    bm.from_mesh(case.data)
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if len(f.verts) > 4 and f.calc_center_median().y < 0], context="FACES_ONLY")
+    bm.to_mesh(case.data)
+    bm.free()
+    # warmer, more saturated brass so the case still reads as gold once downscaled
+    bpy.data.materials["Brass"].node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1.0, 0.68, 0.26, 1)
+    bpy.data.materials["Gold"].node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1.0, 0.76, 0.3, 1)
+    # a matte night-blue dial (the game's enamel without its clear coat, which mirrors the softbox)
+    dial = bpy.data.materials["Enamel"].node_tree.nodes["Principled BSDF"]
+    dial.inputs["Coat Weight"].default_value = 0.0
+    dial.inputs["Roughness"].default_value = 0.6
+    dial.inputs["Specular IOR Level"].default_value = 0.1
+    dial.inputs["Base Color"].default_value = (0.006, 0.008, 0.025, 1)
+    ice = bpy.data.materials["Ice"].node_tree.nodes["Principled BSDF"]
+    ice.inputs["Base Color"].default_value = (0.0, 0.5, 0.6, 1)
+    ice.inputs["Emission Strength"].default_value = 1.2
+    scene_setup(1024, 2.86, (0, -5, 0.33), (math.radians(90), 0, 0))
+    os.makedirs(OUT_ICON, exist_ok=True)
+    render(os.path.join(OUT_ICON, "BorrowedSeconds.png"))
+
+
 if __name__ == "__main__":
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    groups = argv or ["watch", "coins", "lock"]
+    groups = argv or ["watch", "coins", "lock", "icon"]
     if "watch" in groups:
         do_watch()
     if "coins" in groups:
         do_coins()
     if "lock" in groups:
         do_lock()
+    if "icon" in groups:
+        do_icon()
