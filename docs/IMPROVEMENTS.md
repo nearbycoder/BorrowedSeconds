@@ -554,3 +554,29 @@ Items run in that order; item 4 is a stretch. Scratch output stays in `Builds/r8
 - **Verify:** an extension of the `erase-progress` check.
 
 **Not this round:** chapter VIII, replacing 7-4, the unlock rule, rotor aim, the HUD-size default, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio peak limit and the mix by ear, human playtesting.
+
+## Round 8 results
+
+Items 1–3 shipped on `improvements-8`; the stretch item (4) didn't. Final verification ran on the **release** build with this round's code: EditMode 145/145 (`Tools/test.sh`), autopilot 35/35 at exactly par (every level `hud=0`), `checks.sh` with every check PASS (including the new `background-mute` and `medal-pace` checks; *Watch solution* 35/35; audio balance median +9.9 dB, worst +5.2 dB, peak 0.84), the input bot's passes all PASS, `Tools/shapes.sh` at four sizes, the solver on 1-1 OK (no level data changed), and `Tools/docs_check.py` clean. The real save's SHA-256 and mtimes were the same before and after the round (`Builds/r8/save-*`). Images are in `docs/media/improvements/round8/`.
+
+| # | Item | Commit | Verification |
+|---|---|---|---|
+| 1 | `BorrowedSeconds.sh`: the Linux zip starts Unity's native Wayland backend on a Wayland desktop | `83d8f78` | Diagnosis: the release binary run directly (windowed, sandboxed config) logged `Selected window backend: x11`, then stopped after `Desktop is 3840 x 2160` with its main thread in `poll` and no window, until killed at 25 s; three runs, the same each time. `force-wayland=1` in `boot.config` still chose X11; `SDL_VIDEODRIVER=wayland` and `-force-wayland` chose Wayland and started. From an unpacked test zip, `./BorrowedSeconds.sh` (windowed, with the menu tour) chose Wayland and finished the tour (48 captures, exit 0); `BS_X11=1` and a session without `WAYLAND_DISPLAY` both chose X11. A stub binary showed the arguments pass through intact (including one with a space) and `-force-wayland` isn't doubled. The menu entry, generated into a throwaway `XDG_DATA_HOME`, runs the script and passes `desktop-file-validate`; GLib parses its `Exec` back to the executable script. |
+| 2 | *Mute in background* (Settings, on by default) | `075e45d` | `background-mute`: through the handler Unity calls on a focus change, the listener goes silent in 0.26 s and back to full in 0.26 s; with the toggle off it stays at 1.00; the row flips it; it survives a save round trip, and a save from before this round loads with it on. The Settings page now has 16 rows (49 units tall, were 52) and fits at 21:9, 16:9, 16:10 and 4:3 (shot 02). |
+| 3 | Medal pace on the HUD, next-medal targets in the Ledger | `59333e8` | `medal-pace`: on 1-1 settled before (best 10.65 s), the coin by the clock is gold at tick 0 and at par + 20 ticks, silver at par + 21 and par + 80, bronze at par + 81, and the line reads *PAR 8.15 · BEST 10.65*. A level never settled shows neither, and nor does *Watch solution*. The Ledger names gold's time at silver, silver's at bronze and nothing at gold, right on 105/105 panels. The coin sits inside the clock's HUD box, so framing is unchanged: autopilot `hud=0` on all 35 levels and `hud-size` clear at 100 % and 150 %. Shot 01. |
+| 4 | Stretch: *Reset settings* | — | Not done. Settings is at 16 rows after item 2; a 17th needs denser rows or a second page, which is a layout decision rather than a quick add. |
+
+**Notes and limits.**
+- **The XWayland hang is worked around, not fixed.** It happens before any game code runs, so the game can't avoid it from inside. Only the shipped script and menu entry avoid it; a player who double-clicks `BorrowedSeconds.x86_64` on a Wayland desktop like this one still gets the hang. Whether it happens on other machines (other compositors, GPUs, scaling) isn't known. Two things weren't checked here: the native Wayland backend in real fullscreen (it would cover the shared desktop), and how sharp it looks with fractional scaling (this desktop runs at 125 %, and on Wayland the player reported a 3072×1728 desktop where X11 reported 3840×2160). The published v0.1.0 zip doesn't have the script, so the README tells v0.1.0 players to add `-force-wayland`.
+- **No real alt-tab.** As in round 1, the background mute was checked through the focus handler, not by moving focus on the shared desktop.
+- **Pace shows only on settled levels**, so a first attempt stays about the puzzle. Rewinding past a threshold flips the coin back, since the clock rewinds too.
+- **Load.** The input bot ran at load 17–23 and `checks.sh` at 21–25. `checks.sh` took 7 min 17 s against its 10-minute cap, so the cap has less headroom than before.
+- **Scratch files.** The test zip, its unpacked copy and the copied build used for the `boot.config` test were deleted at the end of the round; logs stay in `Builds/r8/`.
+
+**Decisions for the owner.**
+- Still open: chapter VIII's theme, replacing 7-4, the unlock rule, rotor aim, the HUD-size default on small screens, the audio peak limit, the trailer re-cut, Windows Build Support, signing and notarization, a license, and releases.
+- A new release would be the first with `BorrowedSeconds.sh` (and the icon and launcher from round 7). Until then the release page's zip hangs on Wayland desktops like this one unless the player adds `-force-wayland`.
+- *Mute in background* defaults to on. Keep it, or default to off?
+- Settings has 16 rows. Further options (such as *Reset settings*) want a second page or a split into Audio / Display / Gameplay.
+
+Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including the native Wayland backend in fullscreen and on other desktops), a listen to the mix, WebGL and touch, and Windows (needs the module).
