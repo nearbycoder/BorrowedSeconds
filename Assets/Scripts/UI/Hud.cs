@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using BorrowedSeconds.Game;
 using BorrowedSeconds.Sim;
 using BorrowedSeconds.View;
@@ -26,8 +27,9 @@ namespace BorrowedSeconds.UI
         TextMeshProUGUI banner, bannerSub;
         CanvasGroup bannerGroup;
         float bannerT = 10f, bannerDur;
-        // hints
-        RectTransform hintRow;
+        // hints: two rows above 100 % HUD size (hintRow2 is the upper one), in one scaled root
+        RectTransform hintRoot, hintRow, hintRow2;
+        bool hintsTwoRows;
         CanvasGroup hintGroup;
         TextMeshProUGUI hintText, tipText;
         CanvasGroup tipGroup;
@@ -167,8 +169,10 @@ namespace BorrowedSeconds.UI
             aimText.richText = true;
 
             // ---- hints
-            hintRow = Ui.Rect("Hints", root, new Vector2(0, 0), new Vector2(0, 0), new Vector2(56, 34), new Vector2(760, 40));
-            hintGroup = hintRow.gameObject.AddComponent<CanvasGroup>();
+            hintRoot = Ui.Rect("Hints", root, new Vector2(0, 0), new Vector2(0, 0), new Vector2(56, 34), new Vector2(760, 40));
+            hintGroup = hintRoot.gameObject.AddComponent<CanvasGroup>();
+            hintRow = Ui.Rect("Row", hintRoot, new Vector2(0, 0), new Vector2(0, 0), Vector2.zero, new Vector2(760, 40));
+            hintRow2 = Ui.Rect("Row2", hintRoot, new Vector2(0, 0), new Vector2(0, 0), new Vector2(0, 44), new Vector2(760, 40));
             hintText = Ui.Text("Text", root, "", Ui.Regular, 20, dim, TextAlignmentOptions.BottomLeft);
             Ui.Fill(hintText.rectTransform);
             hintText.richText = true;
@@ -303,7 +307,26 @@ namespace BorrowedSeconds.UI
         {
             if (text == hintSource) return;
             hintSource = text;
-            hintWidth = Kit.Keycaps(hintRow, text);
+            LayoutHints();
+        }
+
+        /// <summary>One row of keycaps, or above 100 % HUD size two (the first half on top), so the
+        /// larger hints still end short of the watch.</summary>
+        void LayoutHints()
+        {
+            hintsTwoRows = HudLayout.TwoRows;
+            string text = hintSource ?? "";
+            if (!hintsTwoRows)
+            {
+                hintWidth = Kit.Keycaps(hintRow, text);
+                Kit.Keycaps(hintRow2, "");
+                return;
+            }
+            var pairs = System.Text.RegularExpressions.Regex.Matches(text, @"<b>.*?</b>[^<]*");
+            var top = new System.Text.StringBuilder();
+            var bottom = new System.Text.StringBuilder();
+            for (int i = 0; i < pairs.Count; i++) (i < (pairs.Count + 1) / 2 ? top : bottom).Append(pairs[i].Value);
+            hintWidth = Mathf.Max(Kit.Keycaps(hintRow2, top.ToString()), Kit.Keycaps(hintRow, bottom.ToString()));
         }
 
         /// <summary>The level's one-line teaching tip, shown above the control hints.</summary>
@@ -317,6 +340,64 @@ namespace BorrowedSeconds.UI
         public void SetTipText(string text) => tipText.text = text ?? "";
         /// <summary>The control-hint row as last set ("&lt;b&gt;Key&lt;/b&gt; label" pairs).</summary>
         public string HintsText => hintSource;
+
+        // ---- measurements for the HUD-size check, in screen pixels
+        float CanvasScale => ((RectTransform)canvas.transform).localScale.x;
+        /// <summary>The numbers behind the measurements (canvas scale, hint row scale and width).</summary>
+        public string HintDebug => $"canvas {CanvasScale:0.000}, row scale {hintRoot.localScale.x:0.000}, row width {hintWidth:0}, room {HudLayout.Room(((RectTransform)canvas.transform).rect.width):0}";
+        /// <summary>Key-hint rows in use (two above 100 % HUD size).</summary>
+        public int HintRows => hintRow2.childCount > 0 ? 2 : 1;
+        /// <summary>The key hints' label size (18 units) on screen.</summary>
+        public float HintLabelPx => 18f * CanvasScale * hintRoot.localScale.x;
+        /// <summary>The line under the watch (18 units) on screen.</summary>
+        public float TermPx => 18f * CanvasScale * termText.rectTransform.localScale.x;
+        /// <summary>The tip (24 units) on screen.</summary>
+        public float TipPx => 24f * CanvasScale * tipRt.localScale.x;
+
+        /// <summary>Screen-space boxes of the bottom HUD that must not meet: the hint rows (their
+        /// keycaps), the tip panel, the watch's keep-out box and the line under it. Returns the
+        /// pairs that overlap.</summary>
+        public List<string> BottomOverlaps()
+        {
+            Rect World(RectTransform rt)
+            {
+                var c = new Vector3[4];
+                rt.GetWorldCorners(c);
+                return Rect.MinMaxRect(c[0].x, c[0].y, c[2].x, c[2].y);
+            }
+            Rect Content(RectTransform row)
+            {
+                bool any = false;
+                var r = new Rect();
+                foreach (RectTransform child in row)
+                {
+                    var w = World(child);
+                    r = any ? Rect.MinMaxRect(Mathf.Min(r.xMin, w.xMin), Mathf.Min(r.yMin, w.yMin), Mathf.Max(r.xMax, w.xMax), Mathf.Max(r.yMax, w.yMax)) : w;
+                    any = true;
+                }
+                return r;
+            }
+            float s = CanvasScale, cw = Screen.width;
+            var wb = HudLayout.WatchBox;
+            var boxes = new List<(string name, Rect r)>
+            {
+                ("hints", Content(hintRow)),
+                ("watch", Rect.MinMaxRect(cw * 0.5f + wb.x * s, 46f * s, cw * 0.5f + wb.z * s, wb.w * s)),
+            };
+            if (hintRow2.childCount > 0) boxes.Add(("hints2", Content(hintRow2)));
+            if (tipGroup.alpha > 0.5f) boxes.Add(("tip", World(tipPanel.Rt)));
+            float tw = termText.preferredWidth * termText.rectTransform.localScale.x * s;
+            var term = World(termText.rectTransform);
+            boxes.Add(("term", Rect.MinMaxRect(cw * 0.5f - tw * 0.5f, term.yMin, cw * 0.5f + tw * 0.5f, term.yMax)));
+            var hits = new List<string>();
+            for (int i = 0; i < boxes.Count; i++)
+                for (int j = i + 1; j < boxes.Count; j++)
+                {
+                    if (boxes[i].name == "watch" && boxes[j].name == "term") continue; // the line sits under the watch's case by design
+                    if (boxes[i].r.Overlaps(boxes[j].r)) hits.Add($"{boxes[i].name}/{boxes[j].name}");
+                }
+            return hits;
+        }
         public string TipText => tipText.text;
 
         void LateUpdate()
@@ -332,10 +413,17 @@ namespace BorrowedSeconds.UI
             timeText.richText = true;
             AnimateIntro(dt);
             // the key hints end short of the pocket watch: long labels or rebound key names shrink the row
-            float room = ((RectTransform)canvas.transform).rect.width * 0.5f - 150f - 56f;
-            hintRow.localScale = Vector3.one * Mathf.Min(1f, room / Mathf.Max(1f, hintWidth));
+            float k = HudLayout.Scale, cw = ((RectTransform)canvas.transform).rect.width;
+            if (hintsTwoRows != HudLayout.TwoRows) LayoutHints();
+            hintRoot.localScale = Vector3.one * Mathf.Min(k, HudLayout.Room(cw) / Mathf.Max(1f, hintWidth));
+            timeRoot.localScale = Vector3.one * k;
+            termText.rectTransform.localScale = Vector3.one * k;
+            restartRoot.localScale = Vector3.one * k;
+            restartRoot.anchoredPosition = new Vector2(0, -64f - 60f * k);
+            tipRt.localScale = Vector3.one * k;
+            tipRt.sizeDelta = new Vector2(HudLayout.TipWidth(cw), 120f);
             if (titleGroup.gameObject.activeSelf == TrailerMode)
-                foreach (var rt in new[] { titleGroup, timeRoot, hintRow, tipRt, introBand.Rt }) rt.gameObject.SetActive(!TrailerMode);
+                foreach (var rt in new[] { titleGroup, timeRoot, hintRoot, tipRt, introBand.Rt }) rt.gameObject.SetActive(!TrailerMode);
 
             // pocket watch
             string big, small;
@@ -377,7 +465,7 @@ namespace BorrowedSeconds.UI
             watchFill.color = col;
             bool urgent = !frozen && s.Countdown > 0 && s.Countdown <= Rules.TicksPerSecond;
             watchPulse = urgent ? Mathf.Abs(Mathf.Sin(Clock.Now * 12f)) : Mathf.MoveTowards(watchPulse, 0f, dt * 3f);
-            watch.localScale = Vector3.one * (1f + watchPulse * 0.06f);
+            watch.localScale = Vector3.one * (1f + watchPulse * 0.06f) * HudLayout.WatchScale;
             watchGlow.color = new Color(col.r, col.g, col.b, (frozen ? 0.35f : 0.12f) + watchPulse * 0.3f);
             // the 3D watch: its second hand counts the debt down to twelve; frost while repaying
             if (s.Loans > lastLoans) watchRoll.Kick(260f);
@@ -407,7 +495,7 @@ namespace BorrowedSeconds.UI
             int aim = session.Aim;
             bool showAim = aim >= 0 && session.LoanAvailable && session.State == LevelSession.Mode.Playing && !s.IsObstacleFrozen(d, aim);
             aimGroup.alpha = Mathf.MoveTowards(aimGroup.alpha, showAim ? 1f : 0f, dt * 10f);
-            aimTag.localScale = Vector3.one * Mathf.Lerp(0.7f, 1f, Ease.OutBack(aimGroup.alpha, 2.2f));
+            aimTag.localScale = Vector3.one * Mathf.Lerp(0.7f, 1f, Ease.OutBack(aimGroup.alpha, 2.2f)) * HudLayout.Scale;
             aimPanel.Sheen = Mathf.Repeat(Clock.Now * 0.6f, 3f) - 0.8f;
             aimPanel.Apply();
             if (showAim)
@@ -425,12 +513,12 @@ namespace BorrowedSeconds.UI
             // the tip slides in once the title has docked, on a panel sized to its text
             float tipIn = showTip ? Ease.OutCubic((introT - 1.9f) / 0.6f) : 0f;
             tipGroup.alpha = Mathf.MoveTowards(tipGroup.alpha, tipIn, dt * 3f);
-            tipRt.anchoredPosition = new Vector2(56 - (1f - tipGroup.alpha) * 40f, 84);
+            tipRt.anchoredPosition = new Vector2(56 - (1f - tipGroup.alpha) * 40f, HudLayout.TipY);
             if (showTip)
             {
                 float h = tipText.preferredHeight;
                 tipBarRt.sizeDelta = new Vector2(4, h);
-                tipPanel.SetSize(new Vector2(Mathf.Min(660f, tipText.preferredWidth + 52f), h + 28f));
+                tipPanel.SetSize(new Vector2(Mathf.Min(tipRt.sizeDelta.x + 40f, tipText.preferredWidth + 52f), h + 28f));
                 tipPanel.Rt.anchoredPosition = new Vector2(-14, -14);
                 tipPanel.Apply();
             }
@@ -439,14 +527,14 @@ namespace BorrowedSeconds.UI
             string tagText = Watching ? "SOLUTION" : "FOCUS";
             if (focusText.text != tagText) focusText.text = tagText;
             focusGroup.alpha = tagBlend * (1f - rewindGroup.alpha); // the rewind tag takes the same spot
-            focusRoot.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(tagBlend, 2f));
+            focusRoot.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(tagBlend, 2f)) * HudLayout.Scale;
             focusTag.Glow = 0.35f + 0.25f * Mathf.Sin(Clock.Now * 4f);
             focusTag.Apply();
             rewindGroup.alpha = Mathf.MoveTowards(rewindGroup.alpha, session.State == LevelSession.Mode.Rewinding ? 1f : 0f, dt * 8f);
             restartGroup.alpha = Mathf.MoveTowards(restartGroup.alpha, RestartHold >= 0f ? 1f : 0f, dt * (RestartHold >= 0f ? 12f : 4f));
             if (RestartHold >= 0f) restartFill.sizeDelta = new Vector2(300f * Mathf.Clamp01(RestartHold), 5f);
             if (restartText.text != RestartLabel) restartText.text = RestartLabel;
-            rewindRoot.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, Ease.OutBack(rewindGroup.alpha, 2f));
+            rewindRoot.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, Ease.OutBack(rewindGroup.alpha, 2f)) * HudLayout.Scale;
             rewindDial.localRotation = Quaternion.Euler(0, 0, Clock.Now * 540f); // hands run backwards
             rewindTag.Glow = 0.5f;
             rewindTag.Apply();
@@ -467,10 +555,10 @@ namespace BorrowedSeconds.UI
             introT += dt;
             var size = ((RectTransform)canvas.transform).rect.size;
             Vector2 corner = new Vector2(56, -40);
-            Vector2 centre = new Vector2(size.x * 0.5f - 330f, -size.y * 0.5f + 80f);
+            Vector2 centre = new Vector2(size.x * 0.5f - 330f * HudLayout.Scale, -size.y * 0.5f + 80f);
             float fly = Ease.InOutCubic((introT - 1.25f) / 0.55f);
             titleGroup.anchoredPosition = Vector2.Lerp(centre, corner, fly);
-            titleGroup.localScale = Vector3.one * Mathf.Lerp(1.45f, 1f, fly);
+            titleGroup.localScale = Vector3.one * Mathf.Lerp(1.45f, 1f, fly) * HudLayout.Scale;
             nameFx.Age = introT - 0.25f;
             numberFx.Age = introT - 0.05f;
             chapterText.alpha = Ease.OutCubic((introT - 0.5f) * 3f) * 0.9f;
@@ -482,7 +570,7 @@ namespace BorrowedSeconds.UI
             introBand.Apply();
             // the watch rises into place and the key hints fade up once the title has settled
             float rise = Ease.OutBack((introT - 1.35f) / 0.6f, 1.4f);
-            watch.anchoredPosition = new Vector2(0, Mathf.LerpUnclamped(-340f, 46f, rise));
+            watch.anchoredPosition = new Vector2(0, Mathf.LerpUnclamped(-340f, 46f + HudLayout.WatchLift, rise));
             hintGroup.alpha = Ease.OutCubic((introT - 1.7f) / 0.5f);
             termText.alpha = 0.75f * Ease.OutCubic((introT - 1.75f) / 0.5f);
             timeRoot.anchoredPosition = new Vector2(Mathf.Lerp(260f, -56f, Ease.OutCubic((introT - 1.5f) / 0.5f)), -40f);

@@ -171,11 +171,26 @@ namespace BorrowedSeconds.Game
             vibrationWas = Save.vibration;
             if (Session != null) ShowControlHints(true);
             LevelSession.GameSpeed = capturing ? 1f : Mathf.Clamp(Save.speed, 0.5f, 1f);
+            SetHudScale(capturing && !forceHudScale ? hudScaleArg : Save.hudScale);
             if (!capturing || forceDisplay) DisplayOptions.ApplyRenderScale(Save.renderScale);
             ApplyDisplay(false);
         }
 
         bool vibrationWas = true;
+        /// <summary>Scripted runs keep a 100 % HUD unless started with -bsHudScale (or the HUD-size
+        /// check sets forceHudScale; it must not use forceDisplay, which would apply the run's save
+        /// to the window too).</summary>
+        float hudScaleArg = 1f;
+        bool forceHudScale;
+
+        /// <summary>HUD size: the HUD scales its groups and the camera re-frames the board clear of them.</summary>
+        void SetHudScale(float scale)
+        {
+            float k = HudLayout.Sizes[HudLayout.Step(scale)];
+            if (Mathf.Approximately(k, HudLayout.Scale)) return;
+            HudLayout.Scale = k;
+            if (Session != null) Rig.Frame(Session.Board.Bounds, false, Session.Board.TileTops);
+        }
 
         /// <summary>Set by the display check: scripted runs otherwise keep the window and render
         /// scale they were started with.</summary>
@@ -205,6 +220,12 @@ namespace BorrowedSeconds.Game
             // scripted runs play at full speed unless asked (-bsSpeed checks that slow play is still exact)
             LevelSession.GameSpeed = float.TryParse(Arg(args, "-bsSpeed"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float speed)
                 ? Mathf.Clamp(speed, 0.1f, 4f) : capturing ? 1f : LevelSession.GameSpeed;
+            // -bsHudScale 1.5: a scripted run with a larger HUD (the autopilot logs the framing it gets)
+            if (float.TryParse(Arg(args, "-bsHudScale"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float hudScale))
+            {
+                hudScaleArg = hudScale;
+                SetHudScale(hudScale);
+            }
             // -bsRenderScale 0.5: the fps probe measures a lower render resolution
             if (float.TryParse(Arg(args, "-bsRenderScale"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float renderScale))
                 DisplayOptions.ApplyRenderScale(renderScale);
@@ -858,6 +879,7 @@ namespace BorrowedSeconds.Game
                 foreach (var p in shots.Split(','))
                     if (int.TryParse(p, out int t)) shotTicks.Add(t);
             int pass = 0, fail = 0;
+            bool frameOnly = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-bsFrameOnly") >= 0;
             for (int i = 0; i < Catalog.Levels.Count; i++)
             {
                 var def = Catalog.Levels[i];
@@ -865,6 +887,14 @@ namespace BorrowedSeconds.Game
                 var sol = Catalog.SolutionFor(def);
                 if (sol == null) { log.Add($"SKIP {def.Id} (no solution)"); continue; }
                 LoadLevel(i);
+                if (frameOnly)
+                {
+                    // -bsFrameOnly: just the framing each level gets (screen shapes, HUD sizes), no play
+                    log.Add($"FRAME {def.Id} {def.Name} hud={Rig.HudOverlap} pullback={Rig.HudPullback:0.000}");
+                    if (Rig.HudOverlap > 0) fail++; else pass++;
+                    yield return null;
+                    continue;
+                }
                 State = Flow.Playing;
                 Hud.SetVisible(true);
                 Session.Autoplay = sol.Actions;

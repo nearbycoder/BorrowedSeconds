@@ -928,7 +928,7 @@ namespace BorrowedSeconds.UI
         readonly CanvasGroup footGroup;
 
         /// <summary>Index of the Controls row (scripted tours select rows by index).</summary>
-        public const int ControlsRow = 11;
+        public const int ControlsRow = 12;
         /// <summary>Index of the Erase progress row.</summary>
         public const int EraseRow = ControlsRow + 1;
         /// <summary>How long Erase progress stays armed for its second press.</summary>
@@ -963,6 +963,9 @@ namespace BorrowedSeconds.UI
             menu.AddSlider("Render resolution", () => DisplayOptions.ScaleStep(save.renderScale) / (float)(scales.Length - 1),
                 () => Pct(scales[DisplayOptions.ScaleStep(save.renderScale)]),
                 d => { save.renderScale = scales[Mathf.Clamp(DisplayOptions.ScaleStep(save.renderScale) + d, 0, scales.Length - 1)]; apply(); });
+            var hud = HudLayout.Sizes;
+            menu.AddSlider("HUD size", () => HudLayout.Step(save.hudScale) / (float)(hud.Length - 1), () => Pct(hud[HudLayout.Step(save.hudScale)]),
+                d => { save.hudScale = hud[Mathf.Clamp(HudLayout.Step(save.hudScale) + d, 0, hud.Length - 1)]; apply(); });
             menu.AddToggle("Screen shake", () => save.shake, () => { save.shake = !save.shake; apply(); });
             menu.AddToggle("Reduce flashing", () => save.reduceFlashing, () => { save.reduceFlashing = !save.reduceFlashing; apply(); });
             menu.AddSlider("Focus slow-motion", () => (save.focus - 0.1f) / 0.5f, () => Pct(save.focus),

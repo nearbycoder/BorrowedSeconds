@@ -48,6 +48,7 @@ namespace BorrowedSeconds.Game
             if (Want("display")) yield return CheckDisplay(dir, Report);
             if (Want("how-to-play")) yield return CheckHowTo(dir, Report);
             if (Want("erase-progress")) yield return CheckErase(dir, Report);
+            if (Want("hud-size")) yield return CheckHudSize(dir, Report);
 
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
@@ -483,6 +484,65 @@ namespace BorrowedSeconds.Game
                 $"row={isRow}; one press only arms={armedOnly}; moving off disarms={movedOff}; re-arm erases nothing={stillThere}; "
                 + $"arm lapsed after {lapsed:0.0}s={lapses}; two presses: {before} -> {after} (erased={erased}); settings and keys kept={kept}; "
                 + $"title reads {label}; Ledger has only 1-1 open={ledger}");
+        }
+
+        /// <summary>
+        /// Settings > HUD size steps to 150 % and back: the HUD scales (hint rows, text sizes in
+        /// pixels), the bottom HUD's pieces don't meet, the camera re-frames 4-5 clear of the
+        /// larger HUD, and the choice survives a save round trip. Screenshots at both sizes.
+        /// </summary>
+        IEnumerator CheckHudSize(string dir, System.Action<string, bool, string> report)
+        {
+            var saved = JsonUtility.ToJson(Save);
+            forceHudScale = true; // scripted runs otherwise keep a 100 % HUD
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "4-5"), false);
+            Session.Autoplay = Catalog.SolutionFor(Session.Def).Actions;
+            Hud.SkipIntro();
+            Pause();
+            OpenSettings(Flow.Paused);
+            var row = settings.Menu.Items.Find(i => i.Label == "HUD size");
+            bool isRow = row != null && settings.Menu.Items.IndexOf(row) == 5;
+            string Measure() => $"{Hud.HintRows} hint row(s), hints {Hud.HintLabelPx:0.0}px, line under the watch {Hud.TermPx:0.0}px, tip {Hud.TipPx:0.0}px, tiles under the HUD {Rig.HudOverlap} ({Hud.HintDebug})";
+            yield return new WaitForSecondsRealtime(0.8f);
+            if (isRow)
+            {
+                settings.Menu.Selected = 5;
+                row.Adjust(1);
+                row.Adjust(1);
+            }
+            bool set = isRow && Mathf.Approximately(Save.hudScale, 1.5f) && Mathf.Approximately(View.HudLayout.Scale, 1.5f) && row.Value() == "150%"
+                && Mathf.Approximately(JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(Save)).hudScale, 1.5f);
+            CloseSettings();
+            Resume();
+            yield return new WaitForSecondsRealtime(2.5f); // the camera eases out to the new framing; the tip is up
+            Session.Paused = true;
+            yield return Shot(dir, "hud_150");
+            string at150 = Measure();
+            var overlaps = Hud.BottomOverlaps();
+            float hint150 = Hud.HintLabelPx;
+            bool larger150 = Hud.HintRows == 2 && Rig.HudOverlap == 0 && overlaps.Count == 0;
+            Session.Paused = false;
+            Pause();
+            OpenSettings(Flow.Paused);
+            settings.Menu.Selected = 5;
+            row?.Adjust(-1);
+            row?.Adjust(-1);
+            bool back = Mathf.Approximately(View.HudLayout.Scale, 1f) && row?.Value() == "100%";
+            CloseSettings();
+            Resume();
+            yield return new WaitForSecondsRealtime(2.5f);
+            Session.Paused = true;
+            yield return Shot(dir, "hud_100");
+            string at100 = Measure();
+            bool larger = larger150 && hint150 > Hud.HintLabelPx * 1.2f;
+            bool backOverlaps = Hud.BottomOverlaps().Count == 0 && Hud.HintRows == 1 && Rig.HudOverlap == 0;
+            Session.Paused = false;
+            JsonUtility.FromJsonOverwrite(saved, Save);
+            forceHudScale = false;
+            SetHudScale(hudScaleArg);
+            report("hud-size", isRow && set && larger && back && backOverlaps,
+                $"{Screen.width}x{Screen.height}; row at 5={isRow}; 150 % set and saved={set}; at 100 %: {at100}; at 150 %: {at150}"
+                + $"{(overlaps.Count > 0 ? "; overlapping: " + string.Join(", ", overlaps) : "")}; back to 100 %={back}, one row and no overlap={backOverlaps}");
         }
 
         IEnumerator Shot(string dir, string name)

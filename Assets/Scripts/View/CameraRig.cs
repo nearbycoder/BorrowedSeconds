@@ -67,7 +67,9 @@ namespace BorrowedSeconds.View
             // smallest pull-back first, then the smallest slide; slides are in world units (z is up-screen)
             float[] dzs = { 0f, -0.3f, 0.3f, -0.6f, 0.6f, -0.9f, 0.9f, -1.2f, 1.2f, -1.6f, 1.6f, -2f, 2f };
             float[] dxs = { 0f, 0.5f, -0.5f, 1f, -1f, 1.5f, -1.5f, 2f, -2f };
-            for (float k = 1f; k <= 1.401f && best > 0; k += 0.025f)
+            // a larger HUD may pull back further (1.4x at 100 %, 1.7x at 150 %)
+            float maxK = 1.4f + 0.6f * (HudLayout.Scale - 1f) + 0.001f;
+            for (float k = 1f; k <= maxK && best > 0; k += 0.025f)
                 foreach (float dz in dzs)
                 {
                     foreach (float dx in dxs)
@@ -86,11 +88,8 @@ namespace BorrowedSeconds.View
         }
 
         // HUD keep-out boxes in canvas units (the UI scales so the canvas is at least 1920x1080):
-        // the title (top left), the clock (top right), the key hints and a two-line tip (bottom left)
-        // and the watch
-        static readonly Vector4[] LeftBoxes = { new Vector4(0f, -170f, 720f, 0f), new Vector4(0f, 0f, 760f, 180f) };   // x0, y0, x1, y1 from the left edge; y < 0 from the top
-        static readonly Vector4 ClockBox = new Vector4(-420f, -150f, 0f, 0f);  // from the top-right corner
-        static readonly Vector4 WatchBox = new Vector4(-130f, 0f, 130f, 285f); // from the bottom centre, up to the bow
+        // the title (top left), the clock (top right), the key hints and tip (bottom left) and the
+        // watch, at the player's HUD size (HudLayout)
 
         /// <summary>How many tiles (by their top face, corners inset) would sit under the HUD or off screen.</summary>
         int Overlap(IReadOnlyList<Vector3> tiles, Vector3 f, float d)
@@ -103,6 +102,10 @@ namespace BorrowedSeconds.View
             float s = Mathf.Min(sw / 1920f, sh / 1080f);
             float cw = sw / s, ch = sh / s;
             int n = 0;
+            var title = HudLayout.TitleBox;
+            var bottomLeft = HudLayout.BottomLeftBox(cw);
+            var clock = HudLayout.ClockBox;
+            var watch = HudLayout.WatchBox;
             foreach (var t in tiles)
             {
                 bool hit = false;
@@ -112,10 +115,10 @@ namespace BorrowedSeconds.View
                     var clip = proj * new Vector4(p.x, p.y, p.z, 1f);
                     float x = (clip.x / clip.w * 0.5f + 0.5f) * cw, y = (clip.y / clip.w * 0.5f + 0.5f) * ch;
                     hit = x < 24f || x > cw - 24f || y < 24f || y > ch - 24f;
-                    foreach (var r in LeftBoxes)
-                        hit |= x >= r.x && x <= r.z && (r.y < 0f ? y >= ch + r.y : y <= r.w);
-                    hit |= x >= cw + ClockBox.x && y >= ch + ClockBox.y;
-                    hit |= x >= cw * 0.5f + WatchBox.x && x <= cw * 0.5f + WatchBox.z && y <= WatchBox.w;
+                    hit |= x >= title.x && x <= title.z && y >= ch + title.y;
+                    hit |= x >= bottomLeft.x && x <= bottomLeft.z && y <= bottomLeft.w;
+                    hit |= x >= cw + clock.x && y >= ch + clock.y;
+                    hit |= x >= cw * 0.5f + watch.x && x <= cw * 0.5f + watch.z && y <= watch.w;
                 }
                 if (hit) n++;
             }
