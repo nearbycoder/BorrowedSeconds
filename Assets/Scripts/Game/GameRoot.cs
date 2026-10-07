@@ -468,8 +468,12 @@ namespace BorrowedSeconds.Game
 
         // the game keeps running in the background (runInBackground), so a real-time level must
         // not: alt-tabbing away mid-level opens the pause menu instead of letting the debt fall due
-        void OnApplicationFocus(bool focus) { AppFocus(focus); if (!focus) { rumble.Stop(); FocusLost(false); } }
-        void OnApplicationPause(bool paused) { AppFocus(!paused); if (paused) { rumble.Stop(); FocusLost(false); } }
+        void OnApplicationFocus(bool focus) { AppFocus(focus); if (!focus) { rumble.Stop(); FocusLost(realFocusCheck); } }
+        void OnApplicationPause(bool paused) { AppFocus(!paused); if (paused) { rumble.Stop(); FocusLost(realFocusCheck); } }
+
+        /// <summary>Set by the real-focus check (inside the private compositor only): a scripted run
+        /// reacts to the compositor's own focus changes as a player's game would.</summary>
+        bool realFocusCheck;
 
         // Settings > Mute in background: the whole mix (AudioListener.volume) fades out while the
         // window is in the background and back in when it returns. Scripted runs leave the listener

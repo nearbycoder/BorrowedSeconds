@@ -57,6 +57,14 @@ namespace BorrowedSeconds.Game
             if (Want("hud-size")) yield return CheckHudSize(dir, Report);
             if (Want("background-mute")) yield return CheckBackgroundMute(dir, Report);
             if (Want("medal-pace")) yield return CheckMedalPace(dir, Report);
+            // these need a real compositor: only inside the private one (Tools/nested.sh), never on a shared desktop
+            bool nested = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-bsNested") >= 0;
+            foreach (var name in new[] { "real-focus", "fullscreen" })
+            {
+                if (!Want(name)) continue;
+                if (!nested) { log.Add($"SKIP {name}: needs the private compositor (Tools/nested.sh)"); continue; }
+                yield return name == "real-focus" ? CheckRealFocus(dir, Report) : CheckFullscreen(dir, Report);
+            }
 
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
@@ -180,6 +188,139 @@ namespace BorrowedSeconds.Game
             Resume();
             yield return new WaitForSecondsRealtime(0.5f);
             report("focus-resume", State == Flow.Playing && Session.Tick > tick, $"resumed: state={State}, tick={Session.Tick}");
+        }
+
+        /// <summary>
+        /// A real focus loss, not a call to the handler: mid-level the game opens a second window
+        /// (kdialog) in the private compositor, which takes focus as alt-tabbing would. The level
+        /// pauses and the mix fades out; closing that window gives focus back, the mix fades in and
+        /// the level stays paused until resumed.
+        /// </summary>
+        IEnumerator CheckRealFocus(string dir, System.Action<string, bool, string> report)
+        {
+            string saved = JsonUtility.ToJson(Save);
+            Save.muteBackground = true;
+            forceBackgroundMute = true;
+            realFocusCheck = true;
+            AudioListener.volume = 1f;
+            int index = Catalog.Levels.FindIndex(l => l.Id == "1-3");
+            StartLevel(index, false);
+            Hud.SkipIntro();
+            Session.Autoplay = Catalog.SolutionFor(Catalog.Levels[index]).Actions;
+            float deadline = Time.realtimeSinceStartup + 10f;
+            while ((Session.Tick < 30 || !appFocused) && Time.realtimeSinceStartup < deadline) yield return null;
+            bool focusedAtStart = appFocused;
+            int tickBefore = Session.Tick;
+            System.Diagnostics.Process other = null;
+            string error = "";
+            try
+            {
+                other = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("kdialog",
+                    "--title \"Focus check\" --msgbox \"Borrowed Seconds focus check: this window takes focus.\"") { UseShellExecute = false });
+            }
+            catch (System.Exception e) { error = e.Message; }
+            float t0 = Time.realtimeSinceStartup;
+            deadline = t0 + 15f;
+            while (appFocused && Time.realtimeSinceStartup < deadline) yield return null;
+            bool lost = !appFocused;
+            float lostAfter = Time.realtimeSinceStartup - t0;
+            int tickLost = Session.Tick;
+            yield return new WaitForSecondsRealtime(1.5f);
+            bool paused = State == Flow.Paused && pause.Visible && Session.Tick == tickLost;
+            float volAway = AudioListener.volume;
+            yield return Shot(dir, "real-focus_away");
+            try { if (other != null && !other.HasExited) other.Kill(); } catch (System.Exception e) { error += " " + e.Message; }
+            t0 = Time.realtimeSinceStartup;
+            deadline = t0 + 15f;
+            while (!appFocused && Time.realtimeSinceStartup < deadline) yield return null;
+            bool regained = appFocused;
+            float regainedAfter = Time.realtimeSinceStartup - t0;
+            yield return new WaitForSecondsRealtime(1.0f);
+            float volBack = AudioListener.volume;
+            bool stillPaused = State == Flow.Paused && Session.Tick == tickLost;
+            if (State == Flow.Paused) Resume();
+            yield return new WaitForSecondsRealtime(0.5f);
+            bool resumed = State == Flow.Playing && Session.Tick > tickLost;
+            other?.Dispose();
+            realFocusCheck = false;
+            forceBackgroundMute = false;
+            AudioListener.volume = 1f;
+            JsonUtility.FromJsonOverwrite(saved, Save);
+            report("real-focus", focusedAtStart && lost && paused && Mathf.Approximately(volAway, 0f) && regained && Mathf.Approximately(volBack, 1f) && stillPaused && resumed,
+                $"focused at start={focusedAtStart} (tick {tickBefore}); a second window took focus after {lostAfter:0.0}s={lost}: paused with the tick held={paused}, volume {volAway:0.00}; "
+                + $"closed, focus back after {regainedAfter:0.0}s={regained}: volume {volBack:0.00}, still paused={stillPaused}; resumed={resumed}"
+                + (error.Length > 0 ? $"; error: {error}" : ""));
+        }
+
+        /// <summary>
+        /// Settings > Display in a real compositor: Fullscreen fills the output, and a window size
+        /// brings the window back. Logs what the player reports for the desktop, its modes and the
+        /// fullscreen size, which shows the resolution it renders at under fractional scaling.
+        /// </summary>
+        IEnumerator CheckFullscreen(string dir, System.Action<string, bool, string> report)
+        {
+            var saved = JsonUtility.ToJson(Save);
+            int w0 = Screen.width, h0 = Screen.height;
+            forceDisplay = true;
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "4-5"), false);
+            Session.Autoplay = Catalog.SolutionFor(Session.Def).Actions;
+            Hud.SkipIntro();
+            Pause();
+            OpenSettings(Flow.Paused);
+            var desk = DisplayOptions.Desktop;
+            var fit = DisplayOptions.Fitting(desk);
+            var row = settings.Menu.Items.Find(i => i.Label == "Display");
+            settings.Menu.Selected = settings.Menu.Items.IndexOf(row);
+            DisplayOptions.Choose(Save, desk, 1);
+            ApplyDisplay(true);
+            IEnumerator Until(System.Func<bool> done)
+            {
+                float t0 = Time.realtimeSinceStartup;
+                int frames = 0;
+                while (!done() && (Time.realtimeSinceStartup < t0 + 8f || frames < 60)) { frames++; yield return null; }
+            }
+            yield return Until(() => Screen.width == fit[0].x && Screen.height == fit[0].y);
+            bool windowed = Screen.fullScreenMode == FullScreenMode.Windowed && Screen.width == fit[0].x;
+
+            row.Adjust(-1); // one step left of the smallest window: Fullscreen
+            float tf = Time.realtimeSinceStartup;
+            yield return Until(() => Screen.fullScreenMode == FullScreenMode.FullScreenWindow && Screen.width == desk.x && Screen.height == desk.y);
+            float fullAfter = Time.realtimeSinceStartup - tf;
+            yield return new WaitForSecondsRealtime(0.5f);
+            bool full = Save.fullscreen && Screen.fullScreenMode == FullScreenMode.FullScreenWindow && Screen.width == desk.x && Screen.height == desk.y && row.Value() == "Fullscreen";
+            string fullSize = $"{Screen.width}x{Screen.height}";
+            var cur = Screen.currentResolution;
+            var modes = new List<string>();
+            foreach (var r in Screen.resolutions) { string m = $"{r.width}x{r.height}"; if (!modes.Contains(m)) modes.Add(m); }
+            string display = $"Display.main system {Display.main.systemWidth}x{Display.main.systemHeight}, rendering {Display.main.renderingWidth}x{Display.main.renderingHeight}, dpi {Screen.dpi:0}";
+            CloseSettings();
+            Resume();
+            yield return new WaitForSecondsRealtime(1.5f);
+            yield return Shot(dir, "fullscreen_level");
+
+            Pause();
+            OpenSettings(Flow.Paused);
+            settings.Menu.Selected = settings.Menu.Items.IndexOf(row);
+            row.Adjust(1); // back to the smallest window
+            tf = Time.realtimeSinceStartup;
+            yield return Until(() => Screen.fullScreenMode == FullScreenMode.Windowed && Screen.width == fit[0].x && Screen.height == fit[0].y);
+            float backAfter = Time.realtimeSinceStartup - tf;
+            bool back = !Save.fullscreen && Screen.fullScreenMode == FullScreenMode.Windowed && Screen.width == fit[0].x && Screen.height == fit[0].y;
+            string backSize = $"{Screen.width}x{Screen.height}";
+
+            Save.fullscreen = false;
+            Save.windowW = w0;
+            Save.windowH = h0;
+            Screen.SetResolution(w0, h0, FullScreenMode.Windowed);
+            float until = Time.realtimeSinceStartup + 3f;
+            while ((Screen.width != w0 || Screen.height != h0) && Time.realtimeSinceStartup < until) yield return null;
+            CloseSettings();
+            Resume();
+            JsonUtility.FromJsonOverwrite(saved, Save);
+            forceDisplay = false;
+            report("fullscreen", windowed && full && back,
+                $"desktop {desk.x}x{desk.y} (current {cur.width}x{cur.height} @ {cur.refreshRateRatio.value:0} Hz; modes {string.Join(" ", modes)}; {display}); "
+                + $"window {fit[0].x}x{fit[0].y}={windowed}; Fullscreen -> {fullSize} in {fullAfter:0.0}s={full}; back to a window -> {backSize} in {backAfter:0.0}s={back}");
         }
 
         /// <summary>
