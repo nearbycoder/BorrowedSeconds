@@ -584,10 +584,32 @@ namespace BorrowedSeconds.Game
                 }
                 levels.Hide();
             }
+
+            // the Settled screen: the bar's label names gold's and silver's times for the level
+            int settled = 0;
+            for (int i = 0; i < Catalog.Levels.Count; i++)
+            {
+                var d = Catalog.Levels[i];
+                int par = Catalog.SolutionFor(d)?.Par ?? 0;
+                if (i == 0) { StartLevel(i, false); Hud.SkipIntro(); }
+                complete.Show(par + 50, par, 0, false);
+                string label = complete.BarLabel;
+                if (par > 0 && label.Contains($"TIME THIEF</color>  {UI.Ui.Secs(par + 20)}s or better") && label.Contains($"SILVER</color>  {UI.Ui.Secs(par + 80)}s or better")) settled++;
+                else bad.Add($"{d.Id} Settled: \"{label}\"");
+                if (i == 0)
+                {
+                    State = Flow.Complete;
+                    yield return new WaitForSecondsRealtime(2.8f);
+                    yield return Shot(dir, "medal-pace_settled");
+                }
+                complete.Hide();
+            }
+            State = Flow.Playing;
             JsonUtility.FromJsonOverwrite(original, Save);
             ShowTitle();
             report("medal-pace", bad.Count == 0,
-                $"HUD on {paceLevel}: {steps}; unsettled and watching show none; Ledger targets right on {targets}/{3 * Catalog.Levels.Count} panels"
+                $"HUD on {paceLevel}: {steps}; unsettled and watching show none; Ledger targets right on {targets}/{3 * Catalog.Levels.Count} panels; "
+                + $"Settled screen names both medal times on {settled}/{Catalog.Levels.Count}"
                 + (bad.Count > 0 ? "; " + string.Join("; ", bad.GetRange(0, Mathf.Min(6, bad.Count))) : ""));
         }
 

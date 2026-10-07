@@ -1297,6 +1297,14 @@ namespace BorrowedSeconds.UI
             Menu.IntroDelay = 1.6f;
         }
 
+        /// <summary>The bar's label: the times each medal needs on this level, so a retry has a number to beat.</summary>
+        public static string MedalTimes(int parTicks) => parTicks <= 0
+            ? "<color=#FFD27A>TIME THIEF</color>  within par + 1.0s       <color=#D1DBF2>SILVER</color>  within par + 4.0s"
+            : $"<color=#FFD27A>TIME THIEF</color>  {Ui.Secs(parTicks + 20)}s or better       <color=#D1DBF2>SILVER</color>  {Ui.Secs(parTicks + 80)}s or better";
+
+        /// <summary>The bar label as shown (checks read it).</summary>
+        public string BarLabel => barLabel.text;
+
         static RectTransform Marker(Transform bar, Color c)
         {
             var m = Ui.Img("Mark", bar, Ui.Diamond, c);
@@ -1322,7 +1330,7 @@ namespace BorrowedSeconds.UI
             float sx = parTicks > 0 ? (float)parTicks / (parTicks + 80) : 0.8f;
             goldMark.anchoredPosition = new Vector2(560 * gx, 0);
             silverMark.anchoredPosition = new Vector2(560 * sx, 0);
-            barLabel.text = $"<color=#FFD27A>TIME THIEF</color>  within par + 1.0s       <color=#D1DBF2>SILVER</color>  within par + 4.0s";
+            barLabel.text = MedalTimes(parTicks);
             barLabel.richText = true;
             foreach (var s in sparks) s.rt.gameObject.SetActive(false);
             Show();
