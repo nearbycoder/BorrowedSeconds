@@ -70,6 +70,17 @@ namespace BorrowedSeconds.Game
 
         public bool Cleared(string id) => Best(id) > 0;
 
+        /// <summary>Settings > Erase progress: medals, best times, where to continue and the retired
+        /// onboarding prompts go; settings and key bindings stay.</summary>
+        public void EraseProgress()
+        {
+            ids = new string[0];
+            best = new int[0];
+            lastLevel = 0;
+            finished = false;
+            learned = 0;
+        }
+
         public static Medal MedalFor(int ticks, int par)
         {
             if (ticks <= 0) return Medal.None;

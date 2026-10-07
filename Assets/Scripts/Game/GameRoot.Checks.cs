@@ -47,6 +47,7 @@ namespace BorrowedSeconds.Game
             if (Want("aim-reach")) yield return CheckAimReach(dir, Report);
             if (Want("display")) yield return CheckDisplay(dir, Report);
             if (Want("how-to-play")) yield return CheckHowTo(dir, Report);
+            if (Want("erase-progress")) yield return CheckErase(dir, Report);
 
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
@@ -412,6 +413,76 @@ namespace BorrowedSeconds.Game
             report("how-to-play", inPause && rules && defaults && follows && backToPause && fromTitle && backToTitle,
                 $"in both menus={inPause}; rules={rules}; default keys listed={defaults}; follows a rebound Borrow (K)={follows}; "
                 + $"back to pause={backToPause}; from the title={fromTitle}, back={backToTitle}");
+        }
+
+        /// <summary>
+        /// Settings > Erase progress: one press only arms it, moving off the row or waiting disarms it,
+        /// and two presses erase medals, times, the last level, the finished flag and the onboarding
+        /// prompts while every setting and key binding stays. Runs on the scripted run's in-memory
+        /// save (read-only, so the player's file can't be touched) and restores it afterwards.
+        /// </summary>
+        IEnumerator CheckErase(string dir, System.Action<string, bool, string> report)
+        {
+            string original = JsonUtility.ToJson(Save);
+            for (int i = 0; i < 12; i++) Save.Record(Catalog.Levels[i].Id, (Catalog.SolutionFor(Catalog.Levels[i])?.Par ?? 100) + 5);
+            Save.lastLevel = 12;
+            Save.finished = true;
+            Save.learned = 0x3F;
+            Save.music = 0.3f;
+            Save.speed = 0.7f;
+            Save.focusToggle = true;
+            Save.keys = new[] { "K", "", "", "", "", "", "", "", "", "", "", "" };
+            string Progress() => $"{Save.ids.Length} cleared, last={Save.lastLevel}, finished={Save.finished}, learned={Save.learned}";
+            var expect = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(Save));
+            expect.EraseProgress();
+            string settingsAfter = JsonUtility.ToJson(expect), before = Progress();
+            ShowTitle();
+            yield return new WaitForSecondsRealtime(0.3f);
+            OpenSettings(Flow.Title);
+            yield return new WaitForSecondsRealtime(1.0f);
+            var row = settings.Menu.Items[UI.SettingsScreen.EraseRow];
+            bool isRow = row.Label == "Erase progress" && settings.Menu.Items[UI.SettingsScreen.ControlsRow].Label == "Controls";
+            settings.Menu.Selected = UI.SettingsScreen.EraseRow;
+            row.Activate();
+            yield return null;
+            bool armedOnly = settings.EraseArmed && Progress() == before && row.Value().Contains("press again");
+            yield return new WaitForSecondsRealtime(0.5f);
+            yield return Shot(dir, "erase_armed");
+            settings.Menu.Selected = UI.SettingsScreen.ControlsRow; // moving off the row disarms it
+            yield return null;
+            yield return null;
+            settings.Menu.Selected = UI.SettingsScreen.EraseRow;
+            bool movedOff = !settings.EraseArmed;
+            row.Activate(); // a fresh first press: arms again, erases nothing
+            yield return null;
+            bool stillThere = Progress() == before && settings.EraseArmed;
+            float t0 = Time.realtimeSinceStartup;
+            while (settings.EraseArmed && Time.realtimeSinceStartup - t0 < 15f) yield return null;
+            float lapsed = Time.realtimeSinceStartup - t0;
+            bool lapses = !settings.EraseArmed && Progress() == before;
+            row.Activate();
+            yield return null;
+            row.Activate(); // the second press
+            yield return null;
+            string after = Progress();
+            bool erased = Save.ids.Length == 0 && Save.best.Length == 0 && Save.lastLevel == 0 && !Save.finished && Save.learned == 0;
+            bool kept = JsonUtility.ToJson(Save) == settingsAfter;
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return Shot(dir, "erase_done");
+            CloseSettings();
+            yield return null;
+            yield return null;
+            string label = title.Menu.Items[0].Label;
+            ShowLevels(0);
+            yield return null;
+            bool ledger = levels.Unlocked(0) && !levels.Unlocked(1);
+            levels.Hide();
+            ShowTitle();
+            JsonUtility.FromJsonOverwrite(original, Save);
+            report("erase-progress", isRow && armedOnly && movedOff && stillThere && lapses && erased && kept && label == "Begin" && ledger,
+                $"row={isRow}; one press only arms={armedOnly}; moving off disarms={movedOff}; re-arm erases nothing={stillThere}; "
+                + $"arm lapsed after {lapsed:0.0}s={lapses}; two presses: {before} -> {after} (erased={erased}); settings and keys kept={kept}; "
+                + $"title reads {label}; Ledger has only 1-1 open={ledger}");
         }
 
         IEnumerator Shot(string dir, string name)

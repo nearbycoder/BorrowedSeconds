@@ -929,15 +929,23 @@ namespace BorrowedSeconds.UI
 
         /// <summary>Index of the Controls row (scripted tours select rows by index).</summary>
         public const int ControlsRow = 10;
+        /// <summary>Index of the Erase progress row.</summary>
+        public const int EraseRow = ControlsRow + 1;
+        /// <summary>How long Erase progress stays armed for its second press.</summary>
+        public const float EraseWindow = 4f;
+        // real time (the menus' dt is clamped per frame, so it runs slow at a low frame rate)
+        float armedUntil = -1f, erasedUntil = -1f;
+        /// <summary>Erase progress is waiting for its second press (checks read it).</summary>
+        public bool EraseArmed => Time.realtimeSinceStartup < armedUntil;
         string footText;
         /// <summary>The key row under the window (checks read it).</summary>
         public string Footer => footText;
 
-        public SettingsScreen(Transform canvas, SaveData save, Action apply, Action applyDisplay, Action onBack, Action onControls)
-            : base(canvas, "Settings", new Vector2(860, 1004), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
+        public SettingsScreen(Transform canvas, SaveData save, Action apply, Action applyDisplay, Action onBack, Action onControls, Action erase)
+            : base(canvas, "Settings", new Vector2(860, 1040), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
         {
             this.onBack = onBack;
-            menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -180), 740, 62, 27, true);
+            menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -172), 740, 52, 25, true);
             string Pct(float v) => Mathf.RoundToInt(v * 100) + "%";
             float Step(float v, int d) => Mathf.Clamp01(Mathf.Round((v + d * 0.1f) * 10f) / 10f);
             menu.AddSlider("Master volume", () => save.master, () => Pct(save.master), d => { save.master = Step(save.master, d); apply(); });
@@ -965,6 +973,13 @@ namespace BorrowedSeconds.UI
                 d => { save.speed = speeds[Mathf.Clamp(SpeedStep() + d, 0, speeds.Length - 1)]; apply(); });
             menu.AddToggle("Toggle Focus (press, not hold)", () => save.focusToggle, () => { save.focusToggle = !save.focusToggle; apply(); });
             menu.Add("Controls", onControls, () => "keyboard  ›");
+            // two presses: the first arms it for a few seconds, the second erases
+            menu.Add("Erase progress", () =>
+            {
+                float now = Time.realtimeSinceStartup;
+                if (EraseArmed) { armedUntil = -1f; erasedUntil = now + 2.5f; erase(); Sfx.Play("rewind", 0.6f); }
+                else { armedUntil = now + EraseWindow; erasedUntil = -1f; Sfx.Play("denied", 0.6f); }
+            }, () => EraseArmed ? "<color=#FF8A96>press again to erase</color>" : Time.realtimeSinceStartup < erasedUntil ? "erased" : "medals and times");
             menu.Add("Back", onBack);
             menu.IntroDelay = 0.25f;
             footRow = Ui.Rect("Foot", Body, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 22), new Vector2(700, 34));
@@ -972,7 +987,7 @@ namespace BorrowedSeconds.UI
 
         }
 
-        public override void Show() { base.Show(); menu.Selected = 0; }
+        public override void Show() { base.Show(); menu.Selected = 0; armedUntil = erasedUntil = -1f; }
         public MenuList Menu => menu;
 
         protected override void Tick(InputReader input, float dt, bool hasInput)
@@ -982,6 +997,7 @@ namespace BorrowedSeconds.UI
                 : $"<b>{input.KeyName(KeyAction.Up)} {input.KeyName(KeyAction.Down)}</b> choose <b>{input.KeyName(KeyAction.Left)} {input.KeyName(KeyAction.Right)}</b> adjust <b>Esc</b> back";
             if (foot != footText) { footText = foot; Kit.Keycaps(footRow, foot, 1f, true); }
             footGroup.alpha = Ease.OutCubic((a - 0.8f) * 2f);
+            if (menu.Selected != EraseRow) armedUntil = -1f; // leaving the row disarms it
             if (hasInput && input.Back) { Sfx.Play("ui_back"); onBack(); return; }
             menu.Update(input, dt, hasInput, a);
         }

@@ -121,7 +121,7 @@ namespace BorrowedSeconds.Game
             levels = new LevelSelectScreen(root, Catalog, Save, i => Go(() => StartLevel(i, true)), () => Go(ShowTitle, 0.7f));
             pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); }, WatchFromPause,
                 () => { pause.Hide(); Go(() => ShowLevels(LevelIndex)); }, () => OpenSettings(Flow.Paused), () => OpenHowTo(Flow.Paused), () => { pause.Hide(); Go(ShowTitle); });
-            settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, () => { ApplyDisplay(true); Save.Save(); }, CloseSettings, OpenControls);
+            settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, () => { ApplyDisplay(true); Save.Save(); }, CloseSettings, OpenControls, EraseProgress);
             controls = new ControlsScreen(root, () => Input.Keys, BindKey, ResetKeys, CloseControls);
             howto = new HowToPlayScreen(root, CloseHowTo);
             complete = new CompleteScreen(root, () => Go(Next), () => { complete.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); },
@@ -500,6 +500,14 @@ namespace BorrowedSeconds.Game
             Save.keys = new string[0];
             Save.Save();
             if (Session != null) { ShowControlHints(); RefreshTip(false); }
+        }
+
+        /// <summary>Settings > Erase progress (after its second press): a fresh Ledger, the onboarding
+        /// prompts back, settings and key bindings kept.</summary>
+        void EraseProgress()
+        {
+            Save.EraseProgress();
+            Save.Save();
         }
 
         void CloseSettings()
