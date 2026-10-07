@@ -388,3 +388,36 @@ All five items shipped on `improvements-5`. Final verification ran on the **rele
 - **Load.** Input-bot and `checks.sh` runs waited for a load average under 24. The machine ran at load 12–54 during the round. The real save's SHA-256 and mtimes were the same before and after the round (`Builds/r5/save-*.sha`).
 
 Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4, waiting on a playtest), a trailer re-cut (it still says 30 levels and keeps the old framing), human playtesting (including real PlayStation and Switch controllers), a listen to the mix (and the peak margin above), WebGL, Windows (needs the module) and touch.
+
+## Round 6 scope
+
+Written 2026-10-07 on `improvements-6`, after confirming `main` matched `origin/main` (`70b9f64`) with a clean tree. Chapter VIII (owner: theme), replacing 7-4 (needs a playtest first), the trailer re-cut (owner), the audio peak limit (owner) and touch controls (no touch platform ships) stay out. Rounds 1–5 worked through the ranked list; what's left there is owner-blocked. So this round started from the first minutes of play and from players on other hardware, and found four things:
+
+- **The game's first instruction is hard to do with a mouse.** 1-1's tip says "Hover the moving block, then click". That block moves at 2 ticks per tile, 10 tiles a second, along a 15-tile lane, and the pick collider is one tile wide. Aim is whatever is under the pointer that frame, so a pointer resting on the lane aims at the slider for only about two ticks each time it passes, and the aim tag, highlight and ghost flicker on and off. The input bot only manages it by moving its pointer onto the block every frame. The same goes for every fast slider (19 of 35 levels have a slider at 2–3 ticks per tile), a dark laser (only its turret is pickable) and a rotor between sweeps.
+- **Windowed mode has no window size.** The only display option is a Fullscreen toggle. The game starts full-screen at the desktop's resolution, and switching to a window keeps that resolution, so the "window" is as big as the screen. There's no way to pick a size short of the `-screen-width` command line.
+- **Nothing helps a weaker GPU.** Measured with the fps probe on the release build (load 10–19, no vsync): 215 fps at 1600×900, but about 105 fps in a 3072×1728 window, so cost tracks pixel count. This machine's iGPU (Radeon 8060S) is a fast one; on a typical laptop iGPU a 4K screen would likely run well under 60 fps. There's no resolution or render-scale option.
+- **The rules aren't anywhere in the game once the prompts retire.** Onboarding prompts disappear for good once used, and each tip only shows in its own level. A player who comes back after a week, or skips a tip, has no in-game place to read what the debt, the term, the ghosts, dials, plates and the exit rule are, or which keys do what.
+
+Items run in that order; item 4 is a stretch. Scratch output stays in `Builds/r6/`. Every tool run has to leave the real save's SHA-256 and mtime unchanged (`Builds/r6/save-before.*`).
+
+### 1. Forgiving mouse aim
+- **Change:** the pointer aims at an obstacle when it is over the obstacle itself (as now) *or* over the ground that obstacle owns: a slider's track, a laser's lane up to the first wall, a rotor's sweep. Where zones overlap, the obstacle nearest the pointer wins. A direct hit on a piece still wins over a zone. Gamepad and Tab aiming are unchanged. 1-1's tip says you can hover the block *or its track*.
+- **Acceptance:** with the pointer parked on any tile of 1-1's lane, the aim stays on the slider on every frame of a full slider cycle (before: only the frames when the block is under the pointer). On every level, a pointer over each tile that belongs to exactly one obstacle's zone aims at that obstacle. The existing mouse pass still wins 1-1.
+- **Verify:** a new `checks.sh` check (`aim-reach`) that measures both, run before the change (to record the baseline) and after. A new input-bot step that borrows 1-1's slider with the pointer parked in the alcove instead of tracking the block. Screenshot.
+
+### 2. Window sizes
+- **Change:** the Fullscreen row becomes a *Display* row: Fullscreen, or a window of 1280×720, 1600×900, 1920×1080, 2560×1440 or 3200×1800 (only sizes that fit the screen are offered). Choosing a window size sets it with `Screen.SetResolution`, and it's saved.
+- **Acceptance:** from a running window, choosing each size through the Settings row gives that window size within a few frames, and the choice survives a save round trip.
+- **Verify:** a new `checks.sh` check (`display`). **Limit:** the check does not switch to real fullscreen, because a fullscreen window on the shared desktop would cover other sessions' windows. Fullscreen-to-window is only checked by code reading.
+
+### 3. Render resolution for weaker GPUs
+- **Change:** a *Render resolution* row (100, 85, 70, 50 %) that sets URP's render scale. The 3D scene renders at that fraction of the screen and is scaled up; menus and the HUD stay at full resolution.
+- **Acceptance:** the row changes URP's render scale and survives a save round trip. At 50 %, the fps probe in the same large window runs measurably faster than at 100 %. The HUD text stays sharp in a 50 % screenshot.
+- **Verify:** the `display` check, the fps probe at 100 % and 50 % in a 3072×1728 window back to back (with the load noted), and a screenshot looked at before committing.
+
+### 4. Stretch: How to play
+- **Change:** a *How to play* page, opened from the title menu and the pause menu: the rules in a few short lines (borrow, the term and the debt, thawing, ghosts and the verdict, dials, plates and gates, the exit) and the controls, using the player's own key bindings or the pad's button names.
+- **Acceptance:** the page opens from both menus and closes with Esc or the pad's back button. Its controls text follows a rebound key and a virtual DualSense's names. It fits at 16:9 and 4:3.
+- **Verify:** a check that opens it and reads its text after a rebind, the input bot's controller-names pass reads it on each virtual pad, and screenshots at 1600×900 and 1024×768.
+
+**Not this round:** chapter VIII, replacing 7-4, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio peak limit and the mix by ear, human playtesting.
