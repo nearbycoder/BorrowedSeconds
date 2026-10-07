@@ -45,6 +45,17 @@ namespace BorrowedSeconds.UI
 
         LevelSession session;
         float watchPulse, shownAlpha;
+        // medal pace: on a level already settled, a coin by the clock shows the best medal still in reach
+        Image paceCoin;
+        Medal paceMedal;
+        float paceFlip = 1f;
+        int parTicks, bestTicks;
+        /// <summary>The medal coin by the clock is showing (checks read it).</summary>
+        public bool PaceShown => paceCoin != null && paceCoin.gameObject.activeSelf;
+        /// <summary>The medal the pace coin shows (checks read it).</summary>
+        public Medal PaceMedal => paceMedal;
+        /// <summary>The line under the clock, e.g. "PAR 8.15 · BEST 9.20" (checks read it).</summary>
+        public string ParLine => parText.text;
         /// <summary>0..1: how much a modal menu (pause, complete) covers the play screen.</summary>
         public float Dim;
         /// <summary>Trailer framing: keeps the pocket watch, loan terms, tags and banners; hides the
@@ -127,6 +138,9 @@ namespace BorrowedSeconds.UI
             parText = Ui.Text("Par", tr, "", Ui.Semi, 22, dim, TextAlignmentOptions.TopRight);
             Ui.Place(parText.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(0, -66), new Vector2(400, 30));
             parText.characterSpacing = 8;
+            paceCoin = Ui.Img("PaceCoin", tr, null, Color.white);
+            Ui.Place(paceCoin.rectTransform, new Vector2(1, 1), new Vector2(0.5f, 0.5f), new Vector2(-200, -34), new Vector2(46, 46));
+            paceCoin.gameObject.SetActive(false);
             speedText = Ui.Text("Speed", tr, "", Ui.Semi, 18, Palette.Ice, TextAlignmentOptions.TopRight);
             Ui.Place(speedText.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(0, -96), new Vector2(400, 26));
             speedText.characterSpacing = 8;
@@ -249,8 +263,11 @@ namespace BorrowedSeconds.UI
             bannerGroup.alpha = 0;
         }
 
-        public void Bind(LevelSession s, LevelCatalog catalog)
+        /// <param name="best">The saved best time in ticks, 0 if the level was never settled.</param>
+        public void Bind(LevelSession s, LevelCatalog catalog, int best = 0)
         {
+            bestTicks = best;
+            paceMedal = Medal.None;
             session = s;
             var d = s.Def;
             var ch = LevelCatalog.Chapters[Mathf.Clamp(d.Chapter - 1, 0, LevelCatalog.Chapters.Length - 1)];
@@ -260,7 +277,8 @@ namespace BorrowedSeconds.UI
             numberText.text = $"{d.Chapter}-{inChapter}";
             nameText.text = d.Name;
             var sol = catalog.SolutionFor(d);
-            parText.text = sol != null ? $"PAR {Ui.Secs(sol.Par)}" : "";
+            parTicks = sol?.Par ?? 0;
+            parText.text = ParText(false);
             termLine = $"LOAN 3.0s  ·  TERM {Ui.Secs1(d.Term)}s" + (d.LoanLimit >= 0 ? $"  ·  {d.LoanLimit} LOAN{(d.LoanLimit == 1 ? "" : "S")}" : "");
             termText.text = termLine;
             foreach (var p in pips) if (p != null) Destroy(p.gameObject);
@@ -274,6 +292,35 @@ namespace BorrowedSeconds.UI
             introT = 0f;
             lastLoans = s.Cur.Loans;
             wasFrozen = false;
+        }
+
+        string ParText(bool pace) => parTicks <= 0 ? "" : pace ? $"PAR {Ui.Secs(parTicks)}  ·  BEST {Ui.Secs(bestTicks)}" : $"PAR {Ui.Secs(parTicks)}";
+
+        /// <summary>
+        /// Medal pace, only on a level you've settled before (a first run stays about the puzzle) and
+        /// never while a solution or attract replay plays: the line under the clock adds your best,
+        /// and the coin flips from gold to silver at par + 1 s and to bronze at par + 4 s.
+        /// </summary>
+        void UpdatePace(int tick, float dt)
+        {
+            bool pace = bestTicks > 0 && parTicks > 0 && !session.Muted && !Watching && !TrailerMode;
+            string line = ParText(pace);
+            if (parText.text != line) parText.text = line;
+            if (paceCoin.gameObject.activeSelf != pace) paceCoin.gameObject.SetActive(pace);
+            if (!pace) return;
+            var m = SaveData.MedalFor(Mathf.Max(1, tick), parTicks);
+            if (m != paceMedal)
+            {
+                if (paceMedal != Medal.None) paceFlip = 0f; // a flip as gold or silver slips away (or comes back on a rewind)
+                paceMedal = m;
+                paceCoin.sprite = Kit.CoinSmall(m);
+            }
+            paceFlip = Mathf.Min(1f, paceFlip + dt / 0.35f);
+            float sx = Mathf.Abs(Mathf.Cos(paceFlip * Mathf.PI)), punch = 1f + 0.25f * Mathf.Sin(paceFlip * Mathf.PI);
+            paceCoin.rectTransform.localScale = new Vector3(Mathf.Max(0.08f, sx) * punch, punch, 1f);
+            // left of the clock's digits (monospaced at 0.6 em of its 54-unit font)
+            float digits = Ui.Secs(tick).Length * 0.6f * 54f;
+            paceCoin.rectTransform.anchoredPosition = new Vector2(-digits - 34f, -34f);
         }
 
         public static string Roman(int n)
@@ -408,6 +455,7 @@ namespace BorrowedSeconds.UI
             var s = session.Cur;
             var d = session.Def;
             timeText.text = $"<mspace=0.6em>{Ui.Secs(s.Tick)}</mspace>";
+            UpdatePace(s.Tick, dt);
             string speedTag = LevelSession.GameSpeed < 0.999f && !session.Muted ? $"SPEED {Mathf.RoundToInt(LevelSession.GameSpeed * 100)}%" : "";
             if (speedText.text != speedTag) speedText.text = speedTag;
             timeText.richText = true;

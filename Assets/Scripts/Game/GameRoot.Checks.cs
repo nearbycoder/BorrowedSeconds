@@ -50,6 +50,7 @@ namespace BorrowedSeconds.Game
             if (Want("erase-progress")) yield return CheckErase(dir, Report);
             if (Want("hud-size")) yield return CheckHudSize(dir, Report);
             if (Want("background-mute")) yield return CheckBackgroundMute(dir, Report);
+            if (Want("medal-pace")) yield return CheckMedalPace(dir, Report);
 
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
@@ -480,6 +481,108 @@ namespace BorrowedSeconds.Game
             report("background-mute", isRow && rowFlips && roundTrip && muted && back1 && Mathf.Approximately(offVol, 1f),
                 $"row={isRow} flips={rowFlips}; round trip and old saves default on={roundTrip}; on: focus lost -> silent in {outT[0]:0.00}s={muted}, "
                 + $"focus back -> full in {inT[0]:0.00}s={back1}; off: volume {offVol:0.00} after 0.6 s in the background");
+        }
+
+        /// <summary>
+        /// Medal pace: on a level settled before, the HUD's coin shows gold up to par + 1 s, silver one
+        /// tick later and up to par + 4 s, then bronze, and the line under the clock adds the best
+        /// time. A level never settled, and Watch solution, show neither. The Ledger names the next
+        /// medal's time for every level at silver and bronze, and none at gold.
+        /// </summary>
+        IEnumerator CheckMedalPace(string dir, System.Action<string, bool, string> report)
+        {
+            string original = JsonUtility.ToJson(Save);
+            var bad = new List<string>();
+            string paceLevel = null, steps = "";
+            // the live HUD: a level where standing still survives past par + 4 s (the clock runs on)
+            for (int index = 0; index < Catalog.Levels.Count && paceLevel == null; index++)
+            {
+                var d = Catalog.Levels[index];
+                int par = Catalog.SolutionFor(d)?.Par ?? 0;
+                if (par <= 0) continue;
+                Save.ids = new string[0];
+                Save.best = new int[0];
+                Save.Record(d.Id, par + 50);
+                StartLevel(index, false);
+                Hud.SkipIntro();
+                Session.Autoplay = new List<TimedAction>(); // stand still
+                Session.Paused = true;
+                yield return null;
+                yield return null;
+                var got = new List<string> { $"t{Session.Tick}:{Hud.PaceMedal}{(Hud.PaceShown ? "" : "(hidden)")}" };
+                bool ok = Hud.PaceShown && Hud.PaceMedal == Medal.Gold && Hud.ParLine.Contains("BEST " + UI.Ui.Secs(par + 50));
+                bool survived = true;
+                foreach (var (at, expect) in new[] { (par + 20, Medal.Gold), (par + 21, Medal.Silver), (par + 80, Medal.Silver), (par + 81, Medal.Bronze) })
+                {
+                    Session.Paused = false;
+                    Session.Seek(at);
+                    Session.Paused = true;
+                    if (Session.Cur.Dead || Session.Tick != at) { survived = false; break; }
+                    yield return null;
+                    yield return null;
+                    got.Add($"par+{at - par}:{Hud.PaceMedal}{(Hud.PaceShown ? "" : "(hidden)")}");
+                    ok &= Hud.PaceShown && Hud.PaceMedal == expect;
+                    if (at == par + 21)
+                    {
+                        yield return new WaitForSecondsRealtime(0.5f); // the coin's flip settles
+                        yield return Shot(dir, "medal-pace_silver");
+                    }
+                }
+                if (!survived) continue;
+                paceLevel = d.Id;
+                steps = string.Join(" ", got) + $"; line \"{Hud.ParLine}\"";
+                if (!ok) bad.Add($"{d.Id} pace {steps}");
+
+                // never settled: no coin, no best
+                Save.ids = new string[0];
+                Save.best = new int[0];
+                StartLevel(index, false);
+                Hud.SkipIntro();
+                yield return null;
+                yield return null;
+                if (Hud.PaceShown || Hud.ParLine.Contains("BEST")) bad.Add($"{d.Id} unsettled shows pace (\"{Hud.ParLine}\")");
+                // watching the solution: none either
+                Save.Record(d.Id, par + 50);
+                StartWatch(index);
+                yield return new WaitForSecondsRealtime(0.3f);
+                if (Hud.PaceShown || Hud.ParLine.Contains("BEST")) bad.Add($"{d.Id} Watch solution shows pace");
+                StartLevel(index, false);
+            }
+            if (paceLevel == null) bad.Add("no level survives standing still past par + 4 s");
+
+            // the Ledger: silver names gold's time, bronze names silver's, gold names none
+            int targets = 0;
+            foreach (var (delta, medal) in new[] { (50, Medal.Silver), (100, Medal.Bronze), (0, Medal.Gold) })
+            {
+                Save.ids = new string[0];
+                Save.best = new int[0];
+                foreach (var d in Catalog.Levels) Save.Record(d.Id, (Catalog.SolutionFor(d)?.Par ?? 100) + delta);
+                ShowLevels(0);
+                for (int i = 0; i < Catalog.Levels.Count; i++)
+                {
+                    var d = Catalog.Levels[i];
+                    int par = Catalog.SolutionFor(d)?.Par ?? 0;
+                    levels.Select(i);
+                    yield return null;
+                    yield return null;
+                    string text = levels.InfoStats;
+                    string want = medal == Medal.Silver ? $"gold</color> ≤ {UI.Ui.Secs(par + 20)}s" : medal == Medal.Bronze ? $"silver</color> ≤ {UI.Ui.Secs(par + 80)}s" : null;
+                    if (SaveData.MedalFor(par + delta, par) != medal) bad.Add($"{d.Id} par+{delta} isn't {medal}");
+                    else if (want != null ? text.Contains(want) : !text.Contains("≤")) targets++;
+                    else bad.Add($"{d.Id} {medal}: \"{text.Replace("\n", " / ")}\"");
+                    if (i == 2 && medal == Medal.Silver)
+                    {
+                        yield return new WaitForSecondsRealtime(1.2f);
+                        yield return Shot(dir, "medal-pace_ledger");
+                    }
+                }
+                levels.Hide();
+            }
+            JsonUtility.FromJsonOverwrite(original, Save);
+            ShowTitle();
+            report("medal-pace", bad.Count == 0,
+                $"HUD on {paceLevel}: {steps}; unsettled and watching show none; Ledger targets right on {targets}/{3 * Catalog.Levels.Count} panels"
+                + (bad.Count > 0 ? "; " + string.Join("; ", bad.GetRange(0, Mathf.Min(6, bad.Count))) : ""));
         }
 
         IEnumerator CheckErase(string dir, System.Action<string, bool, string> report)

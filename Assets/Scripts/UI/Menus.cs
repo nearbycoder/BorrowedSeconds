@@ -589,6 +589,9 @@ namespace BorrowedSeconds.UI
             infoStats = Ui.Text("InfoStats", info, "", Ui.Semi, 21, Palette.Paper, TextAlignmentOptions.TopRight);
             Ui.Place(infoStats.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-40, -22), new Vector2(300, 60));
             infoStats.lineSpacing = 8;
+            infoStats.enableAutoSizing = true; // a long best-and-target line shrinks rather than wraps
+            infoStats.fontSizeMin = 16;
+            infoStats.fontSizeMax = 21;
             infoKeys = Ui.Rect("InfoKeys", info, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-34, 14), new Vector2(330, 34));
         }
 
@@ -605,6 +608,13 @@ namespace BorrowedSeconds.UI
 
         /// <summary>What the info panel says about the selected level (checks read it).</summary>
         public string InfoTip => infoHint.text;
+        /// <summary>The info panel's best, par and medal lines (checks read them).</summary>
+        public string InfoStats => infoStats.text;
+
+        /// <summary>What the next medal up needs, e.g. "gold ≤ 9.15s" (SaveData.MedalFor's thresholds).</summary>
+        public static string NextMedal(Medal m, int par) => m == Medal.Silver
+            ? $"<color=#FFD27A>gold</color> ≤ {Ui.Secs(par + 20)}s"
+            : $"<color=#D1DBF2>silver</color> ≤ {Ui.Secs(par + 80)}s";
         public int SelectedIndex => sel;
 
         public bool Unlocked(int i) => i == 0 || save.Cleared(catalog.Levels[i - 1].Id) || save.Cleared(catalog.Levels[i].Id);
@@ -812,9 +822,10 @@ namespace BorrowedSeconds.UI
                 infoHint.text = open ? TipText(d) : "Settle the previous level to break the seal.";
                 int best = save.Best(d.Id), par = catalog.SolutionFor(d)?.Par ?? 0;
                 var medal = SaveData.MedalFor(best, par);
-                infoStats.text = best > 0
+                infoStats.text = best <= 0 ? $"<color=#8E9AC8>par {Ui.Secs(par)}s</color>\n<color=#8E9AC8>not yet settled</color>"
+                    : medal == Medal.Gold || par <= 0
                     ? $"best <b>{Ui.Secs(best)}s</b>\n<color=#8E9AC8>par {Ui.Secs(par)}s</color>   <color=#FFD27A>{SaveData.MedalName(medal)}</color>"
-                    : $"<color=#8E9AC8>par {Ui.Secs(par)}s</color>\n<color=#8E9AC8>not yet settled</color>";
+                    : $"best <b>{Ui.Secs(best)}s</b>   <color=#FFD27A>{SaveData.MedalName(medal)}</color>\n{NextMedal(medal, par)}   <color=#8E9AC8>par {Ui.Secs(par)}s</color>";
                 infoStats.richText = true;
                 var coin = Kit.CoinSmall(medal);
                 infoCoin.sprite = coin ?? (open ? Kit.Socket : Kit.Lock);

@@ -754,7 +754,7 @@ namespace BorrowedSeconds.Game
             Session.Won += OnWon;
             Session.BorrowDenied += _ => { Rig.Shake(0.06f); if (!Session.Muted) Sfx.Play("denied", 0.7f); };
             Rig.Frame(Session.Board.Bounds, true, Session.Board.TileTops);
-            Hud.Bind(Session, Catalog);
+            Hud.Bind(Session, Catalog, Save.Best(def.Id));
             tipOpen = !def.Spoiler;
             ShowControlHints();
             RefreshTip(true);
