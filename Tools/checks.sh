@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Behaviour checks in the built game (dying and rewinding, menus, settings): things a solver
-# replay never exercises. Prints PASS/FAIL per check.
+# replay never exercises. Prints PASS/FAIL per check, each with its wall time. The cap is 15 min:
+# a full run took 7 min at load 19-27 in round 9, 3 of it Watch solution playing 35 levels at par.
 #   Tools/checks.sh [dir] [dev] [-bsOnly name1,name2]
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -10,7 +11,7 @@ EXTRA=("${@:3}")
 rm -rf "$OUT"; mkdir -p "$OUT"
 ulimit -f 524288 # 512 MB per file: a player stuck logging in a loop must not fill the disk
 export BS_NESTED="${BS_NESTED:-1}" # the game window opens in a private headless KWin (Tools/nested.sh), not on the desktop
-BS_CONFIG="${BS_CONFIG:-$OUT/config}" timeout 600 "$ROOT/Tools/play.sh" "${MODE[@]}" -logFile "$OUT/player.log" -bsChecks "$OUT" "${EXTRA[@]}" > /dev/null 2>&1 || true
+BS_CONFIG="${BS_CONFIG:-$OUT/config}" timeout 900 "$ROOT/Tools/play.sh" "${MODE[@]}" -logFile "$OUT/player.log" -bsChecks "$OUT" "${EXTRA[@]}" > /dev/null 2>&1 || true
 cat "$OUT/checks.log" 2>/dev/null || echo "no checks.log"
 grep -E "Exception" "$OUT/player.log" | head -10 || true
 # the audio log is judged offline, by the same mixer that builds the demo soundtracks
@@ -21,4 +22,4 @@ if [ -z "${PYTHON:-}" ]; then
 fi
 BALANCE=0
 if [ -f "$OUT/audio.log" ]; then "$PYTHON" "$ROOT/Tools/audio/balance.py" "$OUT/audio.log" | tee "$OUT/balance.txt" | tail -3 || BALANCE=1; fi
-grep -q "^done fail=0" "$OUT/checks.log" && [ "$BALANCE" = 0 ]
+grep -q "^done fail=0 " "$OUT/checks.log" && [ "$BALANCE" = 0 ]

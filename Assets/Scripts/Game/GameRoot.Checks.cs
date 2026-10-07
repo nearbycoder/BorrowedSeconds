@@ -17,10 +17,14 @@ namespace BorrowedSeconds.Game
             Directory.CreateDirectory(dir);
             var log = new List<string>();
             int fail = 0;
+            float started = Time.realtimeSinceStartup, lastReport = started;
+            // each line ends with the wall time since the previous one, so a slow run shows where it went
             void Report(string name, bool ok, string detail)
             {
                 if (!ok) fail++;
-                log.Add($"{(ok ? "PASS" : "FAIL")} {name}: {detail}");
+                float now = Time.realtimeSinceStartup;
+                log.Add($"{(ok ? "PASS" : "FAIL")} {name}: {detail} [{now - lastReport:0.0}s]");
+                lastReport = now;
                 Debug.Log("[Checks] " + log[log.Count - 1]);
             }
             // -bsOnly a,b runs just the checks whose names start with one of these
@@ -66,7 +70,7 @@ namespace BorrowedSeconds.Game
                 yield return name == "real-focus" ? CheckRealFocus(dir, Report) : CheckFullscreen(dir, Report);
             }
 
-            log.Add($"done fail={fail}");
+            log.Add($"done fail={fail} in {Time.realtimeSinceStartup - started:0}s");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
             yield return new WaitForSecondsRealtime(0.3f);
             Application.Quit(fail == 0 ? 0 : 1);
