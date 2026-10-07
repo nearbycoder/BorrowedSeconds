@@ -31,6 +31,7 @@ namespace BorrowedSeconds.Game
                     yield return CheckDefaultRewind(dir, id, Report);
             if (Want("focus")) yield return CheckFocusPause(dir, Report);
             if (Want("hint")) yield return CheckHint(dir, Report);
+            if (Want("ledger-tips")) yield return CheckLedgerTips(dir, Report);
             if (Want("channels"))
             {
                 yield return CheckChannels(dir, "6-4", new[] { 1, 1 }, Report);
@@ -326,6 +327,51 @@ namespace BorrowedSeconds.Game
             bool plainOpen = Hud.TipText.Contains(Catalog.Levels[plain].Hint);
             report("hint-toggle", folded && open && nudge && refolded && plainOpen,
                 $"folded={folded} open={open} nudge={nudge} refolded={refolded} non-spoiler open={plainOpen}");
+        }
+
+        /// <summary>
+        /// The Ledger's info panel keeps a spoiler tip folded until its level is settled: every card,
+        /// on an empty save (in memory; the save is read-only here) and on one with every level settled.
+        /// </summary>
+        IEnumerator CheckLedgerTips(string dir, System.Action<string, bool, string> report)
+        {
+            var ids = Save.ids;
+            var best = Save.best;
+            var bad = new List<string>();
+            int folded = 0, shown = 0;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                bool settled = pass == 1;
+                Save.ids = new string[0];
+                Save.best = new int[0];
+                if (settled)
+                    foreach (var d in Catalog.Levels) Save.Record(d.Id, Catalog.SolutionFor(d)?.Par ?? 100);
+                ShowLevels(0);
+                for (int i = 0; i < Catalog.Levels.Count; i++)
+                {
+                    var def = Catalog.Levels[i];
+                    if (!levels.Unlocked(i)) { Save.Record(Catalog.Levels[i - 1].Id, 100); } // unlock it, leaving it unsettled
+                    levels.Select(i);
+                    yield return null;
+                    yield return null;
+                    string text = levels.InfoTip;
+                    bool hasTip = !string.IsNullOrEmpty(def.Hint) && text.Contains(def.Hint);
+                    bool wantTip = !string.IsNullOrEmpty(def.Hint) && (!def.Spoiler || settled);
+                    if (def.Spoiler && !settled) { if (!hasTip && text.Contains("folded")) folded++; else bad.Add(def.Id + " shows its spoiler tip"); }
+                    else if (wantTip) { if (hasTip) shown++; else bad.Add(def.Id + " lost its tip"); }
+                    if (def.Id == "1-5")
+                    {
+                        yield return new WaitForSecondsRealtime(1.2f);
+                        yield return Shot(dir, settled ? "ledger_tip_settled" : "ledger_tip_folded");
+                    }
+                }
+                levels.Hide();
+            }
+            Save.ids = ids;
+            Save.best = best;
+            int spoilers = Catalog.Levels.FindAll(l => l.Spoiler).Count;
+            report("ledger-tips", bad.Count == 0 && folded == spoilers,
+                $"{folded}/{spoilers} spoiler tips folded while unsettled, {shown} tips shown (settled or not spoilers)" + (bad.Count > 0 ? ": " + string.Join("; ", bad) : ""));
         }
 
         /// <summary>

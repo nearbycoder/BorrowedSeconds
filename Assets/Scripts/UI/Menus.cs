@@ -576,6 +576,21 @@ namespace BorrowedSeconds.UI
             infoKeys = Ui.Rect("InfoKeys", info, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-34, 14), new Vector2(330, 34));
         }
 
+        /// <summary>The info panel's tip. A tip that gives the trick away stays folded until the level
+        /// is settled, as it does in the level until H is pressed.</summary>
+        public string TipText(LevelDef d)
+        {
+            if (string.IsNullOrEmpty(d.Hint)) return "";
+            var input = GameRoot.I.Input;
+            if (d.Spoiler && !save.Cleared(d.Id))
+                return $"<color=#8E9AC8>This tip gives the trick away, so it stays folded. Press <color=#FFD27A>{(input.UsingGamepad ? "Select" : input.KeyName(KeyAction.Hint))}</color> in the level to read it.</color>";
+            return input.UsingGamepad && !string.IsNullOrEmpty(d.HintPad) ? d.HintPad : d.Hint;
+        }
+
+        /// <summary>What the info panel says about the selected level (checks read it).</summary>
+        public string InfoTip => infoHint.text;
+        public int SelectedIndex => sel;
+
         public bool Unlocked(int i) => i == 0 || save.Cleared(catalog.Levels[i - 1].Id) || save.Cleared(catalog.Levels[i].Id);
 
         /// <summary>Moves the selection the way input would, turning the page if needed (scripted tours).</summary>
@@ -778,7 +793,7 @@ namespace BorrowedSeconds.UI
                 var ch = LevelCatalog.Chapters[Mathf.Clamp(d.Chapter - 1, 0, LevelCatalog.Chapters.Length - 1)];
                 infoNum.text = $"{d.Chapter}-{inCh}   ·   {ch.Title.ToUpperInvariant()}";
                 infoName.text = open ? d.Name : "Sealed";
-                infoHint.text = open ? (string.IsNullOrEmpty(d.Hint) ? "" : d.Hint) : "Settle the previous level to break the seal.";
+                infoHint.text = open ? TipText(d) : "Settle the previous level to break the seal.";
                 int best = save.Best(d.Id), par = catalog.SolutionFor(d)?.Par ?? 0;
                 var medal = SaveData.MedalFor(best, par);
                 infoStats.text = best > 0
@@ -799,6 +814,7 @@ namespace BorrowedSeconds.UI
                 infoCoin.sprite = coin ?? (open ? Kit.Socket : Kit.Lock);
                 infoCoin.color = coin != null || !open ? Color.white : new Color(0.02f, 0.025f, 0.06f, 0.9f);
             }
+            else if (open && infoHint.text != TipText(d)) infoHint.text = TipText(d); // the device (and its hint key) changed
             infoAge += dt;
             infoNameFx.Age = infoAge;
             infoHintFx.Age = infoAge - 0.1f;
