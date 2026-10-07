@@ -395,12 +395,29 @@ namespace BorrowedSeconds.Game
                 if (shoot) { yield return new WaitForSecondsRealtime(1.6f); yield return Shot(dir, "watch_pause-menu"); }
                 WatchFromPause();
                 if (State != Flow.Watching || Session.Autoplay == null) { bad.Add(def.Id + " did not start"); continue; }
-                Session.Speed = shoot ? 1f : 4f;
+                Session.Speed = shoot || def.Id == "7-2" ? 1f : 4f; // real speed where a screenshot needs the title banner gone
                 var watched = Session;
                 var run = new RunWatch(watched);
-                bool shot = false;
+                bool shot = false, previewShot = false;
+                // every borrow in the replay must already be aimed (highlight, ghost, aim tag) when it fires
+                int borrows = 0, aimed = 0, wantBorrows = 0;
+                foreach (var a in watched.Autoplay) if (Act.IsBorrow(a.Action)) wantBorrows++;
+                watched.Events += (st, evs) =>
+                {
+                    foreach (var e in evs)
+                        if (e.Type == Ev.Borrow) { borrows++; if (watched.Aim == e.A) aimed++; }
+                };
                 while (Session == watched && Session.State != LevelSession.Mode.Won && !Session.Cur.Dead && run.Alive())
                 {
+                    // 7-2's borrow, 3 s in (most first borrows come under the level-title banner)
+                    if (def.Id == "7-2" && !previewShot && Session.UpcomingBorrow(LevelSession.ViewerAimLead - 6) >= 0)
+                    {
+                        previewShot = true;
+                        Session.Paused = true;
+                        yield return new WaitForSecondsRealtime(0.4f); // the aim tag and ghost fade in
+                        yield return Shot(dir, "watch_preview");
+                        Session.Paused = false;
+                    }
                     if (shoot && !shot && Session.Tick >= 120) { shot = true; Session.Paused = true; yield return Shot(dir, "watch_playing"); Session.Paused = false; }
                     yield return null;
                 }
@@ -409,12 +426,13 @@ namespace BorrowedSeconds.Game
                 float handBack = Time.realtimeSinceStartup + 20f;
                 while (State == Flow.Watching && Time.realtimeSinceStartup < handBack) yield return null;
                 bool fresh = State == Flow.Playing && Session.Autoplay == null && Session.Tick < 5 && !Hud.Watching;
-                if (won == par && fresh) ok++;
-                else bad.Add($"{def.Id} won={won} par={par} fresh={fresh}{why}");
+                bool previewed = borrows == wantBorrows && aimed == borrows;
+                if (won == par && fresh && previewed) ok++;
+                else bad.Add($"{def.Id} won={won} par={par} fresh={fresh} aimed {aimed}/{borrows} of {wantBorrows} borrows{why}");
             }
             bool untouched = Progress() == before;
             report("watch-solution", ok == Catalog.Levels.Count && untouched,
-                $"{ok}/{Catalog.Levels.Count} won at par and returned fresh; progress untouched={untouched}" + (bad.Count > 0 ? "; " + string.Join("; ", bad) : ""));
+                $"{ok}/{Catalog.Levels.Count} won at par with every borrow aimed first, and returned fresh; progress untouched={untouched}" + (bad.Count > 0 ? "; " + string.Join("; ", bad) : ""));
         }
 
         /// <summary>

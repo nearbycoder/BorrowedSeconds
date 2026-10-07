@@ -344,6 +344,7 @@ namespace BorrowedSeconds.Game
             State = Flow.Watching;
             Session.Autoplay = sol.Actions;
             Session.AllowInput = false;
+            Session.Viewer = true; // Focus slows the replay, Rewind scrubs it back, each borrow is aimed first
             Hud.Watching = true;
             tipOpen = true;
             RefreshTip(true);
@@ -372,7 +373,11 @@ namespace BorrowedSeconds.Game
             string text = tipOpen || string.IsNullOrEmpty(def.Hint)
                 ? hint
                 : $"Stuck? Press <color=#FFD27A>{(Input.UsingGamepad ? pad.Select : Input.KeyName(KeyAction.Hint))}</color> for a hint.";
-            if (State == Flow.Watching) text = "<color=#7CF4FF>The solver's route, at par.</color>  " + $"<color=#FFD27A>{(Input.UsingGamepad ? pad.East : "Esc")}</color> to stop watching.";
+            if (State == Flow.Watching)
+                text = "<color=#7CF4FF>The solver's route, at par.</color> Each borrow is aimed just before it happens. "
+                    + $"{(Input.FocusToggle ? "Press" : "Hold")} <color=#FFD27A>{(Input.UsingGamepad ? pad.LeftTrigger : Input.KeyName(KeyAction.Focus))}</color> to slow it, "
+                    + $"hold <color=#FFD27A>{(Input.UsingGamepad ? pad.West : Input.KeyName(KeyAction.Rewind))}</color> to rewind, "
+                    + $"<color=#FFD27A>{(Input.UsingGamepad ? pad.East : "Esc")}</color> to stop watching.";
             else if (attemptDeaths >= NudgeAfterDeaths)
                 text += (text.Length > 0 ? "\n" : "") + "<size=20><color=#C9D3F0>Still stuck? Pause and choose <b>Watch solution</b>.</color></size>";
             if (slideIn) Hud.SetTip(text); else Hud.SetTipText(text);
@@ -656,7 +661,9 @@ namespace BorrowedSeconds.Game
             hintsPad = Input.Pad;
             var p = Input.Pad;
             if (State == Flow.Watching)
-                Hud.SetHints(hintsForPad ? $"<b>{p.East}</b> stop watching" : "<b>Esc</b> stop watching");
+                Hud.SetHints(hintsForPad
+                    ? $"<b>{p.LeftTrigger}</b> slow     <b>{p.West}</b> rewind     <b>{p.East}</b> stop watching"
+                    : $"<b>{Input.KeyName(KeyAction.Focus)}</b> slow     <b>{Input.KeyName(KeyAction.Rewind)}</b> rewind     <b>Esc</b> stop watching");
             else
                 Hud.SetHints(hintsForPad
                     ? $"<b>{p.Stick}</b> move     <b>{p.Shoulders}</b> aim     <b>{p.South}</b> borrow     <b>{p.LeftTrigger}</b> {focus}     <b>{p.West}</b> rewind     <b>{p.North}</b> restart     <b>{p.Select}</b> hint     <b>{p.Start}</b> pause"

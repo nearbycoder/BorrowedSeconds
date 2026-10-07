@@ -438,7 +438,7 @@ namespace BorrowedSeconds.UI
             float tagBlend = Watching ? 1f : session.FocusBlend;
             string tagText = Watching ? "SOLUTION" : "FOCUS";
             if (focusText.text != tagText) focusText.text = tagText;
-            focusGroup.alpha = tagBlend;
+            focusGroup.alpha = tagBlend * (1f - rewindGroup.alpha); // the rewind tag takes the same spot
             focusRoot.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(tagBlend, 2f));
             focusTag.Glow = 0.35f + 0.25f * Mathf.Sin(Clock.Now * 4f);
             focusTag.Apply();

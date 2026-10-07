@@ -50,6 +50,13 @@ namespace BorrowedSeconds.Game
         public int ForcedAim = -1;
         /// <summary>Focus held while input is disabled (the trailer shows slow-motion aiming).</summary>
         public bool ForcedFocus;
+        /// <summary>
+        /// Watching a replay (Watch solution): the autoplay drives the sim, the viewer may hold Focus
+        /// to slow it and Rewind to see a moment again, and each borrow is aimed (highlight, ghost
+        /// forecast, aim tag) <see cref="ViewerAimLead"/> ticks before it fires.
+        /// </summary>
+        public bool Viewer;
+        public const int ViewerAimLead = 16;
         bool seeking;
 
         readonly List<SimState> history = new List<SimState>();
@@ -120,6 +127,12 @@ namespace BorrowedSeconds.Game
                 if (input.Borrow) RequestBorrow();
                 Focusing = input.Focus;
             }
+            else if (Viewer && Autoplay != null)
+            {
+                if (input.Rewind && history.Count > 1) { BeginRewind(true); UpdateRewind(dt); return; }
+                Focusing = input.Focus;
+                Aim = UpcomingBorrow(ViewerAimLead);
+            }
             else
             {
                 Focusing = ForcedFocus;
@@ -179,6 +192,20 @@ namespace BorrowedSeconds.Game
             else if (!pointerAim && cycleIndex >= 0) Aim = cycleIndex;
             else if (input.UsingGamepad) Aim = cycleIndex >= 0 ? cycleIndex : Nearest();
             else Aim = hovered;
+        }
+
+        /// <summary>The target of the replay's next borrow if it fires within <paramref name="lead"/> ticks, else -1.</summary>
+        public int UpcomingBorrow(int lead)
+        {
+            if (Autoplay == null) return -1;
+            for (int k = autoplayCursor; k < Autoplay.Count; k++)
+            {
+                var a = Autoplay[k];
+                if (a.Tick < Cur.Tick) continue;
+                if (a.Tick - Cur.Tick > lead) break;
+                if (Act.IsBorrow(a.Action)) return Act.BorrowTarget(a.Action);
+            }
+            return -1;
         }
 
         int Nearest()
@@ -298,7 +325,7 @@ namespace BorrowedSeconds.Game
             {
                 target = 0;
                 rewindSpeed = Mathf.Min(rewindSpeed + dt * 40f, 120f);
-                if (!input.Rewind || !AllowInput) { EndRewind(Mathf.CeilToInt(rewindPos)); return; }
+                if (!input.Rewind || !(AllowInput || Viewer)) { EndRewind(Mathf.CeilToInt(rewindPos)); return; }
             }
             else
             {
@@ -324,6 +351,7 @@ namespace BorrowedSeconds.Game
             }
             Cur.CopyFrom(history[at]);
             Cur.Events.Clear();
+            autoplayCursor = 0; // a replay picks up from the rewound tick (DoTick skips the actions before it)
             Look.CopyFrom(Cur);
             Simulation.Step(Def, Look, Act.None);
             acc = 0f;

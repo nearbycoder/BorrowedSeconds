@@ -553,6 +553,59 @@ namespace BorrowedSeconds.Game
             bool stopped = State == Flow.Playing && Session.Autoplay == null;
             if (row != "Watch solution" || !watching || !stopped) Fail($"pause menu > Watch solution: selected '{row}', watching={watching}, B stopped={stopped}");
             if (ok) log.Add("ok   pad: Start paused and B resumed; D-pad + A chose Watch solution; B stopped it");
+
+            // the replay at the viewer's pace: LT slows it, X scrubs it back, and once let go it
+            // carries on from there and still wins at par
+            if (ok)
+            {
+                yield return new WaitForSecondsRealtime(0.8f);
+                yield return PadTap(GamepadButton.Start);
+                yield return new WaitForSecondsRealtime(0.8f);
+                yield return PadTap(GamepadButton.DpadDown);
+                yield return new WaitForSecondsRealtime(0.15f);
+                yield return PadTap(GamepadButton.DpadDown);
+                yield return new WaitForSecondsRealtime(0.5f);
+                yield return PadTap(GamepadButton.South);
+                deadline = Time.realtimeSinceStartup + 3f;
+                while (State != Flow.Watching && Time.realtimeSinceStartup < deadline) yield return null;
+                var watched = Session;
+                while (State == Flow.Watching && Session.State != LevelSession.Mode.Playing && Time.realtimeSinceStartup < deadline + 3f) yield return null;
+                yield return new WaitForSecondsRealtime(0.5f);
+                float Rate(int t0, float r0) => (Session.Tick - t0) / Mathf.Max(0.01f, Time.realtimeSinceStartup - r0);
+                int t = Session.Tick; float r = Time.realtimeSinceStartup;
+                yield return new WaitForSecondsRealtime(1f);
+                float normal = Rate(t, r);
+                padHeld.leftTrigger = 1f;
+                PadSet(padHeld);
+                yield return new WaitForSecondsRealtime(0.4f); // Focus blends in
+                t = Session.Tick; r = Time.realtimeSinceStartup;
+                yield return new WaitForSecondsRealtime(1.5f);
+                float slow = Rate(t, r);
+                padHeld.leftTrigger = 0f;
+                PadSet(padHeld);
+                yield return new WaitForSecondsRealtime(0.3f);
+                int beforeRewind = Session.Tick;
+                padHeld = padHeld.WithButton(GamepadButton.West);
+                PadSet(padHeld);
+                yield return new WaitForSecondsRealtime(0.25f);
+                ScreenCapture.CaptureScreenshot(Path.Combine(dir, "pad_5_watch-rewind.png"));
+                yield return new WaitForSecondsRealtime(0.4f);
+                padHeld = new GamepadState();
+                PadSet(padHeld);
+                yield return null;
+                yield return null;
+                int afterRewind = Session.Tick;
+                int par = Catalog.SolutionFor(def)?.Par ?? -1;
+                deadline = Time.realtimeSinceStartup + 30f;
+                while (Session == watched && Session.State != LevelSession.Mode.Won && Time.realtimeSinceStartup < deadline) yield return null;
+                int won = Session == watched && Session.State == LevelSession.Mode.Won ? Session.Tick : -1;
+                deadline = Time.realtimeSinceStartup + 5f;
+                while (State == Flow.Watching && Time.realtimeSinceStartup < deadline) yield return null;
+                bool handedBack = State == Flow.Playing && Session.Autoplay == null;
+                string pace = $"{normal:0.0} ticks/s, {slow:0.0} with LT; X rewound tick {beforeRewind} -> {afterRewind}; won at {won} (par {par}); handed back={handedBack}";
+                if (slow > normal * 0.5f || afterRewind > beforeRewind - 5 || won != par || !handedBack) Fail("watching at your own pace: " + pace);
+                else log.Add("ok   pad: Watch solution at your own pace: " + pace);
+            }
             log.Add(ok ? "PASS 1-1 and the menus played through a virtual gamepad" : "FAIL gamepad");
             botDrivesFlow = false;
             result(ok);
