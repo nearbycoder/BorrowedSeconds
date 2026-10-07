@@ -330,6 +330,9 @@ namespace BorrowedSeconds.UI
             return tens[n / 10] + ones[n % 10];
         }
 
+        /// <summary>The banner's second line as set (checks read it).</summary>
+        public string BannerSub => bannerSub.text;
+
         public void Banner(string title, string sub, Color color, float duration)
         {
             banner.text = title;

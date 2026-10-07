@@ -25,6 +25,8 @@ namespace BorrowedSeconds.Game
         public float Alpha { get; private set; }
         public bool Focusing { get; private set; }
         public int Deaths { get; private set; }
+        /// <summary>The last death came on the tick the player thawed out of the debt's freeze.</summary>
+        public bool DeathThawed { get; private set; }
         public int RewindTicksUsed { get; private set; }
         public float RewindPos => rewindPos;
         public float IntroTime = 0.6f;
@@ -274,6 +276,7 @@ namespace BorrowedSeconds.Game
             }
             if (Cur.PFrozen > 1) queuedDir = -1; // don't stack moves while frozen
 
+            bool wasFrozen = Cur.PFrozen > 0;
             Simulation.Step(Def, Cur, act);
             var snap = pool.Count > 0 ? pool.Pop() : new SimState(Def);
             snap.CopyFrom(Cur);
@@ -288,6 +291,10 @@ namespace BorrowedSeconds.Game
                 State = Mode.Dying;
                 stateTimer = 0f;
                 Deaths++;
+                DeathThawed = wasFrozen;
+                // through the death pause the obstacle that did it glows red, in place of the aim
+                Board.SetHighlight(-1);
+                Board.SetCulprit(Cur.DeathCause);
                 Died?.Invoke(Cur.DeathCause);
             }
             else if (Cur.Won)
@@ -320,6 +327,7 @@ namespace BorrowedSeconds.Game
         {
             manualRewind = manual;
             State = Mode.Rewinding;
+            Board.SetCulprit(-1);
             rewindPos = history.Count - 1;
             rewindSpeed = manual ? 30f : 40f;
             // after a death: back to where the player can act again (past the freeze they thawed out of)

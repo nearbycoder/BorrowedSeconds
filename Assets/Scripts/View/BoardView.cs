@@ -194,6 +194,17 @@ namespace BorrowedSeconds.View
             for (int i = 0; i < Rotors.Count; i++) Rotors[i].Highlight = Def.ObstacleIndex(LevelDef.Kind.Rotor, i) == obstacle;
         }
 
+        /// <summary>The obstacle marked red as the one that killed the player (-1: none).</summary>
+        public int Culprit { get; private set; } = -1;
+
+        public void SetCulprit(int obstacle)
+        {
+            Culprit = obstacle;
+            for (int i = 0; i < Sliders.Count; i++) Sliders[i].Culprit = Def.ObstacleIndex(LevelDef.Kind.Slider, i) == obstacle;
+            for (int i = 0; i < Lasers.Count; i++) Lasers[i].Culprit = Def.ObstacleIndex(LevelDef.Kind.Laser, i) == obstacle;
+            for (int i = 0; i < Rotors.Count; i++) Rotors[i].Culprit = Def.ObstacleIndex(LevelDef.Kind.Rotor, i) == obstacle;
+        }
+
         // ---------------------------------------------------------------- shared interpolation
 
         public static Vector2 TileOf(LevelDef d, int idx) => new Vector2(d.X(idx), d.Y(idx));

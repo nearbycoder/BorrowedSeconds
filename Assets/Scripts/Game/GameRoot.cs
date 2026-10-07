@@ -748,7 +748,9 @@ namespace BorrowedSeconds.Game
                 Fx.Death(Session.Board.Player.WorldPos);
                 if (!Session.Muted) Sfx.Stinger("death");
                 Buzz(0.9f, 0.9f, 0.35f);
-                Hud.Banner("DEFAULTED", "rewinding…", Palette.Danger, 0.7f);
+                // say what did it, and whether the player thawed into it or it ran into them
+                string why = DeathReport.Describe(Session.Def, Session.Cur.DeathCause, Session.DeathThawed);
+                Hud.Banner("DEFAULTED", why.Length > 0 ? why + "  ·  rewinding…" : "rewinding…", Palette.Danger, why.Length > 0 ? 1.5f : 0.7f);
             };
             Session.RewindChanged += on => { if (on && !Session.Muted) Sfx.Play("rewind", 0.8f); };
             Session.Won += OnWon;

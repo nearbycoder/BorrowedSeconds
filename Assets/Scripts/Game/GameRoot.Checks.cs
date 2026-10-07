@@ -29,6 +29,12 @@ namespace BorrowedSeconds.Game
             if (Want("default-rewind"))
                 foreach (var id in new[] { "1-2", "2-1", "4-5" })
                     yield return CheckDefaultRewind(dir, id, Report);
+            if (Want("death-report"))
+                foreach (var (id, noun) in new[] { ("1-2", "the block"), ("2-1", "the beam"), ("3-1", "a rotor arm") })
+                {
+                    yield return CheckDeathReport(dir, id, true, noun, Report);
+                    yield return CheckDeathReport(dir, id, false, noun, Report);
+                }
             if (Want("focus")) yield return CheckFocusPause(dir, Report);
             if (Want("hint")) yield return CheckHint(dir, Report);
             if (Want("ledger-tips")) yield return CheckLedgerTips(dir, Report);
@@ -953,7 +959,11 @@ namespace BorrowedSeconds.Game
         }
 
         /// <summary>Seeded random play on the bare simulation until the player thaws inside a hazard.</summary>
-        static List<TimedAction> FindThawDeath(LevelDef d, out int deathTick)
+        static List<TimedAction> FindThawDeath(LevelDef d, out int deathTick) => FindDeath(d, true, out deathTick);
+
+        /// <summary>Seeded random play until the player dies: thawing inside a hazard, or (thaw false)
+        /// caught by one while free to move.</summary>
+        static List<TimedAction> FindDeath(LevelDef d, bool thaw, out int deathTick)
         {
             var rng = new System.Random(7);
             for (int trial = 0; trial < 2000; trial++)
@@ -974,10 +984,59 @@ namespace BorrowedSeconds.Game
                     wasFrozen = s.PFrozen > 0;
                     Simulation.Step(d, s, a);
                 }
-                if (s.Dead && wasFrozen) { deathTick = s.Tick; return acts; }
+                if (s.Dead && wasFrozen == thaw) { deathTick = s.Tick; return acts; }
             }
             deathTick = -1;
             return null;
+        }
+
+        /// <summary>
+        /// A death says what did it: the banner's second line names the obstacle the sim blames
+        /// (<see cref="SimState.DeathCause"/>), says "thawed" only for a thaw death, and that obstacle
+        /// alone is marked red through the death pause, cleared once the rewind starts.
+        /// </summary>
+        IEnumerator CheckDeathReport(string dir, string id, bool thaw, string noun, System.Action<string, bool, string> report)
+        {
+            string name = $"death-report {id} {(thaw ? "thaw" : "hit")}";
+            int index = Catalog.Levels.FindIndex(l => l.Id == id);
+            var def = Catalog.Levels[index];
+            var acts = FindDeath(def, thaw, out int deathTick);
+            if (acts == null) { report(name, false, "no such death found"); yield break; }
+            LoadLevel(index);
+            State = Flow.Playing;
+            Hud.SetVisible(true);
+            Hud.SkipIntro();
+            Session.IntroTime = 0.2f;
+            Session.Autoplay = acts;
+            Session.Speed = 3f;
+            int cause = -2, culprit = -2, marked = -1;
+            bool thawed = !thaw;
+            string sub = null;
+            int Marked()
+            {
+                int n = 0;
+                foreach (var v in Session.Board.Sliders) if (v.Culprit) n++;
+                foreach (var v in Session.Board.Lasers) if (v.Culprit) n++;
+                foreach (var v in Session.Board.Rotors) if (v.Culprit) n++;
+                return n;
+            }
+            Session.Died += c => { cause = c; thawed = Session.DeathThawed; sub = Hud.BannerSub; culprit = Session.Board.Culprit; marked = Marked(); };
+            var run = new RunWatch(Session);
+            while (Session.Deaths == 0 && run.Alive()) yield return null;
+            Session.Speed = 1f;
+            yield return new WaitForSecondsRealtime(0.6f);
+            yield return Shot(dir, $"death-report_{id}_{(thaw ? "thaw" : "hit")}_mark");
+            float deadline = Time.realtimeSinceStartup + 10f;
+            while (Session.State == LevelSession.Mode.Dying && Time.realtimeSinceStartup < deadline) yield return null;
+            int after = Session.Board.Culprit, markedAfter = Marked();
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return Shot(dir, $"death-report_{id}_{(thaw ? "thaw" : "hit")}_line");
+            string want = cause >= 0 ? DeathReport.Describe(def, cause, thaw) + "  ·  rewinding…" : "(no cause)";
+            bool ok = cause >= 0 && thawed == thaw && culprit == cause && marked == 1 && after == -1 && markedAfter == 0
+                && sub == want && sub.Contains(noun) && sub.Contains("thawed") == thaw;
+            report(name, ok, $"died at tick {deathTick}, cause {cause} ({(cause >= 0 ? DeathReport.Noun(def, cause) : "none")}), thawed={thawed}; "
+                + $"banner \"{sub}\"; marked {marked} piece(s), culprit {culprit}; after the pause {markedAfter} marked");
+            while (Session.State == LevelSession.Mode.Rewinding && Time.realtimeSinceStartup < deadline) yield return null;
         }
 
         /// <summary>

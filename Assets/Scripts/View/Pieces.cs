@@ -14,6 +14,31 @@ namespace BorrowedSeconds.View
 
         protected static Material Inst(string template) => Mats.Instance(template);
 
+        /// <summary>Aimed: the hover ghost shows.</summary>
+        public bool Highlight;
+        /// <summary>This obstacle just killed the player: the hover ghost glows red through the death pause.</summary>
+        public bool Culprit;
+        static readonly Color CulpritGlow = new Color(2.4f, 0.28f, 0.36f, 0.5f);
+        float hl, culprit;
+        Material ghostMat;
+        Color ghostBase;
+
+        /// <summary>Fades the hover ghost in and out for the aim or the culprit mark; returns how far it shows.</summary>
+        protected float RenderMark(GameObject ghost, bool frozen, float dt, float time)
+        {
+            hl = Smooth(hl, Highlight && !frozen ? 1f : 0f, 18f, dt);
+            culprit = Smooth(culprit, Culprit ? 1f : 0f, 18f, dt);
+            float show = Mathf.Max(hl, culprit);
+            ghost.SetActive(show > 0.02f);
+            if (ghostMat == null)
+            {
+                ghostMat = ghost.GetComponent<Renderer>().sharedMaterial;
+                ghostBase = ghostMat.GetColor("_Color");
+            }
+            if (show > 0.02f) ghostMat.SetColor("_Color", Color.Lerp(ghostBase, CulpritGlow * (0.85f + 0.15f * Mathf.Sin(time * 6f)), culprit));
+            return show;
+        }
+
         protected static void SetGlow(Material m, Color c, float intensity)
         {
             m.SetColor("_Color", new Color(c.r * intensity, c.g * intensity, c.b * intensity, c.a));
@@ -239,8 +264,6 @@ namespace BorrowedSeconds.View
         readonly FrozenShell shell;
         readonly GameObject ghost;
         readonly Material glowMat;
-        public bool Highlight;
-        float hl;
 
         public SliderView(BoardView board, int i) : base(board)
         {
@@ -289,9 +312,8 @@ namespace BorrowedSeconds.View
             bool frozen = b.SFrozen[index] > 0;
             chevron.gameObject.SetActive(!frozen);
             shell.Render(frozen, b.SFrozen[index] / (float)Rules.FreezeTicks, dt);
-            hl = Smooth(hl, Highlight && !frozen ? 1f : 0f, 18f, dt);
-            ghost.SetActive(hl > 0.02f);
-            if (hl > 0.02f) ghost.transform.localScale = Vector3.one * (1.0f + 0.06f * hl + 0.02f * Mathf.Sin(time * 8f));
+            float show = RenderMark(ghost, frozen, dt, time);
+            if (show > 0.02f) ghost.transform.localScale = Vector3.one * (1.0f + 0.06f * show + 0.02f * Mathf.Sin(time * 8f));
         }
     }
 
@@ -305,8 +327,6 @@ namespace BorrowedSeconds.View
         readonly BoxCollider beamCol;
         readonly FrozenShell shell;
         readonly Vector3 dir;
-        public bool Highlight;
-        float hl;
 
         public LaserView(BoardView board, int i) : base(board)
         {
@@ -386,8 +406,7 @@ namespace BorrowedSeconds.View
             beamCol.size = new Vector3(0.5f, 0.6f, Mathf.Max(0.01f, barLen));
             beamCol.center = new Vector3(0, 0, barLen * 0.5f);
             shell.Render(frozen, b.LFrozen[index] / (float)Rules.FreezeTicks, dt);
-            hl = Smooth(hl, Highlight && !frozen ? 1f : 0f, 18f, dt);
-            ghost.SetActive(hl > 0.02f);
+            RenderMark(ghost, frozen, dt, time);
         }
     }
 
@@ -400,8 +419,6 @@ namespace BorrowedSeconds.View
         readonly GameObject[] crystals;
         readonly GameObject ghost;
         readonly FrozenShell hubShell;
-        public bool Highlight;
-        float hl;
         Material[] crystalMats;
         float frozenShow;
 
@@ -467,8 +484,7 @@ namespace BorrowedSeconds.View
                 crystalMats[k].SetFloat("_Fade", frozenShow);
             }
             hubShell.Render(frozen, b.RFrozen[index] / (float)Rules.FreezeTicks, dt);
-            hl = Smooth(hl, Highlight && !frozen ? 1f : 0f, 18f, dt);
-            ghost.SetActive(hl > 0.02f);
+            RenderMark(ghost, frozen, dt, time);
         }
     }
 
