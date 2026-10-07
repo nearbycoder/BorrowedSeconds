@@ -15,6 +15,17 @@ PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [ -f "$PROJECT/Tools/.libs/libxml2.so.2" ]; then
   export LD_LIBRARY_PATH="$PROJECT/Tools/.libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 fi
+# Batch runs get their own config folder: the editor shares the game's PlayerPrefs file
+# (~/.config/unity3d/Borrowed Seconds/...) and rewrites it from memory when it quits, which could
+# undo progress saved by a game played during a build. Only the editor's own folder (licences,
+# editor prefs) is linked back in. The GUI editor (open) keeps the real config.
+sandbox() {
+  local real="${XDG_CONFIG_HOME:-$HOME/.config}/unity3d/Unity" dir="$PROJECT/Builds/editor-config"
+  mkdir -p "$dir/unity3d"
+  [ -e "$dir/unity3d/Unity" ] || { [ -d "$real" ] && ln -s "$real" "$dir/unity3d/Unity"; }
+  export XDG_CONFIG_HOME="$dir"
+}
+[ "${1:-open}" = open ] || sandbox
 case "${1:-open}" in
   open)
     exec "$UNITY" -projectPath "$PROJECT"
