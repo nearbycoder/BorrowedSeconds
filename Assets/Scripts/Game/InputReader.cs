@@ -6,6 +6,42 @@ using UnityEngine.InputSystem.Controls;
 namespace BorrowedSeconds.Game
 {
     /// <summary>
+    /// What a pad's buttons are called, by the pad in use: Xbox names unless the Input System
+    /// recognises a PlayStation or Nintendo controller. South/East/West/North are positions, so
+    /// a Switch Pro controller's bottom button (Borrow, confirm) is its B.
+    /// </summary>
+    public sealed class PadNames
+    {
+        public string South, East, West, North, Shoulders, LeftTrigger, Select, Start, Stick = "Stick", Dpad = "D-pad";
+        public string Family;
+
+        public static readonly PadNames Xbox = new PadNames
+        { Family = "Xbox", South = "A", East = "B", West = "X", North = "Y", Shoulders = "LB/RB", LeftTrigger = "LT", Select = "Select", Start = "Start" };
+        public static readonly PadNames DualShock4 = new PadNames
+        { Family = "PlayStation", South = "Cross", East = "Circle", West = "Square", North = "Triangle", Shoulders = "L1/R1", LeftTrigger = "L2", Select = "Share", Start = "Options" };
+        public static readonly PadNames DualSense = new PadNames
+        { Family = "PlayStation", South = "Cross", East = "Circle", West = "Square", North = "Triangle", Shoulders = "L1/R1", LeftTrigger = "L2", Select = "Create", Start = "Options" };
+        public static readonly PadNames DualShock3 = new PadNames
+        { Family = "PlayStation", South = "Cross", East = "Circle", West = "Square", North = "Triangle", Shoulders = "L1/R1", LeftTrigger = "L2", Select = "Select", Start = "Start" };
+        public static readonly PadNames Nintendo = new PadNames
+        { Family = "Nintendo", South = "B", East = "A", West = "Y", North = "X", Shoulders = "L/R", LeftTrigger = "ZL", Select = "\u2212", Start = "+" };
+
+        public static PadNames For(Gamepad pad) => pad switch
+        {
+            UnityEngine.InputSystem.DualShock.DualSenseGamepadHID => DualSense,
+            UnityEngine.InputSystem.DualShock.DualShock3GamepadHID => DualShock3,
+            UnityEngine.InputSystem.DualShock.DualShockGamepad => DualShock4,
+            UnityEngine.InputSystem.Switch.SwitchProController => Nintendo,
+            _ => Xbox,
+        };
+
+        /// <summary>Replaces {South}, {East}, {West}, {North}, {Shoulders}, {LeftTrigger}, {Select}, {Start} in a tip.</summary>
+        public string Fill(string text) => string.IsNullOrEmpty(text) || text.IndexOf('{') < 0 ? text : text
+            .Replace("{South}", South).Replace("{East}", East).Replace("{West}", West).Replace("{North}", North)
+            .Replace("{Shoulders}", Shoulders).Replace("{LeftTrigger}", LeftTrigger).Replace("{Select}", Select).Replace("{Start}", Start);
+    }
+
+    /// <summary>
     /// Polls keyboard, mouse and gamepad once per frame. Keeps the most recently pressed held
     /// direction so diagonal mashing still feels predictable on a grid.
     /// </summary>
@@ -22,6 +58,8 @@ namespace BorrowedSeconds.Game
         public Vector2 Pointer;
         public bool AnyKey;
         public bool UsingGamepad;
+        /// <summary>Button names for the pad in use (Xbox names until a pad is seen).</summary>
+        public PadNames Pad = PadNames.Xbox;
         /// <summary>Focus toggles on each press instead of lasting while held (a Settings option).</summary>
         public bool FocusToggle;
         bool focusWasDown, focusLatched;
@@ -90,6 +128,7 @@ namespace BorrowedSeconds.Game
             }
             if (pad != null)
             {
+                Pad = PadNames.For(pad);
                 var stick = pad.leftStick.ReadValue();
                 var dpad = pad.dpad.ReadValue();
                 var v = dpad.sqrMagnitude > 0.1f ? dpad : stick;

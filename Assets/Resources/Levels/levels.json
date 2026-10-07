@@ -6,7 +6,7 @@
       "chapter": 1,
       "term": 100,
       "hint": "<b>Hover</b> the moving block, then <b>click</b> to freeze it for 3 seconds. Five seconds later the debt comes due and <i>you</i> freeze.",
-      "hintPad": "<b>LB</b>/<b>RB</b> aims at the moving block, then <b>A</b> freezes it for 3 seconds. Five seconds later the debt comes due and <i>you</i> freeze.",
+      "hintPad": "<b>{Shoulders}</b> aims at the moving block, then <b>{South}</b> freezes it for 3 seconds. Five seconds later the debt comes due and <i>you</i> freeze.",
       "map": [
         "  ...          ",
         "  .S.          ",

@@ -89,6 +89,21 @@ namespace BorrowedSeconds.Game
             Audio = AudioDirector.Create(transform);
             BuildMenus();
             ApplySettings();
+            UnityEngine.InputSystem.InputSystem.onDeviceChange += OnDeviceChange;
+        }
+
+        void OnDestroy() => UnityEngine.InputSystem.InputSystem.onDeviceChange -= OnDeviceChange;
+
+        /// <summary>A pad unplugged or out of battery mid-level pauses it, as losing focus does, and
+        /// the hints go back to the keyboard if no pad is left.</summary>
+        void OnDeviceChange(UnityEngine.InputSystem.InputDevice device, UnityEngine.InputSystem.InputDeviceChange change)
+        {
+            if (!(device is UnityEngine.InputSystem.Gamepad)) return;
+            if (change != UnityEngine.InputSystem.InputDeviceChange.Removed && change != UnityEngine.InputSystem.InputDeviceChange.Disconnected) return;
+            bool padLeft = false;
+            foreach (var g in UnityEngine.InputSystem.Gamepad.all) padLeft |= g != device && g.enabled;
+            if (!padLeft) Input.UsingGamepad = false;
+            FocusLost(botDrivesFlow); // the input bot unplugs its virtual pad on purpose
         }
 
         void BuildMenus()
@@ -352,11 +367,12 @@ namespace BorrowedSeconds.Game
         void RefreshTip(bool slideIn)
         {
             var def = Session.Def;
-            string hint = Input.UsingGamepad && !string.IsNullOrEmpty(def.HintPad) ? def.HintPad : def.Hint;
+            var pad = Input.Pad;
+            string hint = Input.UsingGamepad && !string.IsNullOrEmpty(def.HintPad) ? pad.Fill(def.HintPad) : def.Hint;
             string text = tipOpen || string.IsNullOrEmpty(def.Hint)
                 ? hint
-                : $"Stuck? Press <color=#FFD27A>{(Input.UsingGamepad ? "Select" : Input.KeyName(KeyAction.Hint))}</color> for a hint.";
-            if (State == Flow.Watching) text = "<color=#7CF4FF>The solver's route, at par.</color>  " + (Input.UsingGamepad ? "<color=#FFD27A>B</color>" : "<color=#FFD27A>Esc</color>") + " to stop watching.";
+                : $"Stuck? Press <color=#FFD27A>{(Input.UsingGamepad ? pad.Select : Input.KeyName(KeyAction.Hint))}</color> for a hint.";
+            if (State == Flow.Watching) text = "<color=#7CF4FF>The solver's route, at par.</color>  " + $"<color=#FFD27A>{(Input.UsingGamepad ? pad.East : "Esc")}</color> to stop watching.";
             else if (attemptDeaths >= NudgeAfterDeaths)
                 text += (text.Length > 0 ? "\n" : "") + "<size=20><color=#C9D3F0>Still stuck? Pause and choose <b>Watch solution</b>.</color></size>";
             if (slideIn) Hud.SetTip(text); else Hud.SetTipText(text);
@@ -515,7 +531,7 @@ namespace BorrowedSeconds.Game
             ending.Update(Input, dt, top(ending));
 
             if (Session == null) return;
-            if (Input.UsingGamepad != hintsForPad) ShowControlHints();
+            if (Input.UsingGamepad != hintsForPad || (hintsForPad && Input.Pad != hintsPad)) ShowControlHints();
             var s = Session.Cur;
             Env.FrozenAmount = Mathf.MoveTowards(Env.FrozenAmount, s.PFrozen > 0 && !s.Dead && !Session.Muted ? 1f : 0f, dt * 4f);
             Env.RewindAmount = Mathf.MoveTowards(Env.RewindAmount, Session.State == LevelSession.Mode.Rewinding ? 1f : 0f, dt * 6f);
@@ -570,7 +586,7 @@ namespace BorrowedSeconds.Game
             // real time, not the clamped menu dt: a hold must take 0.6 s even at a low frame rate
             if (restartArmed && Input.RestartHeld) restartHeld += Mathf.Min(Clock.Dt, 0.25f);
             else restartArmed = false;
-            Hud.RestartLabel = $"HOLD {(Input.UsingGamepad ? "Y" : Input.KeyName(KeyAction.Restart))} TO RESTART";
+            Hud.RestartLabel = $"HOLD {(Input.UsingGamepad ? Input.Pad.North : Input.KeyName(KeyAction.Restart))} TO RESTART".ToUpperInvariant();
             Hud.RestartHold = restartArmed ? restartHeld / RestartHoldSeconds : -1f;
             if (!restartArmed || restartHeld < RestartHoldSeconds) return false;
             restartArmed = false;
@@ -630,17 +646,20 @@ namespace BorrowedSeconds.Game
         }
 
         bool hintsForPad;
+        PadNames hintsPad;
 
         void ShowControlHints(bool force = false)
         {
-            bool changed = force || hintsForPad != Input.UsingGamepad;
+            bool changed = force || hintsForPad != Input.UsingGamepad || hintsPad != Input.Pad;
             string focus = Input.FocusToggle ? "focus on/off" : "focus";
             hintsForPad = Input.UsingGamepad;
+            hintsPad = Input.Pad;
+            var p = Input.Pad;
             if (State == Flow.Watching)
-                Hud.SetHints(hintsForPad ? "<b>B</b> stop watching" : "<b>Esc</b> stop watching");
+                Hud.SetHints(hintsForPad ? $"<b>{p.East}</b> stop watching" : "<b>Esc</b> stop watching");
             else
                 Hud.SetHints(hintsForPad
-                    ? $"<b>Stick</b> move     <b>LB/RB</b> aim     <b>A</b> borrow     <b>LT</b> {focus}     <b>X</b> rewind     <b>Y</b> restart     <b>Select</b> hint     <b>Start</b> pause"
+                    ? $"<b>{p.Stick}</b> move     <b>{p.Shoulders}</b> aim     <b>{p.South}</b> borrow     <b>{p.LeftTrigger}</b> {focus}     <b>{p.West}</b> rewind     <b>{p.North}</b> restart     <b>{p.Select}</b> hint     <b>{p.Start}</b> pause"
                     : $"<b>{Input.MoveKeysName()}</b> move     <b>Click</b> borrow     <b>{Input.KeyName(KeyAction.Focus)}</b> {focus}     <b>{Input.KeyName(KeyAction.Rewind)}</b> rewind     "
                       + $"<b>{Input.KeyName(KeyAction.Restart)}</b> restart     <b>{Input.KeyName(KeyAction.Hint)}</b> hint     <b>Esc</b> pause");
             if (changed && Session != null) RefreshTip(false); // the folded tip names the device's hint key

@@ -56,6 +56,10 @@ namespace BorrowedSeconds.UI
             return new Pill { Rt = rt, Group = group, Text = text, Panel = panel };
         }
 
+        /// <summary>The pills' current text (the input bot reads the button names).</summary>
+        public string PlayerText => overPlayer.Text.text;
+        public string ObstacleText => overObstacle.Text.text;
+
         /// <summary>Call when a new level starts.</summary>
         public void ResetLevel()
         {
@@ -98,26 +102,30 @@ namespace BorrowedSeconds.UI
                 int learned = save.learned;
 
                 if ((learned & Move) == 0)
-                    playerText = pad ? "<color=#FFD27A>Stick</color>  move" : $"<color=#FFD27A>{input.MoveKeysName()}</color>  or  <color=#FFD27A>arrows</color>  move";
+                    playerText = pad ? $"<color=#FFD27A>{input.Pad.Stick}</color>  move" : $"<color=#FFD27A>{input.MoveKeysName()}</color>  or  <color=#FFD27A>arrows</color>  move";
                 else if (rewindHint > 0f && (learned & Rewind) == 0)
-                    playerText = $"{(input.FocusToggle ? "Press" : "Hold")} <color=#FFD27A>{(pad ? "X" : input.KeyName(KeyAction.Rewind))}</color>  rewind further";
+                    playerText = $"Hold <color=#FFD27A>{(pad ? input.Pad.West : input.KeyName(KeyAction.Rewind))}</color>  rewind further";
                 else if ((learned & Debt) == 0 && cur.Countdown > 0)
                     playerText = "Debt due: freeze where the <color=#55E0AE>ring</color> is safe";
                 else if ((learned & Borrow) != 0 && (learned & Focus) == 0 && s.LoanAvailable && s.Aim >= 0)
-                    playerText = $"Hold <color=#FFD27A>{(pad ? "LT" : input.KeyName(KeyAction.Focus))}</color>  slow time to aim";
+                    playerText = $"{(input.FocusToggle ? "Press" : "Hold")} <color=#FFD27A>{(pad ? input.Pad.LeftTrigger : input.KeyName(KeyAction.Focus))}</color>  slow time to aim";
 
-                if ((learned & Move) != 0 && (learned & Borrow) == 0 && s.LoanAvailable && s.Aim < 0)
+                // a pad always aims at something (the nearest obstacle until LB/RB cycle), so the prompt
+                // goes over what it aims at; the mouse prompt waits until nothing is hovered
+                if ((learned & Move) != 0 && (learned & Borrow) == 0 && s.LoanAvailable && (s.Aim < 0 || pad))
                 {
-                    obstacle = NearestFree(s);
+                    obstacle = pad && s.Aim >= 0 && !s.Cur.IsObstacleFrozen(s.Def, s.Aim) ? s.Aim : NearestFree(s);
                     if (obstacle >= 0)
-                        obstacleText = pad ? "<color=#FFD27A>A</color>  freeze it  ·  <color=#FFD27A>LB/RB</color>  aim"
+                        obstacleText = pad ? $"<color=#FFD27A>{input.Pad.South}</color>  freeze it  ·  <color=#FFD27A>{input.Pad.Shoulders}</color>  aim"
                                            : "<color=#FFD27A>Hover</color> + <color=#FFD27A>click</color>  freeze it";
                 }
             }
 
             var cam = Camera.main;
             Show(overPlayer, playerText, s != null && s.Board != null ? s.Board.Player.WorldPos + Vector3.up * 1.9f : Vector3.zero, cam, dt);
-            Show(overObstacle, obstacleText, obstacle >= 0 ? s.Board.ObstacleCenter(obstacle) + Vector3.up * 1.1f : Vector3.zero, cam, dt);
+            // over an obstacle that is also aimed (always, on a pad), the pill sits above the HUD's aim tag
+            float lift = obstacle >= 0 && s.Aim == obstacle ? 100f : 0f;
+            Show(overObstacle, obstacleText, obstacle >= 0 ? s.Board.ObstacleCenter(obstacle) + Vector3.up * 1.1f : Vector3.zero, cam, dt, lift);
         }
 
         static int NearestFree(LevelSession s)
@@ -134,7 +142,7 @@ namespace BorrowedSeconds.UI
             return best;
         }
 
-        void Show(Pill pill, string text, Vector3 world, Camera cam, float dt)
+        void Show(Pill pill, string text, Vector3 world, Camera cam, float dt, float lift = 0f)
         {
             bool on = text != null && cam != null;
             if (on && pill.Text.text != text)
@@ -158,7 +166,7 @@ namespace BorrowedSeconds.UI
                 var size = ((RectTransform)canvas.transform).rect.size;
                 float half = pill.Rt.sizeDelta.x * 0.5f + 24f;
                 float x = Mathf.Clamp(sp.x / scale, half, size.x - half);
-                float y = Mathf.Clamp(sp.y / scale + bob, 140f, size.y - 170f);
+                float y = Mathf.Clamp(sp.y / scale + lift + bob, 140f, size.y - 170f);
                 pill.Rt.anchoredPosition = new Vector2(x, y);
             }
         }

@@ -317,6 +317,8 @@ namespace BorrowedSeconds.UI
     public sealed class TitleScreen : MenuScreen
     {
         string promptText;
+        /// <summary>The key row under the menu (checks read it).</summary>
+        public string Footer => promptText;
         public readonly MenuList Menu;
         readonly RectTransform logo, emblemRt, rule, menuRoot;
         readonly TextMeshProUGUI word1, word2, tag;
@@ -427,7 +429,8 @@ namespace BorrowedSeconds.UI
             float r = Ease.OutExpo((a - 1.15f) / 0.7f);
             rule.localScale = new Vector3(r, 1, 1);
             fxTag.Age = a - 1.25f;
-            string prompt = $"<b>{input.KeyName(KeyAction.Up)} {input.KeyName(KeyAction.Down)}</b> choose <b>Space</b> confirm";
+            string prompt = input.UsingGamepad ? $"<b>{input.Pad.Dpad}</b> choose <b>{input.Pad.South}</b> confirm"
+                : $"<b>{input.KeyName(KeyAction.Up)} {input.KeyName(KeyAction.Down)}</b> choose <b>Space</b> confirm";
             if (prompt != promptText) { promptText = prompt; Kit.Keycaps(promptRow, prompt); }
             promptGroup.alpha = Ease.Clamp((a - 2.2f) * 2f);
             Menu.IntroDelay = 1.45f;
@@ -440,6 +443,18 @@ namespace BorrowedSeconds.UI
     public sealed class LevelSelectScreen : MenuScreen
     {
         string lastKeys;
+        /// <summary>The key row in the info panel (checks read it).</summary>
+        public string Footer => lastKeys;
+
+        string Keys(bool open)
+        {
+            var input = GameRoot.I.Input;
+            var p = input.Pad;
+            if (input.UsingGamepad)
+                return (pages > 1 ? $"<b>{p.Shoulders}</b> page " : "") + (open ? $"<b>{p.South}</b> play <b>{p.East}</b> back" : $"<b>{p.East}</b> back");
+            string turn = pages > 1 ? $"<b>{input.KeyName(KeyAction.AimPrev)} {input.KeyName(KeyAction.AimNext)}</b> page " : "";
+            return turn + (open ? "<b>Space</b> play <b>Esc</b> back" : "<b>Esc</b> back");
+        }
         sealed class Card
         {
             public Panel Panel;
@@ -583,8 +598,8 @@ namespace BorrowedSeconds.UI
             if (string.IsNullOrEmpty(d.Hint)) return "";
             var input = GameRoot.I.Input;
             if (d.Spoiler && !save.Cleared(d.Id))
-                return $"<color=#8E9AC8>This tip gives the trick away, so it stays folded. Press <color=#FFD27A>{(input.UsingGamepad ? "Select" : input.KeyName(KeyAction.Hint))}</color> in the level to read it.</color>";
-            return input.UsingGamepad && !string.IsNullOrEmpty(d.HintPad) ? d.HintPad : d.Hint;
+                return $"<color=#8E9AC8>This tip gives the trick away, so it stays folded. Press <color=#FFD27A>{(input.UsingGamepad ? input.Pad.Select : input.KeyName(KeyAction.Hint))}</color> in the level to read it.</color>";
+            return input.UsingGamepad && !string.IsNullOrEmpty(d.HintPad) ? input.Pad.Fill(d.HintPad) : d.Hint;
         }
 
         /// <summary>What the info panel says about the selected level (checks read it).</summary>
@@ -800,21 +815,19 @@ namespace BorrowedSeconds.UI
                     ? $"best <b>{Ui.Secs(best)}s</b>\n<color=#8E9AC8>par {Ui.Secs(par)}s</color>   <color=#FFD27A>{SaveData.MedalName(medal)}</color>"
                     : $"<color=#8E9AC8>par {Ui.Secs(par)}s</color>\n<color=#8E9AC8>not yet settled</color>";
                 infoStats.richText = true;
-                var keyNames = GameRoot.I.Input;
-                string turn = pages > 1 ? $"<b>{keyNames.KeyName(KeyAction.AimPrev)} {keyNames.KeyName(KeyAction.AimNext)}</b> page " : "";
-                string keys = turn + (open ? "<b>Space</b> play <b>Esc</b> back" : "<b>Esc</b> back");
-                if (keys != lastKeys)
-                {
-                    lastKeys = keys;
-                    float w = Kit.Keycaps(infoKeys, keys);
-                    foreach (RectTransform c in infoKeys) c.anchoredPosition += new Vector2(330 - w, 0);
-                    lastOpen = open;
-                }
                 var coin = Kit.CoinSmall(medal);
                 infoCoin.sprite = coin ?? (open ? Kit.Socket : Kit.Lock);
                 infoCoin.color = coin != null || !open ? Color.white : new Color(0.02f, 0.025f, 0.06f, 0.9f);
             }
             else if (open && infoHint.text != TipText(d)) infoHint.text = TipText(d); // the device (and its hint key) changed
+            string keys = Keys(open); // follows the device as well as the selection
+            if (keys != lastKeys)
+            {
+                lastKeys = keys;
+                float w = Kit.Keycaps(infoKeys, keys);
+                foreach (RectTransform c in infoKeys) c.anchoredPosition += new Vector2(330 - w, 0);
+                lastOpen = open;
+            }
             infoAge += dt;
             infoNameFx.Age = infoAge;
             infoHintFx.Age = infoAge - 0.1f;
@@ -915,6 +928,8 @@ namespace BorrowedSeconds.UI
         /// <summary>Index of the Controls row (after the original rows, which scripted tours select by index).</summary>
         public const int ControlsRow = 9;
         string footText;
+        /// <summary>The key row under the window (checks read it).</summary>
+        public string Footer => footText;
 
         public SettingsScreen(Transform canvas, SaveData save, Action apply, Action onBack, Action onControls)
             : base(canvas, "Settings", new Vector2(860, 1004), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
@@ -951,7 +966,8 @@ namespace BorrowedSeconds.UI
         protected override void Tick(InputReader input, float dt, bool hasInput)
         {
             float a = AnimateWindow();
-            string foot = $"<b>{input.KeyName(KeyAction.Up)} {input.KeyName(KeyAction.Down)}</b> choose <b>{input.KeyName(KeyAction.Left)} {input.KeyName(KeyAction.Right)}</b> adjust <b>Esc</b> back";
+            string foot = input.UsingGamepad ? $"<b>{input.Pad.Dpad}</b> choose and adjust <b>{input.Pad.East}</b> back"
+                : $"<b>{input.KeyName(KeyAction.Up)} {input.KeyName(KeyAction.Down)}</b> choose <b>{input.KeyName(KeyAction.Left)} {input.KeyName(KeyAction.Right)}</b> adjust <b>Esc</b> back";
             if (foot != footText) { footText = foot; Kit.Keycaps(footRow, foot, 1f, true); }
             footGroup.alpha = Ease.OutCubic((a - 0.8f) * 2f);
             if (hasInput && input.Back) { Sfx.Play("ui_back"); onBack(); return; }
@@ -970,6 +986,8 @@ namespace BorrowedSeconds.UI
         readonly RectTransform footRow;
         readonly CanvasGroup footGroup;
         string footText;
+        /// <summary>The key row under the window (checks read it).</summary>
+        public string Footer => footText;
         int listening = -1;
         float listenAge;
         public string Notice = "";
@@ -1010,7 +1028,9 @@ namespace BorrowedSeconds.UI
             noticeT += dt;
             notice.text = Notice;
             notice.alpha = Notice.Length > 0 ? Mathf.Clamp01(3f - noticeT * 0.6f) : 0f;
-            string foot = listening >= 0 ? "<b>Esc</b> cancel" : "<b>↑ ↓</b> choose <b>Enter</b> rebind <b>Esc</b> back";
+            string foot = listening >= 0 ? (input.UsingGamepad ? $"press a key  <b>{input.Pad.East}</b> cancel" : "<b>Esc</b> cancel")
+                : input.UsingGamepad ? $"<b>{input.Pad.Dpad}</b> choose <b>{input.Pad.South}</b> rebind <b>{input.Pad.East}</b> back"
+                : "<b>↑ ↓</b> choose <b>Enter</b> rebind <b>Esc</b> back";
             if (foot != footText) { footText = foot; Kit.Keycaps(footRow, foot, 1f, true); }
             footGroup.alpha = Ease.OutCubic((a - 0.8f) * 2f);
             if (listening >= 0)

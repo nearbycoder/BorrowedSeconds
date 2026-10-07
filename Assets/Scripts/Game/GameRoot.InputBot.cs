@@ -121,9 +121,11 @@ namespace BorrowedSeconds.Game
             rebindOk &= restartOk;
             bool toggleOk = false;
             yield return FocusTogglePass(dir, log, r => toggleOk = r);
+            bool namesOk = false;
+            yield return PadNamesPass(dir, log, r => namesOk = r);
             log.Add($"info frames {Time.frameCount} over {Time.realtimeSinceStartup:0.0}s real");
-            bool all = kbOk && padOk && rebindOk && toggleOk;
-            log.Add(all ? "RESULT PASS keyboard + mouse, gamepad, rebound keyboard, restart, focus toggle" : "RESULT FAIL");
+            bool all = kbOk && padOk && rebindOk && toggleOk && namesOk;
+            log.Add(all ? "RESULT PASS keyboard + mouse, gamepad, rebound keyboard, restart, focus toggle, controller names and unplugging" : "RESULT FAIL");
             File.WriteAllLines(Path.Combine(dir, "inputbot.log"), log);
             Debug.Log("[InputBot] " + string.Join(" | ", log));
             Application.Quit(all ? 0 : 1);
@@ -553,6 +555,140 @@ namespace BorrowedSeconds.Game
             if (ok) log.Add("ok   pad: Start paused and B resumed; D-pad + A chose Watch solution; B stopped it");
             log.Add(ok ? "PASS 1-1 and the menus played through a virtual gamepad" : "FAIL gamepad");
             botDrivesFlow = false;
+            result(ok);
+        }
+
+        // ---------------------------------------------------------------- controller names pass
+
+        /// <summary>Sets one control on any pad, in the pad's own state format (a DualSense's report
+        /// isn't a GamepadState, and its layout drops events in other formats).</summary>
+        static void PadWrite(Gamepad pad, InputControl<float> control, float value)
+        {
+            using (StateEvent.From(pad, out var ptr))
+            {
+                control.WriteValueIntoEvent(value, ptr);
+                InputSystem.QueueEvent(ptr);
+            }
+        }
+
+        /// <summary>
+        /// A virtual DualSense, DualShock 4, Switch Pro controller and plain gamepad in turn: every
+        /// place that names a pad button (key hints, 1-1's tip folded and open, the restart tag, the
+        /// onboarding prompts, the title, Ledger and Settings footers) must use that pad's names.
+        /// Then the pad is unplugged mid-level, which must pause it and hand the hints to the keyboard.
+        /// </summary>
+        IEnumerator PadNamesPass(string dir, List<string> log, System.Action<bool> result)
+        {
+            botDrivesFlow = true;
+            bool ok = true;
+            var notes = new List<string>();
+            InputSystem.DisableDevice(botKb);
+            InputSystem.DisableDevice(botMouse);
+            if (botPad != null) InputSystem.DisableDevice(botPad);
+            var kinds = new (string name, System.Func<Gamepad> add, PadNames want)[]
+            {
+                ("DualSense", () => InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualSenseGamepadHID>("BotDualSense"), PadNames.DualSense),
+                ("DualShock 4", () => InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualShock4GamepadHID>("BotDualShock4"), PadNames.DualShock4),
+                ("Switch Pro", () => InputSystem.AddDevice<UnityEngine.InputSystem.Switch.SwitchProControllerHID>("BotSwitchPro"), PadNames.Nintendo),
+                ("plain gamepad", () => InputSystem.AddDevice<Gamepad>("BotPlainPad"), PadNames.Xbox),
+            };
+            int learned = Save.learned;
+            Gamepad pad = null;
+            foreach (var (name, add, w) in kinds)
+            {
+                bool kindOk = true;
+                void Fail(string why) { kindOk = false; log.Add($"FAIL pad names ({name}): {why}"); }
+                pad = add();
+                pad.MakeCurrent();
+                complete.Hide();
+                pendingComplete = null;
+                Save.learned = 0;
+                promptDemo = true; // the onboarding pills, which scripted runs normally hide
+                StartLevel(0, false);
+                yield return new WaitForSecondsRealtime(2.6f); // the title intro, then the tip slides in
+                PadWrite(pad, pad.rightTrigger, 1f); // an unused trigger: switches the hints to the pad
+                yield return null;
+                PadWrite(pad, pad.rightTrigger, 0f);
+                yield return null;
+                yield return null;
+                if (!Input.UsingGamepad || Input.Pad != w) Fail($"pad not recognised: using pad={Input.UsingGamepad}, names={Input.Pad.Family}/{Input.Pad.Select}");
+
+                string hints = Hud.HintsText ?? "";
+                foreach (var want in new[] { $"<b>{w.Shoulders}</b> aim", $"<b>{w.South}</b> borrow", $"<b>{w.LeftTrigger}</b> focus", $"<b>{w.West}</b> rewind",
+                    $"<b>{w.North}</b> restart", $"<b>{w.Select}</b> hint", $"<b>{w.Start}</b> pause" })
+                    if (!hints.Contains(want)) Fail($"key hints lack '{want}': {hints}");
+                string tip = Hud.TipText;
+                if (!tip.Contains($"<b>{w.Shoulders}</b> aims") || !tip.Contains($"<b>{w.South}</b> freezes") || tip.Contains("{")) Fail("1-1's tip: " + tip);
+                if (!Hud.RestartLabel.Contains($"HOLD {w.North.ToUpperInvariant()} TO")) Fail("restart tag: " + Hud.RestartLabel);
+                string movePrompt = Prompts.PlayerText;
+                if (!movePrompt.Contains($">{w.Stick}<")) Fail("move prompt: " + movePrompt);
+                Save.learned = UI.Prompts.Move;
+                yield return new WaitForSecondsRealtime(0.5f);
+                string borrowPrompt = Prompts.ObstacleText;
+                if (!borrowPrompt.Contains($">{w.South}</color>  freeze it") || !borrowPrompt.Contains($">{w.Shoulders}</color>  aim")) Fail("borrow prompt: " + borrowPrompt);
+                if (name == "DualSense") { ScreenCapture.CaptureScreenshot(Path.Combine(dir, "names_dualsense_level.png")); yield return null; }
+                Save.learned = UI.Prompts.Move | UI.Prompts.Borrow;
+                yield return new WaitForSecondsRealtime(0.3f);
+                string focusPrompt = Prompts.PlayerText;
+                if (!focusPrompt.Contains($">{w.LeftTrigger}</color>  slow time")) Fail("focus prompt: " + focusPrompt);
+                PadWrite(pad, pad.selectButton, 1f); // fold the tip
+                yield return null;
+                PadWrite(pad, pad.selectButton, 0f);
+                yield return null;
+                yield return null;
+                if (!Hud.TipText.Contains($">{w.Select}<")) Fail("folded tip: " + Hud.TipText);
+                promptDemo = false;
+
+                // menus: the title, the Ledger and Settings footers name the pad's buttons
+                ShowTitle();
+                yield return new WaitForSecondsRealtime(2.8f);
+                if (title.Footer != $"<b>{w.Dpad}</b> choose <b>{w.South}</b> confirm") Fail("title footer: " + title.Footer);
+                ShowLevels(4);
+                yield return new WaitForSecondsRealtime(name == "DualSense" ? 2.5f : 1.2f); // the screenshot waits out the intro
+                string ledger = levels.Footer ?? "";
+                if (!ledger.Contains($"<b>{w.East}</b> back") || (Catalog.Levels.Count > 20 && !ledger.Contains($"<b>{w.Shoulders}</b> page"))) Fail("Ledger footer: " + ledger);
+                if (name == "DualSense") { ScreenCapture.CaptureScreenshot(Path.Combine(dir, "names_dualsense_ledger.png")); yield return null; }
+                levels.Hide();
+                OpenSettings(Flow.Title);
+                yield return new WaitForSecondsRealtime(1.4f);
+                if (settings.Footer != $"<b>{w.Dpad}</b> choose and adjust <b>{w.East}</b> back") Fail("Settings footer: " + settings.Footer);
+                settings.Hide();
+                title.Hide();
+                notes.Add($"{name} {(kindOk ? "ok" : "FAIL")}");
+                ok &= kindOk;
+                if (name != "plain gamepad") InputSystem.RemoveDevice(pad);
+            }
+
+            // unplugging the pad mid-level pauses it, and the hints go back to the keyboard
+            StartLevel(0, false);
+            yield return new WaitForSecondsRealtime(1.5f);
+            PadWrite(pad, pad.rightTrigger, 1f);
+            yield return null;
+            PadWrite(pad, pad.rightTrigger, 0f);
+            yield return new WaitForSecondsRealtime(0.3f);
+            bool before = State == Flow.Playing && Input.UsingGamepad;
+            InputSystem.RemoveDevice(pad);
+            yield return null;
+            yield return null;
+            int tick = Session.Tick;
+            yield return new WaitForSecondsRealtime(1f);
+            bool paused = State == Flow.Paused && Session.Tick == tick;
+            bool kbHints = !Input.UsingGamepad && (Hud.HintsText ?? "").Contains("<b>Esc</b> pause");
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "names_unplugged.png"));
+            yield return null;
+            if (!before || !paused || !kbHints)
+            {
+                ok = false;
+                log.Add($"FAIL unplug: playing on the pad before={before}, paused={State == Flow.Paused}, tick {tick} -> {Session.Tick}, keyboard hints={kbHints}");
+            }
+            else notes.Add($"unplugged at tick {tick}: paused, tick held 1 s, hints back on the keyboard");
+            pause.Hide();
+            Resume();
+            Save.learned = learned;
+            InputSystem.EnableDevice(botKb);
+            InputSystem.EnableDevice(botMouse);
+            botDrivesFlow = false;
+            log.Add(ok ? $"PASS controller names: {string.Join("; ", notes)}" : "FAIL controller names");
             result(ok);
         }
 
