@@ -522,3 +522,35 @@ All five items shipped on `improvements-7`, including the stretch item. Final ve
 - Should *HUD size* default to 125 % on small screens (under 1600 px wide), instead of 100 % everywhere?
 
 Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including the vibration pulses, the larger HUD on a real Steam Deck, and the icon on X11 desktops), a listen to the mix, WebGL and touch (not attempted: a WebGL build needs an audio fallback for the low-pass filter, browser verification and hosting, more than fits beside this round's items), and Windows (needs the module).
+
+## Round 8 scope
+
+Written 2026-10-07 on `improvements-8`, after confirming `main` matched `origin/main` (`0b00321`) with a clean tree. These stay out because they wait on the owner or on a playtest: chapter VIII's theme, replacing 7-4, the unlock rule, rotor aim, whether *HUD size* defaults to 125 % on small screens, the audio peak limit and the trailer re-cut. WebGL and touch stay deferred (an audio fallback and browser testing). The ranked list is down to owner-blocked items again, so this round started from a Linux player's first launch and from players who replay levels, and found three things:
+
+- **The released game can hang before it opens a window.** A short run of the release build on this KDE Plasma (Wayland) desktop, with no arguments but a windowed size, picked Unity's X11 backend (XWayland) and stopped after `Desktop is 3840 x 2160` with its main thread waiting in `poll` (no GL context, no window; killed after 25 s). With `-force-wayland`, or `SDL_VIDEODRIVER=wayland`, it starts. The zip's README tells the player to run `./BorrowedSeconds.x86_64` and only mentions `-force-wayland` as an afterthought, and the launcher from `install-launcher.sh` runs the bare binary. A `force-wayland=1` line in `boot.config` doesn't help (tested: still X11). So on a Wayland desktop like this one, the first thing a player does can hang.
+- **The music keeps playing behind other windows.** Losing focus pauses a level (round 1), but the title, pause menu and Ledger music carry on while you're in a browser or a call.
+- **A player chasing a medal can't see where they stand.** The HUD shows the clock and par, but not your best time or when gold (par + 1 s) and silver (par + 4 s) slip away. You find out on the *Settled* screen, after the run. The Ledger names a level's medal but not what the next one needs.
+
+Items run in that order; item 4 is a stretch. Scratch output stays in `Builds/r8/` (and `Logs/`). Every tool run has to leave the real save's SHA-256 and mtime unchanged (`Builds/r8/save-before.*`). Test windows stay windowed.
+
+### 1. A Linux launcher that avoids the XWayland hang
+- **Change:** a `BorrowedSeconds.sh` next to the binary in the Linux zip. On a Wayland session it starts the game with Unity's native Wayland backend (`-force-wayland`); `BS_X11=1` skips that, and other arguments pass through. `install-launcher.sh` points the menu entry at it, the zip's README and the README's *Play it* say to run it, and `Tools/play.sh` uses the same rule.
+- **Acceptance:** from an unpacked test zip, `./BorrowedSeconds.sh` (with a window size and the menu tour) starts on the Wayland backend, reaches the title and finishes the tour; with `BS_X11=1` it picks X11; with no Wayland session it passes no Wayland flag. The zip lists the script as executable, and the launcher's `Exec` names it and still passes `desktop-file-validate`.
+- **Verify:** package a test zip into `Builds/r8/`, run the script there with a sandboxed config, read `Selected window backend` in each log; the launcher is generated into a throwaway `XDG_DATA_HOME`, never the real applications folder. **Limit:** the X11 path still hangs on this machine (that's Unity and XWayland, not something the game can fix before it starts), and fullscreen on the Wayland backend isn't entered on the shared desktop.
+
+### 2. Mute when the window is in the background
+- **Change:** a Settings toggle, *Mute in background* (on by default). When the window loses focus the whole mix fades out within a fraction of a second, and it fades back when focus returns. Scripted runs never touch it unless a check forces it.
+- **Acceptance:** with the toggle on, a focus loss takes the listener volume to 0 and a focus gain back to 1; with it off, nothing changes; the setting survives a save round trip.
+- **Verify:** a new `checks.sh` check (`background-mute`) that calls the same focus handler. **Limit:** like round 1's focus pause, no real window is alt-tabbed on the shared desktop.
+
+### 3. Medal pace on the HUD and targets in the Ledger
+- **Change:** on a level you've already settled, the line under the clock adds your best time, and a small medal coin beside the clock shows the best medal still in reach: gold until par + 1 s, then silver until par + 4 s, then bronze. The Ledger's info panel says what the next medal needs (*gold: 9.15s or better*). First attempts and *Watch solution* show neither, so a first run stays about the puzzle.
+- **Acceptance:** on a settled level the coin is gold at par + 1 s and silver one tick later, silver at par + 4 s and bronze one tick later, and the line reads the saved best; on an unsettled level and while watching, neither shows. The Ledger target matches `SaveData.MedalFor`'s thresholds for every level. Framing at 100 % and 150 % HUD stays clear of the HUD.
+- **Verify:** a new `checks.sh` check (`medal-pace`) on an in-memory save, the existing `hud-size` and framing checks, and screenshots.
+
+### 4. Stretch: Reset settings
+- **Change:** a Settings row that puts the volumes, shake, flashing, Focus, game speed, HUD size, render resolution, vibration and background mute back to their defaults, on two presses like *Erase progress*. Progress, key bindings and the window choice stay.
+- **Acceptance:** one press changes nothing; two restore exactly those fields.
+- **Verify:** an extension of the `erase-progress` check.
+
+**Not this round:** chapter VIII, replacing 7-4, the unlock rule, rotor aim, the HUD-size default, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio peak limit and the mix by ear, human playtesting.
