@@ -323,3 +323,42 @@ Items 1–4 shipped on `improvements-4`; the stretch item (5) wasn't attempted. 
 - **Stretch item.** Not attempted. Round 3 found the limit was design rather than compute: sweeps over the existing families kept collapsing into ideas the game already has. Replacing a shipped level also deserves a playtest that hasn't happened. It stays open.
 
 Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including colour-blind players and other screen shapes), a listen to the mix, WebGL, Windows (needs the module) and touch.
+
+## Round 5 scope
+
+Written 2026-10-06 on `improvements-5`, after confirming `main` matched `origin/main` (`ef11712`) with a clean tree. Chapter VIII (owner: theme), replacing 7-4 (needs a playtest first), the trailer re-cut (owner) and touch controls (no touch platform ships) stay out. A read of the menus, the HUD and the input code turned up five things a player would hit:
+
+- **The Ledger gives away folded tips.** Ten levels fold their tip behind H because it spells out the trick (1-5, 2-4, 3-2, 3-3, 3-5, 4-1, 5-5, 6-5, 7-2, 7-4). But the Ledger's info panel prints `def.Hint` for every unlocked level, and it opens on the next level to play, so the tip for a level you haven't started is on screen before you choose it.
+- **Every gamepad is an Xbox pad.** The HUD hints, the folded-tip line, the restart tag, the *Watch solution* line, the onboarding prompts and 1-1's gamepad tip all name A, B, X, Y, LB, RB, LT, Select and Start. A DualShock 4 or DualSense (which the Input System recognises on Linux through hidraw) or a Switch Pro controller gets the wrong names. The menu footers (title, Ledger, Settings, Controls) name keyboard keys even when you're on a pad.
+- **Unplugging the controller doesn't pause.** Focus loss pauses a level, but a pad whose battery dies mid-level leaves the debt running.
+- ***Watch solution* is all or nothing.** It plays the route at full speed, with no aim or forecast before each borrow and no way to slow it or see a moment again. For the levels that need the debt, the timing is the whole point, and it's over in a few seconds.
+- **The README stills aren't the game's framing.** The stills tool clears the trailer's camera moves but frames the board without the HUD avoidance the game now uses, so 4-5's bottom dial sits under the watch in the *Settlement* still, which a player never sees.
+
+Items run cheapest first. Scratch output stays in `Builds/r5/`. Every tool run has to leave the real save's SHA-256 unchanged (`Builds/r5/save-before.sha`).
+
+### 1. The Ledger keeps spoiler tips folded
+- **Change:** the Ledger shows a level's tip only if the tip isn't a spoiler or the level is already settled. Otherwise it says the tip is folded and names the device's hint key.
+- **Acceptance:** with a fresh save, no spoiler tip appears in the info panel for any level; once a spoiler level is settled, its tip shows.
+- **Verify:** a new `checks.sh` check (`ledger-tips`) selects every card on a fresh in-memory save and on a settled one and compares the panel text with `levels.json`; a screenshot of a folded and a settled spoiler level.
+
+### 2. Button names that match the controller
+- **Change:** one table of pad button names, picked from the pad in use: Xbox names by default, PlayStation names (Cross, Circle, Square, Triangle, L1/R1, L2, Options, Share or Create) for a DualShock 4 or DualSense, and Nintendo names (B, A, Y, X by position, L/R, ZL, +, −) for a Switch Pro controller. Every place that names a pad button uses it, including 1-1's gamepad tip (written with tokens). The menu footers switch to the pad's buttons when a pad was used last.
+- **Acceptance:** with a virtual DualSense, the HUD hints, folded tip, restart tag, onboarding prompt and menu footers name PlayStation buttons and contain no Xbox-only names. Likewise for a virtual Switch Pro controller, and an ordinary gamepad keeps today's text.
+- **Verify:** a new input-bot pass that adds each virtual pad, presses a button and reads the HUD, tip, prompt and footer strings; screenshots. **Limit:** virtual devices. Whether a real DualSense reaches the game as a DualSense on a given Linux setup depends on hidraw permissions (without them Unity reports a generic gamepad, which gets Xbox names).
+
+### 3. Pause when the controller disconnects
+- **Change:** if a gamepad is removed or disconnected while a level is in play, the pause menu opens (as on focus loss), and the hints fall back to the keyboard when no pad is left.
+- **Acceptance:** removing the pad mid-level freezes the tick with the pause menu up; nothing happens outside a level.
+- **Verify:** the input bot removes its virtual pad mid-level and checks the state, the tick over 1 s and the hint row.
+
+### 4. A solution you can follow
+- **Change:** while watching, the aim highlight, ghost forecast and aim tag appear about 0.8 s before each of the solver's borrows. Holding Focus slows the replay as it slows play, and holding Rewind scrubs back; on release the replay carries on from there. Watching still records nothing and still ends at par.
+- **Acceptance:** *Watch solution* wins at par on all 35 levels. Before every borrow in every replay, the aim is on that borrow's target. Rewinding mid-replay and letting go still wins at exactly par. Focus slows the tick rate.
+- **Verify:** the `watch-solution` check (35/35, at par, progress untouched) extended to check the aim before each borrow. The input bot's gamepad pass holds the rewind button and LT during the replay and checks the tick goes back, slows, and still ends at par. Screenshot of the pre-borrow preview.
+
+### 5. README stills in the game's framing
+- **Change:** `make_trailer.sh --stills` frames boards the way the game does, keeping tiles out from under the HUD. The trailer's own shots keep their framing, so the cut stays reproducible.
+- **Acceptance:** in the regenerated *Settlement* still, no floor tile sits under the watch or the HUD. The trailer code path is unchanged.
+- **Verify:** regenerate the stills from the release build and look at every one before committing; before/after sheet.
+
+**Not this round:** chapter VIII, replacing 7-4, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio mix by ear, human playtesting.
