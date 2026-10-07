@@ -487,3 +487,38 @@ Items run in that order; item 5 is a stretch. Scratch output stays in `Builds/r7
 - **Verify:** autopilot at 1280×800 with the HUD at 150 %, screenshots at 100 % and 150 %, and the save round trip in `checks.sh`.
 
 **Not this round:** chapter VIII, replacing 7-4, the unlock rule, rotor aim, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio peak limit and the mix by ear, human playtesting.
+
+## Round 7 results
+
+All five items shipped on `improvements-7`, including the stretch item. Final verification ran on the **release** build with this round's code: EditMode 145/145 (`Tools/test.sh`), autopilot 35/35 at exactly par, `checks.sh` with every check PASS (including the new `erase-progress` and `hud-size` checks; *Watch solution* 35/35; audio balance median +10.1 dB, worst +5.0 dB, peak 0.89), the input bot's passes all PASS (with the new vibration and wheel steps), `Tools/shapes.sh` at four sizes, the solver on 1-3 OK (no level data changed: `levels.json` and `solutions.json` are byte-identical to `main`), and `Tools/docs_check.py` clean. The real save's SHA-256 and mtimes were the same before and after the round (`Builds/r7/save-*`). Images are in `docs/media/improvements/round7/`.
+
+| # | Item | Commit | Verification |
+|---|---|---|---|
+| 1 | A game icon, and a launcher in the Linux zip | `42107e2` | The release build's `UnityPlayer.png` is the watch (it was the Unity cube). On KDE Plasma (Wayland) the running window showed KWin's generic "wayland" icon; with the launcher from `install-launcher.sh` installed, KWin reported the watch for the same window (decoded from its icon data). The launcher passes `desktop-file-validate`, and GLib parses its `Exec` and `Icon` back to the right files from folders whose names contain spaces, `$`, quotes, backticks and backslashes. The zip lists `icon.png` and `install-launcher.sh`. Shot 01. |
+| 2 | Erase progress | `b515dd4` | `erase-progress`: one press only arms it; moving off the row disarms it; the arm lapses after 4.0 s; two presses clear medals, times, the last level, the finished flag and the onboarding prompts, keep every setting and key (the save's JSON matches the expected one), the title reads *Begin* and the Ledger opens only 1-1. Shot 02. |
+| 3 | Controller vibration | `ecf75f1` | The input bot's gamepad pass reads the motor commands sent to its virtual pad: 1-1 sent a pulse each for the borrow (0.2/0.5), the debt (0.5/0.25) and the win (0.35/0.7), each followed by a stop; with the setting off a borrow sent nothing; switching it on sent a sample pulse; Start mid-pulse paused and stopped the motors. |
+| 4 | The mouse wheel aims | `a3bd8f8` | The keyboard-and-mouse pass on 1-3: a pointer on nothing aims nothing; down, down, up go 0 → 1 → 0; hovering slider 1 then down aims 0; moving the pointer goes back to hover aim. |
+| 5 | Stretch: HUD size 100/125/150 % | `4af8dc3` | `hud-size` at 1024×768, 1280×800 and 1600×900: two hint rows, nothing in the bottom HUD overlapping, no floor tile under the HUD, saved. At 1280×800 the hint labels go from 11.0 to 17.9 px and the line under the watch from 12 to 18 px (font size on screen). A framing-only autopilot (`-bsFrameOnly`) at 21:9, 16:9, 16:10 and 4:3 × 100/125/150 %: 35/35 levels clear of the HUD in all twelve; at 100 % every level's framing is identical to round 6. Shots 03–04. |
+
+**Found along the way, and fixed:**
+- `Tools/package.sh` would have shipped player logs: the player resolves a relative `-logFile` against its own folder, so earlier rounds' fps runs had left `Builds/Linux/Builds/r4`, `r6` logs inside the build. The zip now leaves `Builds/` out. (Those older logs are still on disk; this session didn't create them, so it didn't delete them.)
+- The first version of the 150 % HUD left 1–6 tiles under the watch on 9 levels at 16:9 (the watch grew by half). The watch now grows by a quarter, and a larger HUD may pull the camera back further (1.7× at 150 % against 1.4×).
+- The erase arm first counted the menus' clamped frame time, so it lasted 7 s at a low frame rate. It uses real time now.
+- `inputbot.sh`'s cap went from 180 to 300 s: at about 11 fps under load the bot took 176–179 s, and one run was cut off at 180 s before its last pass.
+
+**Notes and limits.**
+- **A mistake of mine.** While building the HUD-size check, I first reused the display check's switch that lets a scripted run apply its save to the window. The sandboxed save defaults to fullscreen, so two dev runs went fullscreen (3072×1728) on the shared desktop for about 10 s each before quitting. The check now has its own switch that touches only the HUD size, and every later run stayed windowed.
+- **The X11 window icon wasn't seen.** Launched under XWayland, the player hung at startup (the known issue `play.sh` works around), so `_NET_WM_ICON` was never set; I stopped my process. Unity writes the icon to `UnityPlayer.png`, which is what its X11 player reads, but that path is unverified here. For the KWin test, the launcher went into the real `~/.local/share/applications` for under a minute and was removed again.
+- **Vibration is unfelt.** Virtual pads have no motors; the pulse strengths and lengths are a first guess.
+- **Wheel and Tab now step on from the hovered obstacle** rather than jumping to the nearest one first. Gamepad aiming is unchanged.
+- **The game assembly allows unsafe code** now, for the bot's device-command spy (the Input System hands it a raw pointer, and its rumble command type is internal).
+- **The trailer's settings shot** selects rows by index; `shots.json` now points at the same rows (Reduce flashing 6 → 7, Focus slow-motion 7 → 8). The Settings rows are 52 units tall (were 62), so a re-recorded settings shot would look slightly denser. The trailer wasn't re-cut.
+- **The local release zip** in `Builds/Release/` was rebuilt by `package.sh` (not published).
+- **Load.** Input-sensitive runs waited for a load average under 24. The machine ran at load 18–39 during the round.
+
+**Decisions for the owner.**
+- Still open: chapter VIII's theme, replacing 7-4, whether *Watch solution* or failed attempts unlock the next level, how generous rotor aim should be, the audio peak limit (this run: 0.89 against 0.90), the trailer re-cut, Windows Build Support, signing and notarization, a license, and releases.
+- A new release would be the first with the icon and the launcher; whether and when to cut one is yours.
+- Should *HUD size* default to 125 % on small screens (under 1600 px wide), instead of 100 % everywhere?
+
+Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including the vibration pulses, the larger HUD on a real Steam Deck, and the icon on X11 desktops), a listen to the mix, WebGL and touch (not attempted: a WebGL build needs an audio fallback for the low-pass filter, browser verification and hosting, more than fits beside this round's items), and Windows (needs the module).
