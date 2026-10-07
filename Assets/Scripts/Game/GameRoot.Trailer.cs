@@ -134,7 +134,7 @@ namespace BorrowedSeconds.Game
             Save.learned = promptDemo ? MiniJson.Int(s, "learned", 0) : ~0;
             List<TimedAction> acts = null;
 
-            void Backdrop(bool muted)
+            void Backdrop(bool muted, bool inPlay = false)
             {
                 LoadLevel(li);
                 acts = ReplayFor(Catalog.Levels[li], s);
@@ -142,7 +142,7 @@ namespace BorrowedSeconds.Game
                 Session.AllowInput = false;
                 Session.Muted = muted;
                 Session.Seek(MiniJson.Int(s, "seek", 0));
-                FrameShot(s);
+                FrameShot(s, inPlay && hud);
             }
 
             switch (type)
@@ -151,7 +151,7 @@ namespace BorrowedSeconds.Game
                     StartLevel(li, true);
                     acts = ReplayFor(Catalog.Levels[li], s);
                     Session.Autoplay = acts;
-                    FrameShot(s);
+                    FrameShot(s, hud);
                     break;
                 case "title":
                 case "end":
@@ -186,7 +186,7 @@ namespace BorrowedSeconds.Game
                     ending.Show(total, par, 21, Catalog.Levels.Count, () => { });
                     break;
                 default: // "level", or a menu over a level ("settings")
-                    Backdrop(MiniJson.Bool(s, "muted", false));
+                    Backdrop(MiniJson.Bool(s, "muted", false), true);
                     State = Flow.Playing;
                     break;
             }
@@ -369,7 +369,7 @@ namespace BorrowedSeconds.Game
         /// Camera for a shot: zoom, sideways shift, a lean toward a tile ("lean": [x, y, amount]) and a
         /// world-space pan ("pan": [x, z]; positive z lowers the board on screen).
         /// </summary>
-        void FrameShot(Dictionary<string, object> s)
+        void FrameShot(Dictionary<string, object> s, bool withHud)
         {
             if (stillsRun) s = new Dictionary<string, object>(); // screenshots keep the game's own framing
             Rig.Zoom = Num(s, "zoom", 1f);
@@ -385,7 +385,9 @@ namespace BorrowedSeconds.Game
             }
             var pan = MiniJson.List(s, "pan");
             if (pan.Count >= 2) Rig.Offset += new Vector3(Num(pan, 0, 0f), 0f, Num(pan, 1, 0f));
-            Rig.Frame(board.Bounds, true);
+            // stills of a level in play also keep tiles out from under the HUD, as play does (the title and
+            // menus have no HUD to clear); the trailer's own shots keep their framing, so the cut stays reproducible
+            Rig.Frame(board.Bounds, true, stillsRun && withHud ? board.TileTops : null);
             Rig.Snap();
         }
 

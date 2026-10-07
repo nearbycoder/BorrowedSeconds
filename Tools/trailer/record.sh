@@ -18,6 +18,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 mkdir -p "$ROOT/Builds/Trailer"
+# a stills run writes only PNGs and a log: cap files at 512 MB, as the other scripted tools do, so a
+# player stuck logging in a loop can't fill the disk (clip recording writes long videos, so it isn't capped)
+[ "${MODE[0]}" = -bsStills ] && ulimit -f 524288
 args=(-screen-fullscreen 0 -screen-width 1920 -screen-height 1080 -logFile "$ROOT/Builds/Trailer/player.log")
 [ -n "${WAYLAND_DISPLAY:-}" ] && args+=(-force-wayland)
 # scripted runs keep Unity's config (screen prefs, PlayerPrefs) out of ~/.config/unity3d
