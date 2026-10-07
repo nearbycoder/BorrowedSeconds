@@ -262,3 +262,42 @@ Three of the five items shipped on `improvements-3`. Chapter VIII (item 2) did *
 **Save safety.** The real save (`~/.config/unity3d/Borrowed Seconds/…/prefs`) has the same content before and after every run. One write did happen: Unity's EditMode test runner always saves a copy of its results to `persistentDataPath/TestResults.xml`, even when given `-testResults`. That file (a test report from earlier rounds) now holds this round's report. Running the tests with `XDG_CONFIG_HOME` pointed into `Builds/` should avoid it next time; untested.
 
 Still open: chapter VIII (two more designs, or a new theme) and IX–XII, chapter VII's shared idea, a trailer re-cut, human playtesting, a listen to the mix, WebGL, Windows (needs the module) and touch.
+
+## Round 4 scope
+
+Written 2026-10-06 on `improvements-4`, after confirming `main` matched `origin/main` (`6666428`) with a clean tree. Chapter VIII stays in the lab (its theme is the owner's call) and touch controls stay out (no touch platform ships). This round targets things a player on a different setup from the development machine would hit. A baseline survey turned up four:
+
+- **The thaw forecast relies on colour alone.** The safe/lethal ring under the player is the game's central forecast, and it's mint for safe and red for lethal (amber for "dies just after", gold for "latches a dial"). Nothing else on screen says which: the aim tag only reads "FREEZE 3.0s, repay in 5.0s". A red/green colour-blind player can't read the most important cue in the game.
+- **The interface breaks on screens that aren't 16:9.** The menu tour at 2560×1080 (21:9) puts the Ledger's page tabs on top of the first row of level cards, and the Settings window fills the full height of the screen. At 1024×768 (4:3), the key-hint row runs under the pocket watch. The cause is the canvas scaler, which blends width and height 50/50, so a 21:9 canvas is only 935 units tall and a 4:3 canvas only 1662 wide, while the layouts assume 1920×1080. Captures: `Builds/r4/base-*` (not committed; the before/after sheets are).
+- **Focus can only be held.** Focus (slow time while you aim) needs Shift, the right mouse button or LT held down while you also aim and borrow. There's no toggle, which is a standard accessibility option.
+- **Scripted runs can still write to the real config directory.** Unity's player writes its own `Screenmanager …` keys (window size, position, fullscreen mode) into the real `prefs` on quit, even when the game's save is read-only. A baseline run at 2560×1080 with an isolated `XDG_CONFIG_HOME` showed it writing `Screenmanager Resolution Width = 2560`. Round 3 also noted that EditMode tests write `TestResults.xml` into the real `persistentDataPath`.
+
+Items run cheapest first, and the stretch item comes last. Scratch output stays in `Builds/`.
+
+### 1. Scripted runs and tests never touch the real config
+- **Change:** `checks.sh`, `capture.sh`, `devcap.sh` and `inputbot.sh` run the game with `XDG_CONFIG_HOME` inside their output folder. A new `Tools/test.sh` runs the EditMode tests the same way. `play.sh` gains `BS_SIZE=WxH` for other window sizes. Plain `play.sh` (a person playing) keeps the real config.
+- **Acceptance:** every tool run this round leaves the SHA-256 of every file under `~/.config/unity3d/Borrowed Seconds/` and `DefaultCompany/BorrowedSeconds/` unchanged. The isolated folder shows the writes that would otherwise have landed there.
+- **Verify:** hashes before and after the round's final full run (recorded in `Builds/r4/save-before.sha`).
+
+### 2. A thaw forecast you can read without colour
+- **Change:** the verdict is spelled out in words and shapes as well as colour:
+  - The aim tag gains a third line: *thaw safe*, *thaw lethal*, *dies after thaw* or *latches a dial*.
+  - While a debt runs, the term line under the watch shows the same verdict for the tile you're standing on.
+  - The lethal ring gets an X across it and the "soon" ring a broken outline, so the safe ring is the only plain disc.
+- **Acceptance:** the HUD's verdict text matches `GhostPreview.Result` in every state, and in a deuteranopia-simulated capture, safe and lethal can be told apart by shape and text alone.
+- **Verify:** a new `checks.sh` check (`forecast`) that steps scripted states on 1-2 into the safe and lethal verdicts and compares the HUD text to the forecast. Captures in colour, greyscale, and through a deuteranopia colour matrix (ImageMagick), looked at before committing.
+
+### 3. Layout on any screen shape
+- **Change:** canvases scale in `Expand` mode, so a canvas is never smaller than 1920×1080 units in either direction and anything laid out for 16:9 fits. Then fix whatever the captures still show.
+- **Acceptance:** at 2560×1080 (21:9), 1280×800 (16:10), 1024×768 (4:3) and 1600×900 (16:9, unchanged), no menu or HUD element overlaps another or leaves the screen in the menu tour or a level capture.
+- **Verify:** the menu tour (`-bsMenus`) and a 4-5 level capture at each size, with before/after contact sheets committed to `docs/media/improvements/round4/`. Autopilot 35/35 at 1600×900 to confirm nothing else moved.
+
+### 4. Focus: hold or toggle
+- **Change:** a Settings row, *Focus mode: Hold / Toggle*, saved with the other settings. In Toggle mode, a press of the Focus key, the right mouse button or LT turns Focus on and the next press turns it off. Focus switches off when the level restarts, ends or pauses. Key hints say "focus (toggle)".
+- **Acceptance:** with Toggle on, a tap of Shift leaves time slowed after release (blend ≥ 0.9 a second later) and a second tap restores it. Hold mode behaves as before. The setting survives a save round trip.
+- **Verify:** a new input-bot pass on virtual keyboard and gamepad, the existing passes still PASS, and the `checks.sh` settings round trip.
+
+### 5. Stretch: give 7-4 an idea of its own
+- Only if items 1–4 are done and the machine is quiet. One bounded sweep looks for a short-term level whose trick isn't "freeze the lane beam, let the debt hold the dial" (7-2's). If nothing proven turns up, it's deferred with notes, as in round 3.
+
+**Not this round:** chapter VIII (owner), touch controls, WebGL, Windows (module), re-cutting the trailer, the audio mix by ear, human playtesting.
