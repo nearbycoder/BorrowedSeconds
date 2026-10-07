@@ -20,6 +20,8 @@ done
 mkdir -p "$ROOT/Builds/Trailer"
 args=(-screen-fullscreen 0 -screen-width 1920 -screen-height 1080 -logFile "$ROOT/Builds/Trailer/player.log")
 [ -n "${WAYLAND_DISPLAY:-}" ] && args+=(-force-wayland)
+# scripted runs keep Unity's config (screen prefs, PlayerPrefs) out of ~/.config/unity3d
+mkdir -p "$ROOT/Builds/Trailer/config"; export XDG_CONFIG_HOME="$ROOT/Builds/Trailer/config"
 timeout 3600 "$GAME" "${args[@]}" "${MODE[@]}" -bsShotList "$ROOT/Tools/trailer/shots.json" "${ONLY[@]}" > /dev/null 2>&1 \
   || { echo "game failed, see Builds/Trailer/player.log" >&2; exit 1; }
 grep -E "\[Trailer\] (wrote|still)" "$ROOT/Builds/Trailer/player.log" | sed "s|$ROOT/||" || true

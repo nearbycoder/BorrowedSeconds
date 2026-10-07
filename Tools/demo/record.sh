@@ -16,6 +16,8 @@ fi
 mkdir -p "$(dirname "$OUT")"
 args=(-screen-fullscreen 0 -screen-width 1920 -screen-height 1080 -logFile "$BASE.player.log")
 [ -n "${WAYLAND_DISPLAY:-}" ] && args+=(-force-wayland)
+# scripted runs keep Unity's config (screen prefs, PlayerPrefs) out of ~/.config/unity3d
+mkdir -p "$ROOT/Builds/Demo/config"; export XDG_CONFIG_HOME="$ROOT/Builds/Demo/config"
 timeout 1800 "$GAME" "${args[@]}" -bsDemo "$BASE" > /dev/null 2>&1 || { echo "game failed, see $BASE.player.log" >&2; exit 1; }
 "$PYTHON" "$ROOT/Tools/demo/mix.py" "$BASE.audio.log" "$BASE.audio.wav"
 ffmpeg -y -loglevel error -i "$BASE.video.mp4" -i "$BASE.audio.wav" \

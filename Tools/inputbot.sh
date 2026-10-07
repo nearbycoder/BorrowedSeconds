@@ -8,6 +8,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="${1:-$ROOT/Builds/inputbot}"
 MODE=(); [ "${2:-}" = "dev" ] && MODE=(dev)
 rm -rf "$OUT"; mkdir -p "$OUT"
-timeout 180 "$ROOT/Tools/play.sh" "${MODE[@]}" -logFile "$OUT/player.log" -bsInputBot "$OUT" > /dev/null 2>&1 || true
+BS_CONFIG="${BS_CONFIG:-$OUT/config}" timeout 180 "$ROOT/Tools/play.sh" "${MODE[@]}" -logFile "$OUT/player.log" -bsInputBot "$OUT" > /dev/null 2>&1 || true
 grep -v "^info tap" "$OUT/inputbot.log" 2>/dev/null || echo "no inputbot.log"
 grep -q "^RESULT PASS" "$OUT/inputbot.log"
