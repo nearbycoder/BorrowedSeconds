@@ -928,7 +928,7 @@ namespace BorrowedSeconds.UI
         readonly CanvasGroup footGroup;
 
         /// <summary>Index of the Controls row (scripted tours select rows by index).</summary>
-        public const int ControlsRow = 12;
+        public const int ControlsRow = 13;
         /// <summary>Index of the Erase progress row.</summary>
         public const int EraseRow = ControlsRow + 1;
         /// <summary>How long Erase progress stays armed for its second press.</summary>
@@ -945,7 +945,7 @@ namespace BorrowedSeconds.UI
             : base(canvas, "Settings", new Vector2(860, 1040), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
         {
             this.onBack = onBack;
-            menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -172), 740, 52, 25, true);
+            menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -172), 740, 49, 25, true); // 16 rows clear the footer
             string Pct(float v) => Mathf.RoundToInt(v * 100) + "%";
             float Step(float v, int d) => Mathf.Clamp01(Mathf.Round((v + d * 0.1f) * 10f) / 10f);
             menu.AddSlider("Master volume", () => save.master, () => Pct(save.master), d => { save.master = Step(save.master, d); apply(); });
@@ -976,6 +976,7 @@ namespace BorrowedSeconds.UI
                 d => { save.speed = speeds[Mathf.Clamp(SpeedStep() + d, 0, speeds.Length - 1)]; apply(); });
             menu.AddToggle("Toggle Focus (press, not hold)", () => save.focusToggle, () => { save.focusToggle = !save.focusToggle; apply(); });
             menu.AddToggle("Controller vibration", () => save.vibration, () => { save.vibration = !save.vibration; apply(); });
+            menu.AddToggle("Mute in background", () => save.muteBackground, () => { save.muteBackground = !save.muteBackground; apply(); });
             menu.Add("Controls", onControls, () => "keyboard  ›");
             // two presses: the first arms it for a few seconds, the second erases
             menu.Add("Erase progress", () =>

@@ -49,6 +49,7 @@ namespace BorrowedSeconds.Game
             if (Want("how-to-play")) yield return CheckHowTo(dir, Report);
             if (Want("erase-progress")) yield return CheckErase(dir, Report);
             if (Want("hud-size")) yield return CheckHudSize(dir, Report);
+            if (Want("background-mute")) yield return CheckBackgroundMute(dir, Report);
 
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
@@ -422,6 +423,65 @@ namespace BorrowedSeconds.Game
         /// prompts while every setting and key binding stays. Runs on the scripted run's in-memory
         /// save (read-only, so the player's file can't be touched) and restores it afterwards.
         /// </summary>
+        /// <summary>
+        /// Settings > Mute in background: a focus loss (through the same handler Unity calls) fades
+        /// the listener to silence and a focus gain brings it back; with the toggle off nothing
+        /// changes. The row flips the setting, it survives a save round trip, and a save written
+        /// before the setting existed loads with it on.
+        /// </summary>
+        IEnumerator CheckBackgroundMute(string dir, System.Action<string, bool, string> report)
+        {
+            bool keep = Save.muteBackground;
+            float vol0 = AudioListener.volume;
+            forceBackgroundMute = true;
+            ShowTitle();
+            OpenSettings(Flow.Title);
+            yield return new WaitForSecondsRealtime(1.0f);
+            var row = settings.Menu.Items.Find(i => i.Label == "Mute in background");
+            bool isRow = row != null && settings.Menu.Items.IndexOf(row) == UI.SettingsScreen.ControlsRow - 1;
+            Save.muteBackground = false;
+            settings.Menu.Selected = settings.Menu.Items.IndexOf(row);
+            row?.Adjust?.Invoke(1); // a toggle row flips on Enter or left/right alike
+            yield return null;
+            bool rowFlips = Save.muteBackground;
+            yield return new WaitForSecondsRealtime(2.5f); // the rows finish their staggered intro
+            yield return Shot(dir, "background-mute_row");
+            CloseSettings();
+            var back = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(new SaveData { muteBackground = false }));
+            bool roundTrip = !back.muteBackground && JsonUtility.FromJson<SaveData>("{\"music\":0.5}").muteBackground;
+
+            // time for the listener to reach a level after a focus change (or the cap, if it never does)
+            IEnumerator Settle(float target, float[] took)
+            {
+                float t0 = Time.realtimeSinceStartup;
+                while (!Mathf.Approximately(AudioListener.volume, target) && Time.realtimeSinceStartup - t0 < 3f) yield return null;
+                took[0] = Time.realtimeSinceStartup - t0;
+            }
+            var outT = new float[1];
+            var inT = new float[1];
+            Save.muteBackground = true;
+            AudioListener.volume = 1f;
+            OnApplicationFocus(false);
+            yield return Settle(0f, outT);
+            bool muted = Mathf.Approximately(AudioListener.volume, 0f);
+            OnApplicationFocus(true);
+            yield return Settle(1f, inT);
+            bool back1 = Mathf.Approximately(AudioListener.volume, 1f);
+            Save.muteBackground = false;
+            OnApplicationFocus(false);
+            yield return new WaitForSecondsRealtime(0.6f);
+            float offVol = AudioListener.volume;
+            OnApplicationFocus(true);
+            yield return null;
+
+            forceBackgroundMute = false;
+            Save.muteBackground = keep;
+            AudioListener.volume = vol0;
+            report("background-mute", isRow && rowFlips && roundTrip && muted && back1 && Mathf.Approximately(offVol, 1f),
+                $"row={isRow} flips={rowFlips}; round trip and old saves default on={roundTrip}; on: focus lost -> silent in {outT[0]:0.00}s={muted}, "
+                + $"focus back -> full in {inT[0]:0.00}s={back1}; off: volume {offVol:0.00} after 0.6 s in the background");
+        }
+
         IEnumerator CheckErase(string dir, System.Action<string, bool, string> report)
         {
             string original = JsonUtility.ToJson(Save);

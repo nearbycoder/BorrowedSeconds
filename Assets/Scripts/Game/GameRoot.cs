@@ -468,8 +468,25 @@ namespace BorrowedSeconds.Game
 
         // the game keeps running in the background (runInBackground), so a real-time level must
         // not: alt-tabbing away mid-level opens the pause menu instead of letting the debt fall due
-        void OnApplicationFocus(bool focus) { if (!focus) { rumble.Stop(); FocusLost(false); } }
-        void OnApplicationPause(bool paused) { if (paused) { rumble.Stop(); FocusLost(false); } }
+        void OnApplicationFocus(bool focus) { AppFocus(focus); if (!focus) { rumble.Stop(); FocusLost(false); } }
+        void OnApplicationPause(bool paused) { AppFocus(!paused); if (paused) { rumble.Stop(); FocusLost(false); } }
+
+        // Settings > Mute in background: the whole mix (AudioListener.volume) fades out while the
+        // window is in the background and back in when it returns. Scripted runs leave the listener
+        // alone (the demo and trailer recorders silence it themselves) unless the check drives it.
+        bool appFocused = true;
+        /// <summary>Set by the background-mute check: lets a scripted run drive the listener.</summary>
+        bool forceBackgroundMute;
+        /// <summary>Seconds the mix takes to fade out or back in.</summary>
+        const float BackgroundFade = 0.25f;
+        void AppFocus(bool focused) => appFocused = focused;
+
+        void FadeBackgroundMute()
+        {
+            if (capturing && !forceBackgroundMute) return;
+            float target = Save.muteBackground && !appFocused ? 0f : 1f;
+            AudioListener.volume = Mathf.MoveTowards(AudioListener.volume, target, Time.unscaledDeltaTime / BackgroundFade);
+        }
 
         /// <summary>Pauses a level in play when the window loses focus (scripted runs only when forced).</summary>
         void FocusLost(bool force)
@@ -607,6 +624,7 @@ namespace BorrowedSeconds.Game
         {
             Input.Poll();
             rumble.Tick();
+            FadeBackgroundMute();
             float dt = Mathf.Min(Clock.Dt, 0.05f); // menus: a loading hitch must not skip their intros
             bool top(MenuScreen s) => s.Visible && TopScreen() == s && (Wipe == null || !Wipe.Busy);
             Cursor.visible = !Input.UsingGamepad;

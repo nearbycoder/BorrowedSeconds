@@ -23,6 +23,7 @@ namespace BorrowedSeconds.Game
         public bool fullscreen = true, shake = true, reduceFlashing;
         public bool focusToggle;                // a press turns Focus on and the next turns it off, instead of holding
         public bool vibration = true;           // rumble pulses on the gamepad in use (Game.Rumble)
+        public bool muteBackground = true;      // the mix fades out while the window is in the background
         public int windowW, windowH;            // window size when not fullscreen (DisplayOptions); 0 = pick one
         public float renderScale = 1f;          // the 3D scene's render resolution (DisplayOptions.RenderScales)
         public float hudScale = 1f;             // HUD size: 1, 1.25 or 1.5 (View.HudLayout)
