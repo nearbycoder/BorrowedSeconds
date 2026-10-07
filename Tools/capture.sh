@@ -4,7 +4,7 @@
 #   Tools/capture.sh [dir] [dev] [-bsOnly 1-1] [-bsShots 10,40]
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="${1:-$ROOT/Builds/capture}"; shift || true
+OUT="$(realpath -m "${1:-$ROOT/Builds/capture}")"; shift || true
 MODE=()
 if [ "${1:-}" = "dev" ]; then MODE=(dev); shift; fi
 rm -rf "$OUT"; mkdir -p "$OUT"

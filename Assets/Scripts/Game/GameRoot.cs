@@ -616,7 +616,7 @@ namespace BorrowedSeconds.Game
             Session.RewindChanged += on => { if (on && !Session.Muted) Sfx.Play("rewind", 0.8f); };
             Session.Won += OnWon;
             Session.BorrowDenied += _ => { Rig.Shake(0.06f); if (!Session.Muted) Sfx.Play("denied", 0.7f); };
-            Rig.Frame(Session.Board.Bounds, true);
+            Rig.Frame(Session.Board.Bounds, true, Session.Board.TileTops);
             Hud.Bind(Session, Catalog);
             tipOpen = !def.Spoiler;
             ShowControlHints();
@@ -796,7 +796,7 @@ namespace BorrowedSeconds.Game
                 yield return null;
                 yield return null;
                 if (won) pass++; else fail++;
-                log.Add($"{(won ? "PASS" : "FAIL")} {def.Id} {def.Name} tick={Session.Tick} dead={Session.Cur.Dead}" + (won ? "" : $" ({run.Why(Session)})"));
+                log.Add($"{(won ? "PASS" : "FAIL")} {def.Id} {def.Name} tick={Session.Tick} dead={Session.Cur.Dead} frame: hud={Rig.HudOverlap} pullback={Rig.HudPullback:0.000}" + (won ? "" : $" ({run.Why(Session)})"));
                 Debug.Log("[Autopilot] " + log[log.Count - 1]);
             }
             log.Add($"done pass={pass} fail={fail}");

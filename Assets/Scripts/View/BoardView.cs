@@ -26,6 +26,8 @@ namespace BorrowedSeconds.View
         public readonly List<LockView> Locks = new List<LockView>();
         public ExitView Exit;
         public Bounds Bounds;
+        /// <summary>Centre of every floor and wall tile's top face, in board space (camera framing).</summary>
+        public readonly List<Vector3> TileTops = new List<Vector3>();
         Transform statics;
 
         public Vector3 Pos(float x, float y, float h = 0f) => new Vector3(x - (Def.W - 1) * 0.5f, h, (Def.H - 1) * 0.5f - y);
@@ -94,6 +96,7 @@ namespace BorrowedSeconds.View
                 var p = Pos(x, y);
                 min = Vector3.Min(min, p);
                 max = Vector3.Max(max, p);
+                TileTops.Add(p);
                 Shapes.Box("Plinth", statics, p + new Vector3(0, -0.85f, 0), new Vector3(1f, 1.4f, 1f), plinth, false);
                 if (t == Tile.Floor)
                 {

@@ -34,7 +34,9 @@ namespace BorrowedSeconds.UI
             var scaler = go.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
-            scaler.matchWidthOrHeight = 0.5f;
+            // never smaller than 1920x1080 units either way, so layouts made for 16:9 also fit 21:9
+            // (a 50/50 blend left that canvas 935 units tall) and 4:3 (1662 units wide)
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
             go.AddComponent<GraphicRaycaster>();
             return c;
         }

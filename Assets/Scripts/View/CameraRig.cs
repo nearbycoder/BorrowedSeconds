@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BorrowedSeconds.View
@@ -29,8 +30,12 @@ namespace BorrowedSeconds.View
             seed = Random.value * 100f;
         }
 
-        /// <summary>Fits the board bounds with room for the HUD (top) and the pocket watch (bottom).</summary>
-        public void Frame(Bounds b, bool snap)
+        /// <summary>
+        /// Fits the board bounds with room for the HUD (top) and the pocket watch (bottom). Given the
+        /// board's tiles, it then pulls back and slides the view, as little as it can, until no tile
+        /// sits under a HUD corner or the watch (a dial under the watch on a 4:3 screen, say).
+        /// </summary>
+        public void Frame(Bounds b, bool snap, IReadOnlyList<Vector3> tiles = null)
         {
             float aspect = Mathf.Max(1f, Cam.aspect);
             float tan = Mathf.Tan(Fov * 0.5f * Mathf.Deg2Rad);
@@ -39,11 +44,81 @@ namespace BorrowedSeconds.View
             float h = b.size.z * sin + 1.2f * Mathf.Cos(Pitch * Mathf.Deg2Rad) + 2.6f;
             targetDistance = Mathf.Max(w / (2f * tan * aspect), h / (2f * tan));
             targetFocus = b.center + new Vector3(0, 0, -0.15f);
+            if (tiles != null && tiles.Count > 0) ClearHud(tiles);
             if (snap)
             {
                 distance = targetDistance;
                 focus = targetFocus;
             }
+        }
+
+        /// <summary>Tiles under the HUD at the last framing (0 when it found a clear view).</summary>
+        public int HudOverlap { get; private set; }
+        /// <summary>How far the last framing pulled back for the HUD (1 = not at all).</summary>
+        public float HudPullback { get; private set; } = 1f;
+
+        void ClearHud(IReadOnlyList<Vector3> tiles)
+        {
+            float baseDistance = targetDistance;
+            var baseFocus = targetFocus;
+            int best = int.MaxValue;
+            float bestK = 1f;
+            Vector3 bestFocus = baseFocus;
+            // smallest pull-back first, then the smallest slide; slides are in world units (z is up-screen)
+            float[] dzs = { 0f, -0.3f, 0.3f, -0.6f, 0.6f, -0.9f, 0.9f };
+            float[] dxs = { 0f, 0.5f, -0.5f, 1f, -1f };
+            for (float k = 1f; k <= 1.401f && best > 0; k += 0.025f)
+                foreach (float dz in dzs)
+                {
+                    foreach (float dx in dxs)
+                    {
+                        var f = baseFocus + new Vector3(dx, 0f, dz);
+                        int n = Overlap(tiles, f, baseDistance * k);
+                        if (n < best) { best = n; bestK = k; bestFocus = f; }
+                        if (best == 0) break;
+                    }
+                    if (best == 0) break;
+                }
+            HudOverlap = best;
+            HudPullback = bestK;
+            targetDistance = baseDistance * bestK;
+            targetFocus = bestFocus;
+        }
+
+        // HUD keep-out boxes in canvas units (the UI scales so the canvas is at least 1920x1080):
+        // the title (top left), the clock (top right), the key hints (bottom left) and the watch
+        static readonly Vector4[] LeftBoxes = { new Vector4(0f, -170f, 720f, 0f), new Vector4(0f, 0f, 760f, 120f) };   // x0, y0, x1, y1 from the left edge; y < 0 from the top
+        static readonly Vector4 ClockBox = new Vector4(-420f, -150f, 0f, 0f);  // from the top-right corner
+        static readonly Vector4 WatchBox = new Vector4(-130f, 0f, 130f, 285f); // from the bottom centre, up to the bow
+
+        /// <summary>How many tiles (by their top face, corners inset) would sit under the HUD or off screen.</summary>
+        int Overlap(IReadOnlyList<Vector3> tiles, Vector3 f, float d)
+        {
+            var rot = Quaternion.Euler(Pitch, 0f, 0f);
+            var pos = f - rot * Vector3.forward * d;
+            var view = Matrix4x4.Scale(new Vector3(1, 1, -1)) * Matrix4x4.TRS(pos, rot, Vector3.one).inverse;
+            var proj = Matrix4x4.Perspective(Fov, Cam.aspect, 0.3f, 1000f) * view;
+            float sw = Mathf.Max(1, UnityEngine.Screen.width), sh = Mathf.Max(1, UnityEngine.Screen.height);
+            float s = Mathf.Min(sw / 1920f, sh / 1080f);
+            float cw = sw / s, ch = sh / s;
+            int n = 0;
+            foreach (var t in tiles)
+            {
+                bool hit = false;
+                for (int c = 0; c < 5 && !hit; c++)
+                {
+                    var p = t + (c == 0 ? Vector3.zero : new Vector3(c % 2 == 0 ? 0.4f : -0.4f, 0f, c < 3 ? 0.4f : -0.4f));
+                    var clip = proj * new Vector4(p.x, p.y, p.z, 1f);
+                    float x = (clip.x / clip.w * 0.5f + 0.5f) * cw, y = (clip.y / clip.w * 0.5f + 0.5f) * ch;
+                    hit = x < 24f || x > cw - 24f || y < 24f || y > ch - 24f;
+                    foreach (var r in LeftBoxes)
+                        hit |= x >= r.x && x <= r.z && (r.y < 0f ? y >= ch + r.y : y <= r.w);
+                    hit |= x >= cw + ClockBox.x && y >= ch + ClockBox.y;
+                    hit |= x >= cw * 0.5f + WatchBox.x && x <= cw * 0.5f + WatchBox.z && y <= WatchBox.w;
+                }
+                if (hit) n++;
+            }
+            return n;
         }
 
         public void Shake(float amount)

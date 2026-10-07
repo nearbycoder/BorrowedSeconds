@@ -4,7 +4,7 @@
 #   Tools/checks.sh [dir] [dev] [-bsOnly name1,name2]
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="${1:-$ROOT/Builds/checks}"
+OUT="$(realpath -m "${1:-$ROOT/Builds/checks}")"
 MODE=(); [ "${2:-}" = "dev" ] && MODE=(dev)
 EXTRA=("${@:3}")
 rm -rf "$OUT"; mkdir -p "$OUT"
