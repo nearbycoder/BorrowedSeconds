@@ -448,3 +448,42 @@ All four items shipped on `improvements-6`, including the stretch item. Final ve
 - The sweep zone around rotors is generous. Keep it, or limit rotor zones to the tiles the arms rest on?
 
 Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including mouse aim near rotors, window sizes and render resolution on weaker GPUs), a listen to the mix, WebGL, Windows (needs the module) and touch.
+
+## Round 7 scope
+
+Written 2026-10-07 on `improvements-7`, after confirming `main` matched `origin/main` (`02bafd4`) with a clean tree. These stay out because they wait on the owner or on a playtest: chapter VIII's theme, replacing 7-4, the unlock rule for *Watch solution* and failed attempts, how generous rotor aim should be, the audio peak limit and the trailer re-cut. Touch controls and WebGL stay on the ranked list (see the results for why). Rounds 1–6 cleared the ranked list down to owner-blocked items, so this round again started from what a player touches and found five things:
+
+- **The game wears Unity's logo.** No icon is set in Player Settings, so the Linux build's `BorrowedSeconds_Data/Resources/UnityPlayer.png` (the window, taskbar and alt-tab icon) is the default Unity cube. The release zip has no launcher, so a player who wants it in their applications menu has to write a `.desktop` file by hand.
+- **Progress can't be erased.** There's no way to start over from scratch, or to hand the game to someone else in the house, short of deleting `~/.config/unity3d/…/prefs`, which also throws away settings and key bindings.
+- **A pad never vibrates.** Borrowing, the debt falling due, defaulting, a dial latching and settling a level all shake the screen and play a stinger, but on a gamepad nothing reaches your hands.
+- **The mouse wheel does nothing in a level.** It turns Ledger pages, but in play a mouse player who can't (or doesn't want to) hover an obstacle has to reach for Tab, Q or E.
+- **The HUD text is small on small screens.** At 1280×800 (a Steam Deck's screen, or a small laptop) the UI scales to two-thirds, so the key-hint row and the line under the watch are about 10 px tall and the tip about 13 px (`Builds/r6/shapes/1280x800`). There's no way to make them bigger.
+
+Items run in that order; item 5 is a stretch. Scratch output stays in `Builds/r7/`. Every tool run has to leave the real save's SHA-256 and mtime unchanged (`Builds/r7/save-before.*`).
+
+### 1. A game icon
+- **Change:** `ArtSource/build_ui_assets.py` renders an icon from the game's own pocket-watch model (the title-screen emblem). It's set as the default icon in Player Settings, so the Linux player, the macOS app and a future Windows build use it. `Tools/package.sh` adds `icon.png`, a `BorrowedSeconds.desktop` launcher and a one-line install note to the Linux zip.
+- **Acceptance:** in a fresh Linux build, `UnityPlayer.png` is the watch icon, not Unity's. The running game's window carries it (`_NET_WM_ICON`, read with `xprop`). The packaged zip contains `icon.png` and a `.desktop` file that passes `desktop-file-validate`.
+- **Verify:** build, compare the files, read the running window's icon property, list and validate the zip; a sheet with the icon at 256, 64, 32 and 16 px, looked at before committing. **Limit:** the macOS app isn't rebuilt or run (no Mac).
+
+### 2. Erase progress
+- **Change:** a Settings row, *Erase progress*. The first press arms it (the row asks you to press again, and the arm lapses after 4 s or when you move off the row). The second press clears medals, best times, the last level, the finished flag and the retired onboarding prompts, and keeps settings and key bindings.
+- **Acceptance:** one press erases nothing; two presses erase exactly those fields. Afterwards the Ledger has only 1-1 open and the title reads *Begin*. Moving off the row disarms it.
+- **Verify:** a new `checks.sh` check (`erase-progress`) on the scripted run's in-memory save (scripted saves are read-only, so the real file can't be touched), and the real save's SHA-256 and mtime before and after. Screenshot of the armed row.
+
+### 3. Controller vibration
+- **Change:** short rumble pulses when you borrow, when the debt falls due, when you default, when a dial latches and when you settle a level, on the pad you're using. A Settings toggle, *Controller vibration* (on by default). The motors stop when the game pauses, loses focus or leaves a level, and stay off during *Watch solution*, the title screen's replays and scripted runs.
+- **Acceptance:** with a virtual gamepad, borrowing on 1-1 sends a motor command with non-zero speeds; with the toggle off it sends none; pausing sends a stop.
+- **Verify:** a new step in the input bot's gamepad pass that watches the pad's device commands (`InputSystem.onDeviceCommand`). **Limit:** a virtual pad has no motors, so nobody will have felt the pulses.
+
+### 4. The mouse wheel aims
+- **Change:** in a level, the wheel cycles the aim like Tab (down: next, up: previous). Moving the pointer goes back to hover aiming, as Tab does today.
+- **Acceptance:** on a level with two or more obstacles, wheel steps move the aim forward and back through them.
+- **Verify:** a step in the input bot's keyboard-and-mouse pass that scrolls a virtual mouse on 1-3 (two sliders) and reads the aim.
+
+### 5. Stretch: larger HUD text
+- **Change:** a Settings row, *HUD size* (100, 125, 150 %), that scales the level title, clock, tip, key hints, watch and the line under it. The camera's HUD keep-out boxes scale with it, so floor tiles still stay out from under the HUD.
+- **Acceptance:** at 1280×800 and 150 %, the hint row and the line under the watch are at least 14 px tall, nothing in the HUD overlaps, and the autopilot reports no floor tile under the HUD (`hud=0`) on all 35 levels at 1280×800.
+- **Verify:** autopilot at 1280×800 with the HUD at 150 %, screenshots at 100 % and 150 %, and the save round trip in `checks.sh`.
+
+**Not this round:** chapter VIII, replacing 7-4, the unlock rule, rotor aim, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio peak limit and the mix by ear, human playtesting.
