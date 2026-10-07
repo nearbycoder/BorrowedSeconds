@@ -711,6 +711,16 @@ namespace BorrowedSeconds.Game
                 yield return new WaitForSecondsRealtime(1.4f);
                 if (settings.Footer != $"<b>{w.Dpad}</b> choose and adjust <b>{w.East}</b> back") Fail("Settings footer: " + settings.Footer);
                 settings.Hide();
+                // How to play lists the pad's buttons
+                OpenHowTo(Flow.Title);
+                yield return new WaitForSecondsRealtime(1.4f);
+                string howKeys = howto.ControlsText ?? "";
+                foreach (var want in new[] { $"<b>{w.Stick}</b> or <b>{w.Dpad}</b> move", $"<b>{w.Shoulders}</b> aim", $"<b>{w.South}</b> borrow", $"<b>{w.LeftTrigger}</b> hold",
+                    $"<b>{w.West}</b> hold: rewind", $"<b>{w.North}</b> restart", $"<b>{w.Select}</b> show", $"<b>{w.Start}</b> pause" })
+                    if (!howKeys.Contains(want)) Fail($"How to play lacks '{want}': {howKeys}");
+                if (howto.Footer != $"<b>{w.East}</b> back") Fail("How to play footer: " + howto.Footer);
+                if (name == "DualSense") { ScreenCapture.CaptureScreenshot(Path.Combine(dir, "names_dualsense_howto.png")); yield return null; }
+                howto.Hide();
                 title.Hide();
                 notes.Add($"{name} {(kindOk ? "ok" : "FAIL")}");
                 ok &= kindOk;

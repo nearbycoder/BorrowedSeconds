@@ -17,7 +17,7 @@ namespace BorrowedSeconds.Game
     /// </summary>
     public sealed partial class GameRoot : MonoBehaviour
     {
-        public enum Flow { Title, Levels, Card, Playing, Paused, Complete, Settings, Ending, Watching }
+        public enum Flow { Title, Levels, Card, Playing, Paused, Complete, Settings, Ending, Watching, HowTo }
 
         public static GameRoot I { get; private set; }
         public LevelCatalog Catalog { get; private set; }
@@ -45,10 +45,11 @@ namespace BorrowedSeconds.Game
         PauseScreen pause;
         SettingsScreen settings;
         ControlsScreen controls;
+        HowToPlayScreen howto;
         CompleteScreen complete;
         ChapterCard card;
         EndingScreen ending;
-        Flow settingsReturn;
+        Flow settingsReturn, howtoReturn;
         float wonAt = -1f, attractTimer;
         int attractIndex;
         bool capturing;
@@ -115,13 +116,14 @@ namespace BorrowedSeconds.Game
             menuCanvas = Ui.MakeCanvas("MenuCanvas", 20, transform);
             Wipe = Transition.Create(transform);
             var root = menuCanvas.transform;
-            title = new TitleScreen(root, () => Go(Continue), () => Go(() => ShowLevels(Save.lastLevel), 0.7f), () => OpenSettings(Flow.Title), Quit,
+            title = new TitleScreen(root, () => Go(Continue), () => Go(() => ShowLevels(Save.lastLevel), 0.7f), () => OpenHowTo(Flow.Title), () => OpenSettings(Flow.Title), Quit,
                 () => Save.ids.Length == 0 ? "Begin" : Save.finished ? "Replay" : "Continue");
             levels = new LevelSelectScreen(root, Catalog, Save, i => Go(() => StartLevel(i, true)), () => Go(ShowTitle, 0.7f));
             pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); }, WatchFromPause,
-                () => { pause.Hide(); Go(() => ShowLevels(LevelIndex)); }, () => OpenSettings(Flow.Paused), () => { pause.Hide(); Go(ShowTitle); });
+                () => { pause.Hide(); Go(() => ShowLevels(LevelIndex)); }, () => OpenSettings(Flow.Paused), () => OpenHowTo(Flow.Paused), () => { pause.Hide(); Go(ShowTitle); });
             settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, () => { ApplyDisplay(true); Save.Save(); }, CloseSettings, OpenControls);
             controls = new ControlsScreen(root, () => Input.Keys, BindKey, ResetKeys, CloseControls);
+            howto = new HowToPlayScreen(root, CloseHowTo);
             complete = new CompleteScreen(root, () => Go(Next), () => { complete.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); },
                 () => { complete.Hide(); Go(() => ShowLevels(LevelIndex)); }, amount => Rig.Shake(amount));
             card = new ChapterCard(root);
@@ -453,6 +455,24 @@ namespace BorrowedSeconds.Game
             settings.Show();
         }
 
+        /// <summary>How to play, from the title or the pause menu.</summary>
+        void OpenHowTo(Flow from)
+        {
+            howtoReturn = from;
+            State = Flow.HowTo;
+            title.Hide();
+            pause.Hide();
+            howto.Show();
+        }
+
+        void CloseHowTo()
+        {
+            howto.Hide();
+            State = howtoReturn;
+            if (State == Flow.Title) title.Show();
+            else if (State == Flow.Paused) pause.Show();
+        }
+
         void OpenControls()
         {
             settings.Hide();
@@ -539,13 +559,14 @@ namespace BorrowedSeconds.Game
             Cursors.Set(State == Flow.Playing && Session != null && Session.Aim >= 0 && Session.LoanAvailable && Session.State == LevelSession.Mode.Playing
                 ? Cursors.Kind.Aim : Cursors.Kind.Arrow);
             Prompts.Tick(Session, Save, Input, State == Flow.Playing && Session != null && !Session.Muted && (promptDemo || (!capturing && Session.Autoplay == null)), dt);
-            Env.MenuBlur = Mathf.Max(Mathf.Max(Mathf.Max(levels.BlurNow, pause.BlurNow), trailerBlur), Mathf.Max(Mathf.Max(Mathf.Max(settings.BlurNow, controls.BlurNow), complete.BlurNow), Mathf.Max(card.BlurNow, ending.BlurNow)));
-            Hud.Dim = Mathf.Max(pause.BlurNow, Mathf.Max(complete.BlurNow, Mathf.Max(settings.BlurNow, controls.BlurNow)));
+            Env.MenuBlur = Mathf.Max(Mathf.Max(Mathf.Max(levels.BlurNow, pause.BlurNow), trailerBlur), Mathf.Max(Mathf.Max(Mathf.Max(settings.BlurNow, controls.BlurNow), Mathf.Max(complete.BlurNow, howto.BlurNow)), Mathf.Max(card.BlurNow, ending.BlurNow)));
+            Hud.Dim = Mathf.Max(Mathf.Max(pause.BlurNow, howto.BlurNow), Mathf.Max(complete.BlurNow, Mathf.Max(settings.BlurNow, controls.BlurNow)));
             title.Update(Input, dt, top(title));
             levels.Update(Input, dt, top(levels));
             pause.Update(Input, dt, top(pause));
             settings.Update(Input, dt, top(settings));
             controls.Update(Input, dt, top(controls));
+            howto.Update(Input, dt, top(howto));
             complete.Update(Input, dt, top(complete));
             card.Update(Input, dt, top(card));
             ending.Update(Input, dt, top(ending));
@@ -618,7 +639,7 @@ namespace BorrowedSeconds.Game
         {
             MenuScreen best = null;
             int order = -1;
-            foreach (var s in new MenuScreen[] { title, levels, pause, settings, controls, complete, card, ending })
+            foreach (var s in new MenuScreen[] { title, levels, pause, settings, controls, howto, complete, card, ending })
                 if (s.Visible && s.Root.GetSiblingIndex() > order) { order = s.Root.GetSiblingIndex(); best = s; }
             return best;
         }
@@ -903,6 +924,9 @@ namespace BorrowedSeconds.Game
             OpenSettings(Flow.Paused);
             yield return Burst("07_settings", 0.25f, 1.0f);
             CloseSettings();
+            OpenHowTo(Flow.Paused);
+            yield return Burst("07_howto", 0.3f, 1.2f);
+            CloseHowTo();
             Resume();
             int guard = 0;
             while (Session.State != LevelSession.Mode.Won && guard++ < 30 * 30) yield return null;

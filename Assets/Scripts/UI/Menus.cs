@@ -333,7 +333,7 @@ namespace BorrowedSeconds.UI
         float nextShimmer = 3f;
         readonly List<(RectTransform rt, Image img, Vector2 v, float phase, float size)> motes = new List<(RectTransform, Image, Vector2, float, float)>();
 
-        public TitleScreen(Transform canvas, Action onContinue, Action onLevels, Action onSettings, Action onQuit, Func<string> continueLabel) : base(canvas, "Title")
+        public TitleScreen(Transform canvas, Action onContinue, Action onLevels, Action onHowTo, Action onSettings, Action onQuit, Func<string> continueLabel) : base(canvas, "Title")
         {
             this.continueLabel = continueLabel;
             var grad = Ui.Img("Gradient", Root, Ui.HGradient, new Color(0.015f, 0.02f, 0.05f, 0.95f));
@@ -379,6 +379,7 @@ namespace BorrowedSeconds.UI
             Menu = new MenuList(menuRoot, new Vector2(0, 1), Vector2.zero, 460, 70, 34, true);
             Menu.Add("Continue", onContinue);
             Menu.Add("Levels", onLevels);
+            Menu.Add("How to play", onHowTo);
             Menu.Add("Settings", onSettings);
             Menu.Add("Quit", onQuit);
 
@@ -894,8 +895,8 @@ namespace BorrowedSeconds.UI
         public readonly MenuList Menu;
         readonly Action onResume;
 
-        public PauseScreen(Transform canvas, Action onResume, Action onRestart, Action onWatch, Action onLevels, Action onSettings, Action onTitle)
-            : base(canvas, "Pause", new Vector2(560, 692), "TIME  STOPPED", "PAUSED", 0.3f)
+        public PauseScreen(Transform canvas, Action onResume, Action onRestart, Action onWatch, Action onLevels, Action onSettings, Action onHowTo, Action onTitle)
+            : base(canvas, "Pause", new Vector2(560, 764), "TIME  STOPPED", "PAUSED", 0.3f)
         {
             this.onResume = onResume;
             Menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(0, -186), 420, 72, 32, false);
@@ -904,6 +905,7 @@ namespace BorrowedSeconds.UI
             Menu.Add("Watch solution", onWatch);
             Menu.Add("Levels", onLevels);
             Menu.Add("Settings", onSettings);
+            Menu.Add("How to play", onHowTo);
             Menu.Add("Title", onTitle);
             Menu.IntroDelay = 0.25f;
         }
@@ -1069,6 +1071,118 @@ namespace BorrowedSeconds.UI
 
         /// <summary>Scripted runs: start listening on a row as if it had been chosen.</summary>
         public void ListenFor(KeyAction action) { menu.Selected = (int)action; listening = (int)action; listenAge = 0f; }
+    }
+
+    // ==================================================================== how to play
+
+    /// <summary>
+    /// The rules in a few lines and the controls with the player's own keys or the pad's button
+    /// names, reachable from the title and pause menus once the onboarding prompts have retired.
+    /// </summary>
+    public sealed class HowToPlayScreen : WindowScreen
+    {
+        public const string Rules =
+            "<b><color=#7CF4FF>Borrow.</color></b> Aim at a moving obstacle and borrow: it freezes into crystal for 3 seconds. Anything frozen is solid.\n"
+            + "<b><color=#7CF4FF>The debt.</color></b> The pocket watch counts down the term, usually 5 seconds. When it runs out, <i>you</i> freeze for 3 seconds wherever you stand. One loan at a time; the pips count a level's cap.\n"
+            + "<b><color=#7CF4FF>Thaw safely.</color></b> While frozen, nothing can hurt you: hazards pass straight through. Thaw inside one and you default, and time rewinds.\n"
+            + "<b><color=#7CF4FF>Ghosts.</color></b> Aiming shows where every hazard will be when you thaw, and whether your tile is <b>SAFE</b> or <b>LETHAL</b>.\n"
+            + "<b><color=#7CF4FF>Plates and gates.</color></b> A plate holds open every gate (and darkens every laser) with its colour and dots, while anything rests on it.\n"
+            + "<b><color=#FFD27A>Dials.</color></b> A gold dial latches after 3 seconds of weight: yours, frozen or not, or a frozen block's.\n"
+            + "<b><color=#FFD27A>The exit</color></b> opens when every dial is latched. Settle your debt before you leave.\n"
+            + "<b><color=#FFD27A>Medals.</color></b> Par is the solver's best time. Within par + 1 s is gold, <i>Time Thief</i>.";
+
+        readonly MenuList menu;
+        readonly Action onBack;
+        readonly RectTransform rulesBox, keysBox, footRow;
+        readonly CanvasGroup rulesGroup, keysGroup, footGroup;
+        readonly TextMeshProUGUI rules;
+        readonly List<RectTransform> keyRows = new List<RectTransform>();
+        string keysText, footText;
+        /// <summary>The controls column as keycap markup, one row per line (checks read it).</summary>
+        public string ControlsText => keysText;
+        public string Footer => footText;
+        public string RulesText => rules.text;
+
+        public HowToPlayScreen(Transform canvas, Action onBack)
+            : base(canvas, "HowToPlay", new Vector2(1600, 920), "THE  RULES  OF  THE  VAULT", "HOW TO PLAY", 0.35f)
+        {
+            this.onBack = onBack;
+            rulesBox = Ui.Rect("Rules", Body, new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -186), new Vector2(820, 600));
+            rulesGroup = rulesBox.gameObject.AddComponent<CanvasGroup>();
+            var rh = Ui.Text("Head", rulesBox, "THE RULES", Ui.Heavy, 22, Palette.Gold, TextAlignmentOptions.TopLeft);
+            Ui.Place(rh.rectTransform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(820, 30));
+            rh.characterSpacing = 14;
+            rules = Ui.Text("Body", rulesBox, Rules, Ui.Regular, 21, new Color(0.86f, 0.89f, 0.98f, 0.95f), TextAlignmentOptions.TopLeft);
+            Ui.Place(rules.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, -44), new Vector2(820, 560));
+            rules.paragraphSpacing = 12;
+            rules.textWrappingMode = TextWrappingModes.Normal;
+
+            keysBox = Ui.Rect("Keys", Body, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-80, -186), new Vector2(560, 600));
+            keysGroup = keysBox.gameObject.AddComponent<CanvasGroup>();
+            var kh = Ui.Text("Head", keysBox, "CONTROLS", Ui.Heavy, 22, Palette.Gold, TextAlignmentOptions.TopLeft);
+            Ui.Place(kh.rectTransform, new Vector2(0, 1), new Vector2(0, 1), Vector2.zero, new Vector2(560, 30));
+            kh.characterSpacing = 14;
+
+            menu = new MenuList(Body, new Vector2(0.5f, 0), new Vector2(0, 150), 300, 66, 27, false);
+            menu.Add("Back", onBack);
+            menu.IntroDelay = 0.6f;
+            footRow = Ui.Rect("Foot", Body, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 22), new Vector2(700, 34));
+            footGroup = footRow.gameObject.AddComponent<CanvasGroup>();
+        }
+
+        public override void Show() { base.Show(); menu.Selected = 0; keysText = null; }
+
+        static string Controls(InputReader input)
+        {
+            var p = input.Pad;
+            string focus = input.FocusToggle ? "press" : "hold";
+            if (input.UsingGamepad)
+                return $"<b>{p.Stick}</b> or <b>{p.Dpad}</b> move one tile; hold to keep walking\n"
+                    + $"<b>{p.Shoulders}</b> aim at the next obstacle\n"
+                    + $"<b>{p.South}</b> borrow: freeze it for 3 s\n"
+                    + $"<b>{p.LeftTrigger}</b> {focus}: Focus slows time to aim\n"
+                    + $"<b>{p.West}</b> hold: rewind\n"
+                    + $"<b>{p.North}</b> restart (hold after 3 s)\n"
+                    + $"<b>{p.Select}</b> show or fold the hint\n"
+                    + $"<b>{p.Start}</b> pause";
+            return $"<b>{input.MoveKeysName()}</b> move one tile; hold to keep walking\n"
+                + $"<b>Mouse</b> aim: hover a piece or its track\n"
+                + $"<b>{input.KeyName(KeyAction.AimPrev)}</b> <b>{input.KeyName(KeyAction.AimNext)}</b> or <b>Tab</b> cycle the aim\n"
+                + $"<b>Click</b> or <b>{input.KeyName(KeyAction.Borrow)}</b> borrow: freeze it for 3 s\n"
+                + $"<b>{input.KeyName(KeyAction.Focus)}</b> {focus}: Focus slows time to aim\n"
+                + $"<b>{input.KeyName(KeyAction.Rewind)}</b> hold: rewind\n"
+                + $"<b>{input.KeyName(KeyAction.Restart)}</b> restart (hold after 3 s)\n"
+                + $"<b>{input.KeyName(KeyAction.Hint)}</b> show or fold the hint\n"
+                + "<b>Esc</b> pause";
+        }
+
+        protected override void Tick(InputReader input, float dt, bool hasInput)
+        {
+            float a = AnimateWindow();
+            string keys = Controls(input);
+            if (keys != keysText)
+            {
+                keysText = keys;
+                foreach (var r in keyRows) UnityEngine.Object.Destroy(r.gameObject);
+                keyRows.Clear();
+                var lines = keys.Split('\n');
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    var row = Ui.Rect("Row" + i, keysBox, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, -50 - i * 52), new Vector2(560, 34));
+                    Kit.Keycaps(row, lines[i]);
+                    keyRows.Add(row);
+                }
+            }
+            float content = Ease.OutCubic((a - 0.3f) * 2.5f);
+            rulesGroup.alpha = content;
+            keysGroup.alpha = Ease.OutCubic((a - 0.4f) * 2.5f);
+            rulesBox.anchoredPosition = new Vector2(80 - 30f * (1f - content), -186);
+            string foot = input.UsingGamepad ? $"<b>{input.Pad.East}</b> back" : "<b>Esc</b> back";
+            if (foot != footText) { footText = foot; Kit.Keycaps(footRow, foot, 1f, true); }
+            footGroup.alpha = Ease.OutCubic((a - 0.8f) * 2f);
+            if (hasInput && (input.Back || input.Pause)) { Sfx.Play("ui_back"); onBack(); return; }
+            menu.Update(input, dt, hasInput, a);
+        }
     }
 
     // ==================================================================== level complete

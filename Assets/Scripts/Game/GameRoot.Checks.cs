@@ -46,6 +46,7 @@ namespace BorrowedSeconds.Game
             if (Want("forecast")) yield return CheckForecast(dir, Report);
             if (Want("aim-reach")) yield return CheckAimReach(dir, Report);
             if (Want("display")) yield return CheckDisplay(dir, Report);
+            if (Want("how-to-play")) yield return CheckHowTo(dir, Report);
 
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
@@ -371,6 +372,46 @@ namespace BorrowedSeconds.Game
             report("display", rows && resized && persists && scaled && Mathf.Approximately(restored, 1f),
                 $"desktop {desk.x}x{desk.y}; rows at 3 and 4: {rows}; the Display row stepped the window through {string.Join(", ", sizes)}; "
                 + $"saved {persists}; render scale 50% -> URP {scaleSeen:0.00}, saved {scaled}; back to {Screen.width}x{Screen.height} at {restored:0.00}");
+        }
+
+        /// <summary>
+        /// How to play opens from the pause menu and the title, lists the rules and the keyboard
+        /// controls, follows a rebound key, and Esc (Back) returns to the menu it came from.
+        /// </summary>
+        IEnumerator CheckHowTo(string dir, System.Action<string, bool, string> report)
+        {
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "2-2"), false);
+            Hud.SkipIntro();
+            Pause();
+            bool inPause = pause.Menu.Items.Exists(i => i.Label == "How to play") && title.Menu.Items.Exists(i => i.Label == "How to play");
+            pause.Menu.Items.Find(i => i.Label == "How to play").Activate();
+            yield return new WaitForSecondsRealtime(1.6f);
+            for (int i = 0; i < 60; i++) yield return null; // the window's reveal runs on frames (clamped dt), not seconds
+            yield return Shot(dir, "howto_pause");
+            string keys = howto.ControlsText ?? "";
+            bool rules = howto.RulesText == UI.HowToPlayScreen.Rules && howto.Visible && State == Flow.HowTo;
+            bool defaults = keys.Contains("<b>WASD</b> move") && keys.Contains("<b>Click</b> or <b>Space</b> borrow") && keys.Contains("<b>Shift</b> hold")
+                && keys.Contains("<b>Z</b> hold: rewind") && keys.Contains("<b>R</b> restart") && keys.Contains("<b>H</b> show") && keys.Contains("<b>Esc</b> pause");
+            KeyBindings.Assign(Input.Keys, KeyAction.Borrow, UnityEngine.InputSystem.Key.K);
+            yield return null;
+            yield return null;
+            bool follows = (howto.ControlsText ?? "").Contains("<b>Click</b> or <b>K</b> borrow");
+            Input.Keys = KeyBindings.DefaultKeys();
+            CloseHowTo(); // what Esc and Back do
+            yield return null;
+            bool backToPause = State == Flow.Paused && pause.Visible && !howto.Visible;
+            pause.Hide();
+            ShowTitle();
+            yield return new WaitForSecondsRealtime(0.5f);
+            title.Menu.Items.Find(i => i.Label == "How to play").Activate();
+            yield return new WaitForSecondsRealtime(0.6f);
+            bool fromTitle = State == Flow.HowTo && howto.Visible && !title.Visible;
+            CloseHowTo();
+            yield return null;
+            bool backToTitle = State == Flow.Title && title.Visible;
+            report("how-to-play", inPause && rules && defaults && follows && backToPause && fromTitle && backToTitle,
+                $"in both menus={inPause}; rules={rules}; default keys listed={defaults}; follows a rebound Borrow (K)={follows}; "
+                + $"back to pause={backToPause}; from the title={fromTitle}, back={backToTitle}");
         }
 
         IEnumerator Shot(string dir, string name)
