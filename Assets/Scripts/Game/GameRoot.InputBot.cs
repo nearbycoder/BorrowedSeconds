@@ -394,6 +394,37 @@ namespace BorrowedSeconds.Game
 
         void PadSet(GamepadState st) => InputSystem.QueueStateEvent(botPad, st);
 
+        /// <summary>Records every motor command sent to <paramref name="pad"/> (time, low, high): a
+        /// virtual pad has no motors, so the bot reads the commands on their way to the device.</summary>
+        static unsafe InputDeviceCommandDelegate MotorSpy(InputDevice pad, List<(float t, float low, float high)> sent)
+        {
+            // the Input System's rumble command (internal): 'RMBL', then the low and high motor speeds
+            var rumble = new UnityEngine.InputSystem.Utilities.FourCC('R', 'M', 'B', 'L');
+            return (device, command) =>
+            {
+                if (device == pad && command->type == rumble && command->payloadSizeInBytes >= 8)
+                {
+                    var speeds = (float*)((byte*)command + InputDeviceCommand.BaseCommandSize);
+                    sent.Add((Time.realtimeSinceStartup, speeds[0], speeds[1]));
+                }
+                return null; // not handled: it still goes on to the device
+            };
+        }
+
+        static bool HasPulse(List<(float t, float low, float high)> sent, int from, float low, float high)
+        {
+            for (int i = from; i < sent.Count; i++)
+                if (Mathf.Approximately(sent[i].low, low) && Mathf.Approximately(sent[i].high, high)) return true;
+            return false;
+        }
+
+        static string Pulses(List<(float t, float low, float high)> sent, int from)
+        {
+            var parts = new List<string>();
+            for (int i = from; i < sent.Count; i++) parts.Add($"{sent[i].low:0.##}/{sent[i].high:0.##}");
+            return parts.Count == 0 ? "none" : string.Join(" ", parts);
+        }
+
         IEnumerator PadTap(GamepadButton b)
         {
             var st = padHeld;
@@ -434,6 +465,9 @@ namespace BorrowedSeconds.Game
             InputSystem.DisableDevice(botMouse);
             botPad = InputSystem.AddDevice<Gamepad>("BotGamepad");
             botPad.MakeCurrent();
+            var motors = new List<(float t, float low, float high)>();
+            var spy = MotorSpy(botPad, motors);
+            InputSystem.onDeviceCommand += spy;
             padHeld = new GamepadState();
             PadSet(padHeld);
             complete.Hide();
@@ -479,6 +513,7 @@ namespace BorrowedSeconds.Game
             padHeld.leftTrigger = 1f;
             PadSet(padHeld);
             int loans = Session.Cur.Loans;
+            int motorsAtStart = motors.Count;
             deadline = Time.realtimeSinceStartup + 20f;
             float focusSeen = 0f;
             while (ok && Time.realtimeSinceStartup < deadline)
@@ -519,6 +554,49 @@ namespace BorrowedSeconds.Game
             while (ok && Session.State != LevelSession.Mode.Won && !Session.Cur.Dead && Time.realtimeSinceStartup < deadline) yield return null;
             if (ok && Session.State != LevelSession.Mode.Won) Fail($"no win (dead={Session.Cur.Dead}, tick {Session.Cur.Tick})");
             if (ok) log.Add($"ok   pad: won 1-1 at tick {Session.Cur.Tick}");
+
+            // Controller vibration: the borrow, the debt and the win each sent a pulse, and each
+            // stopped by itself; with the setting off a borrow sends nothing; a pause stops the motors
+            if (ok)
+            {
+                yield return new WaitForSecondsRealtime(0.5f);
+                string played = Pulses(motors, motorsAtStart);
+                bool pulses = HasPulse(motors, motorsAtStart, 0.2f, 0.5f) && HasPulse(motors, motorsAtStart, 0.5f, 0.25f) && HasPulse(motors, motorsAtStart, 0.35f, 0.7f);
+                bool quiet = motors.Count > motorsAtStart && motors[motors.Count - 1].low == 0f && motors[motors.Count - 1].high == 0f && rumble.Active == null;
+                complete.Hide();
+                pendingComplete = null;
+                Save.vibration = false;
+                ApplySettings();
+                StartLevel(0, false);
+                deadline = Time.realtimeSinceStartup + 6f;
+                while (Session.State != LevelSession.Mode.Playing && Time.realtimeSinceStartup < deadline) yield return null;
+                int offFrom = motors.Count;
+                yield return PadTap(GamepadButton.RightShoulder);
+                yield return PadTap(GamepadButton.South);
+                deadline = Time.realtimeSinceStartup + 2f;
+                while (Session.Cur.Loans == 0 && Time.realtimeSinceStartup < deadline) yield return null;
+                yield return new WaitForSecondsRealtime(0.2f);
+                bool offBorrowed = Session.Cur.Loans > 0, offSilent = motors.Count == offFrom;
+                Save.vibration = true;
+                ApplySettings(); // switching it back on gives one short pulse
+                bool sample = HasPulse(motors, offFrom, 0.35f, 0.35f);
+                yield return new WaitForSecondsRealtime(0.3f);
+                StartLevel(0, false);
+                deadline = Time.realtimeSinceStartup + 6f;
+                while (Session.State != LevelSession.Mode.Playing && Time.realtimeSinceStartup < deadline) yield return null;
+                Buzz(0.9f, 0.9f, 5f); // a long pulse (a default's strength), then Start mid-pulse
+                int pauseFrom = motors.Count;
+                yield return PadTap(GamepadButton.Start);
+                bool pauseStops = State == Flow.Paused && rumble.Active == null && motors.Count > pauseFrom
+                    && motors[motors.Count - 1].low == 0f && motors[motors.Count - 1].high == 0f;
+                yield return new WaitForSecondsRealtime(0.6f);
+                yield return PadTap(GamepadButton.East);
+                yield return new WaitForSecondsRealtime(0.3f);
+                string detail = $"1-1 sent {played}; quiet after={quiet}; with vibration off a borrow (taken={offBorrowed}) sent nothing={offSilent}; "
+                    + $"switching it on pulsed={sample}; Start mid-pulse paused and stopped the motors={pauseStops}";
+                if (pulses && quiet && offBorrowed && offSilent && sample && pauseStops) log.Add("ok   pad: vibration: " + detail);
+                else Fail("vibration: " + detail);
+            }
 
             // menus: Start pauses, B resumes; Start, D-pad down twice and A open Watch solution; B stops it
             yield return new WaitForSecondsRealtime(0.5f);
@@ -611,6 +689,7 @@ namespace BorrowedSeconds.Game
                 if (slow > normal * 0.5f || afterRewind > beforeRewind - 5 || won != par || !handedBack) Fail("watching at your own pace: " + pace);
                 else log.Add("ok   pad: Watch solution at your own pace: " + pace);
             }
+            InputSystem.onDeviceCommand -= spy;
             log.Add(ok ? "PASS 1-1 and the menus played through a virtual gamepad" : "FAIL gamepad");
             botDrivesFlow = false;
             result(ok);

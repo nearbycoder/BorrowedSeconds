@@ -22,6 +22,7 @@ namespace BorrowedSeconds.Game
         public string[] keys = new string[0];   // keyboard bindings by KeyAction (KeyBindings); empty = defaults
         public bool fullscreen = true, shake = true, reduceFlashing;
         public bool focusToggle;                // a press turns Focus on and the next turns it off, instead of holding
+        public bool vibration = true;           // rumble pulses on the gamepad in use (Game.Rumble)
         public int windowW, windowH;            // window size when not fullscreen (DisplayOptions); 0 = pick one
         public float renderScale = 1f;          // the 3D scene's render resolution (DisplayOptions.RenderScales)
 

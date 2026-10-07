@@ -22,6 +22,7 @@ namespace BorrowedSeconds.Game
         public static GameRoot I { get; private set; }
         public LevelCatalog Catalog { get; private set; }
         public readonly InputReader Input = new InputReader();
+        readonly Rumble rumble = new Rumble();
         public Camera Cam { get; private set; }
         public CameraRig Rig { get; private set; }
         public WorldEnvironment Env { get; private set; }
@@ -97,7 +98,22 @@ namespace BorrowedSeconds.Game
             UnityEngine.InputSystem.InputSystem.onDeviceChange += OnDeviceChange;
         }
 
-        void OnDestroy() => UnityEngine.InputSystem.InputSystem.onDeviceChange -= OnDeviceChange;
+        void OnDestroy()
+        {
+            UnityEngine.InputSystem.InputSystem.onDeviceChange -= OnDeviceChange;
+            rumble.Stop();
+        }
+
+        void OnApplicationQuit() => rumble.Stop();
+
+        /// <summary>A rumble pulse on the pad in use, while a level is really being played (not the
+        /// title's replays, Watch solution or a scripted run) and Controller vibration is on.</summary>
+        void Buzz(float low, float high, float seconds)
+        {
+            if (!Save.vibration || !Input.UsingGamepad || State != Flow.Playing || Session == null || Session.Muted) return;
+            if (capturing && !botDrivesFlow) return;
+            rumble.Pulse(UnityEngine.InputSystem.Gamepad.current, low, high, seconds);
+        }
 
         /// <summary>A pad unplugged or out of battery mid-level pauses it, as losing focus does, and
         /// the hints go back to the keyboard if no pad is left.</summary>
@@ -105,6 +121,7 @@ namespace BorrowedSeconds.Game
         {
             if (!(device is UnityEngine.InputSystem.Gamepad)) return;
             if (change != UnityEngine.InputSystem.InputDeviceChange.Removed && change != UnityEngine.InputSystem.InputDeviceChange.Disconnected) return;
+            if (rumble.Active == device) rumble.Stop();
             bool padLeft = false;
             foreach (var g in UnityEngine.InputSystem.Gamepad.all) padLeft |= g != device && g.enabled;
             if (!padLeft) Input.UsingGamepad = false;
@@ -148,11 +165,17 @@ namespace BorrowedSeconds.Game
             LevelSession.FocusScale = Save.focus;
             Input.Keys = KeyBindings.Load(Save.keys);
             Input.FocusToggle = Save.focusToggle && !capturing;
+            // switching vibration on gives one short pulse, so you know it works
+            if (Save.vibration && !vibrationWas && Input.UsingGamepad && (!capturing || botDrivesFlow))
+                rumble.Pulse(UnityEngine.InputSystem.Gamepad.current, 0.35f, 0.35f, 0.15f);
+            vibrationWas = Save.vibration;
             if (Session != null) ShowControlHints(true);
             LevelSession.GameSpeed = capturing ? 1f : Mathf.Clamp(Save.speed, 0.5f, 1f);
             if (!capturing || forceDisplay) DisplayOptions.ApplyRenderScale(Save.renderScale);
             ApplyDisplay(false);
         }
+
+        bool vibrationWas = true;
 
         /// <summary>Set by the display check: scripted runs otherwise keep the window and render
         /// scale they were started with.</summary>
@@ -413,6 +436,7 @@ namespace BorrowedSeconds.Game
             if (State != Flow.Playing || Session == null) return;
             State = Flow.Paused;
             Session.Paused = true;
+            rumble.Stop();
             Input.ReleaseFocus();
             Hud.RestartHold = -1f;
             restartArmed = false;
@@ -423,8 +447,8 @@ namespace BorrowedSeconds.Game
 
         // the game keeps running in the background (runInBackground), so a real-time level must
         // not: alt-tabbing away mid-level opens the pause menu instead of letting the debt fall due
-        void OnApplicationFocus(bool focus) { if (!focus) FocusLost(false); }
-        void OnApplicationPause(bool paused) { if (paused) FocusLost(false); }
+        void OnApplicationFocus(bool focus) { if (!focus) { rumble.Stop(); FocusLost(false); } }
+        void OnApplicationPause(bool paused) { if (paused) { rumble.Stop(); FocusLost(false); } }
 
         /// <summary>Pauses a level in play when the window loses focus (scripted runs only when forced).</summary>
         void FocusLost(bool force)
@@ -561,6 +585,7 @@ namespace BorrowedSeconds.Game
         void Update()
         {
             Input.Poll();
+            rumble.Tick();
             float dt = Mathf.Min(Clock.Dt, 0.05f); // menus: a loading hitch must not skip their intros
             bool top(MenuScreen s) => s.Visible && TopScreen() == s && (Wipe == null || !Wipe.Busy);
             Cursor.visible = !Input.UsingGamepad;
@@ -655,6 +680,7 @@ namespace BorrowedSeconds.Game
         public void LoadLevel(int index)
         {
             if (Session != null) Destroy(Session.gameObject);
+            rumble.Stop();
             if (State == Flow.Watching) State = Flow.Playing; // a new session ends any solution replay
             pendingComplete = null;
             Input.ReleaseFocus();
@@ -682,6 +708,7 @@ namespace BorrowedSeconds.Game
                 Rig.Shake(0.5f);
                 Fx.Death(Session.Board.Player.WorldPos);
                 if (!Session.Muted) Sfx.Stinger("death");
+                Buzz(0.9f, 0.9f, 0.35f);
                 Hud.Banner("DEFAULTED", "rewinding…", Palette.Danger, 0.7f);
             };
             Session.RewindChanged += on => { if (on && !Session.Muted) Sfx.Play("rewind", 0.8f); };
@@ -732,6 +759,7 @@ namespace BorrowedSeconds.Game
                         Fx.Borrow(board.At(s.P, 0.7f), board.ObstacleCenter(e.A));
                         Env.Ripple(board.ObstacleCenter(e.A), 1f);
                         if (loud) Sfx.Stinger("borrow");
+                        Buzz(0.2f, 0.5f, 0.1f);
                         break;
                     case Ev.Due:
                         Env.PulseFreeze();
@@ -740,6 +768,7 @@ namespace BorrowedSeconds.Game
                         Fx.Freeze(board.At(s.P));
                         Env.Ripple(board.At(s.P, 0.5f), 0.7f);
                         if (loud) Sfx.Stinger("freeze");
+                        Buzz(0.5f, 0.25f, 0.18f);
                         break;
                     case Ev.PlayerThaw:
                         Rig.Shake(0.12f);
@@ -795,6 +824,7 @@ namespace BorrowedSeconds.Game
                         Rig.Shake(0.15f);
                         Fx.Latch(board.At(def.Locks[e.A]));
                         if (loud) Sfx.Stinger("lock_latch");
+                        Buzz(0.15f, 0.45f, 0.12f);
                         break;
                     case Ev.ExitOpen:
                         Fx.ExitOpen(board.At(def.Exit));
@@ -805,6 +835,7 @@ namespace BorrowedSeconds.Game
                         Rig.Punch(-0.6f);
                         Fx.Win(board.At(def.Exit));
                         if (loud) Sfx.Stinger("win");
+                        Buzz(0.35f, 0.7f, 0.3f);
                         break;
                 }
             }
