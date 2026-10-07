@@ -67,6 +67,22 @@ namespace BorrowedSeconds.UI
         float introT = 99f;
         int lastLoans;
         bool wasFrozen;
+        string termLine = "";
+        /// <summary>The thaw forecast the HUD is spelling out this frame (None when there is none).</summary>
+        public GhostPreview.Verdict Forecast { get; private set; }
+        /// <summary>The term line under the watch as shown (the forecast while a debt runs).</summary>
+        public string TermText => termText.text;
+        public string AimText => aimText.text;
+
+        /// <summary>The forecast's verdict in words, in the ring's colour (rich text; empty for None).</summary>
+        public static string VerdictText(GhostPreview.Verdict v) => v switch
+        {
+            GhostPreview.Verdict.Safe => "<color=#55E0AE><b>SAFE</b></color>",
+            GhostPreview.Verdict.Charges => "<color=#FFD27A><b>SAFE</b>, DIAL LATCHES</color>",
+            GhostPreview.Verdict.Soon => "<color=#FFB547><b>HIT</b> JUST AFTER</color>",
+            GhostPreview.Verdict.Lethal => "<color=#FF4F64><b>LETHAL</b></color>",
+            _ => "",
+        };
 
         public static Hud Create(Transform parent)
         {
@@ -134,13 +150,14 @@ namespace BorrowedSeconds.UI
             Ui.Place(watchSmall.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -30), new Vector2(160, 24));
             watchSmall.characterSpacing = 3; // "LOAN READY" must fit inside the ring
             termText = Ui.Text("Term", root, "", Ui.Semi, 18, dim);
-            Ui.Place(termText.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 6), new Vector2(400, 26));
+            Ui.Place(termText.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 6), new Vector2(640, 26));
+            termText.textWrappingMode = TextWrappingModes.NoWrap;
             termText.characterSpacing = 10;
 
             // ---- aim tag
-            aimTag = Ui.Rect("AimTag", root, Vector2.zero, new Vector2(0.5f, 0), Vector2.zero, new Vector2(260, 64));
+            aimTag = Ui.Rect("AimTag", root, Vector2.zero, new Vector2(0.5f, 0), Vector2.zero, new Vector2(270, 88));
             aimGroup = aimTag.gameObject.AddComponent<CanvasGroup>();
-            aimPanel = new Panel("Bg", aimTag, new Vector2(260, 64), Panel.Style.Tag);
+            aimPanel = new Panel("Bg", aimTag, new Vector2(270, 88), Panel.Style.Tag);
             aimPanel.Rt.anchoredPosition = Vector2.zero;
             aimPanel.Glow = 0.5f;
             aimPanel.Apply();
@@ -239,7 +256,8 @@ namespace BorrowedSeconds.UI
             nameText.text = d.Name;
             var sol = catalog.SolutionFor(d);
             parText.text = sol != null ? $"PAR {Ui.Secs(sol.Par)}" : "";
-            termText.text = $"LOAN 3.0s  ·  TERM {Ui.Secs1(d.Term)}s" + (d.LoanLimit >= 0 ? $"  ·  {d.LoanLimit} LOAN{(d.LoanLimit == 1 ? "" : "S")}" : "");
+            termLine = $"LOAN 3.0s  ·  TERM {Ui.Secs1(d.Term)}s" + (d.LoanLimit >= 0 ? $"  ·  {d.LoanLimit} LOAN{(d.LoanLimit == 1 ? "" : "S")}" : "");
+            termText.text = termLine;
             foreach (var p in pips) if (p != null) Destroy(p.gameObject);
             pips = new Image[Mathf.Max(0, d.LoanLimit)];
             for (int i = 0; i < pips.Length; i++)
@@ -374,6 +392,13 @@ namespace BorrowedSeconds.UI
             watch3d.Pitch = -6f + Mathf.Sin(t * 0.5f) * 3f;
             for (int i = 0; i < pips.Length; i++) pips[i].color = i < d.LoanLimit - s.Loans ? Palette.Ice : new Color(1, 1, 1, 0.18f);
 
+            // the thaw forecast in words, so it never rests on the ring's colour alone
+            Forecast = session.State == LevelSession.Mode.Playing ? session.Ghost.Result : GhostPreview.Verdict.None;
+            string forecast = VerdictText(Forecast);
+            bool debt = !frozen && (s.Countdown > 0 || s.Pending);
+            string term = debt && forecast.Length > 0 ? "THAW HERE:  <size=21>" + forecast + "</size>" : termLine;
+            if (termText.text != term) termText.text = term;
+
             // aim tag
             int aim = session.Aim;
             bool showAim = aim >= 0 && session.LoanAvailable && session.State == LevelSession.Mode.Playing && !s.IsObstacleFrozen(d, aim);
@@ -388,7 +413,8 @@ namespace BorrowedSeconds.UI
                 var sp = cam.WorldToScreenPoint(world);
                 var scale = canvas.GetComponent<RectTransform>().localScale.x;
                 aimTag.anchoredPosition = new Vector2(sp.x / scale, sp.y / scale);
-                aimText.text = $"<b>FREEZE 3.0s</b>\n<size=15><color=#C9D3F0>repay in {Ui.Secs1(d.Term)}s</color></size>";
+                aimText.text = $"<b>FREEZE 3.0s</b>\n<size=15><color=#C9D3F0>repay in {Ui.Secs1(d.Term)}s</color></size>"
+                    + (forecast.Length > 0 ? $"\n<size=16>{forecast}</size>" : "");
             }
 
             bool showTip = tipText.text.Length > 0 && session.State != LevelSession.Mode.Won;

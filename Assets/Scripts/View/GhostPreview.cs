@@ -22,7 +22,8 @@ namespace BorrowedSeconds.View
         readonly GameObject[] sliderGhosts, laserGhosts, rotorGhosts;
         readonly Transform[] rotorArms;
         readonly Material ghostMat, beamMat, markerMat, markerRingMat;
-        readonly GameObject marker, markerRing;
+        readonly GameObject marker, markerRing, cross;
+        readonly Material crossMat;
         bool active;
         float fade;
         public Verdict Result { get; private set; }
@@ -82,6 +83,20 @@ namespace BorrowedSeconds.View
             markerRingMat.SetFloat("_Inner", 0.8f);
             markerRingMat.SetFloat("_Outer", 0.95f);
             markerRing = Shapes.Flat("ThawRing", root.transform, Vector3.zero, 1.0f, markerRingMat);
+            // a dark X over the ring when the thaw kills: the verdict must not rest on red vs. mint
+            crossMat = Mats.Instance("BS_Ring");
+            crossMat.SetFloat("_Inner", 0f);
+            crossMat.SetFloat("_Outer", 0.9f);
+            crossMat.SetFloat("_Ticks", 0f);
+            crossMat.SetFloat("_Fill", 1f);
+            crossMat.renderQueue = markerRingMat.renderQueue + 1;
+            cross = Shapes.Group("ThawCross", root.transform);
+            for (int k = 0; k < 2; k++)
+            {
+                var bar = Shapes.Flat("Bar", cross.transform, new Vector3(0, 0.01f, 0), 1f, crossMat);
+                bar.transform.localRotation = Quaternion.Euler(0, k == 0 ? 45f : -45f, 0);
+                bar.transform.localScale = new Vector3(0.24f, 1f, 1.05f);
+            }
             root.SetActive(false);
         }
 
@@ -188,6 +203,16 @@ namespace BorrowedSeconds.View
             var p = board.At(s.P, 0.03f);
             marker.transform.localPosition = p;
             markerRing.transform.localPosition = p;
+            bool deadly = Result == Verdict.Lethal || Result == Verdict.Soon;
+            cross.SetActive(deadly);
+            if (deadly)
+            {
+                cross.transform.localPosition = p;
+                var ink = new Color(0.06f, 0.05f, 0.1f, 1f);
+                crossMat.SetColor("_Color", ink);
+                crossMat.SetColor("_BackColor", ink);
+                crossMat.SetFloat("_Alpha", (Result == Verdict.Lethal ? 1f : 0.7f) * fade);
+            }
             ghostMat.SetColor("_Color", new Color(2.2f, 0.35f, 0.45f, 0.5f * fade));
         }
     }

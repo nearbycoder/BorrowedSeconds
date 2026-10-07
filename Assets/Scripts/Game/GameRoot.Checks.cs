@@ -42,6 +42,7 @@ namespace BorrowedSeconds.Game
             if (Want("chapter-cards")) yield return CheckChapterCards(dir, Report);
             if (Want("watch")) yield return CheckWatch(dir, Report);
             if (Want("run-watch")) yield return CheckRunWatch(Report);
+            if (Want("forecast")) yield return CheckForecast(dir, Report);
 
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
@@ -165,6 +166,58 @@ namespace BorrowedSeconds.Game
             Resume();
             yield return new WaitForSecondsRealtime(0.5f);
             report("focus-resume", State == Flow.Playing && Session.Tick > tick, $"resumed: state={State}, tick={Session.Tick}");
+        }
+
+        /// <summary>
+        /// The thaw forecast is spelled out, not only coloured: every frame the HUD's verdict matches
+        /// the ghost's, the term line names it while a debt runs and the aim tag names it while aiming.
+        /// Runs a thaw death on 1-2 (lethal) and 1-5's solution (safe, dial latches); screenshots each.
+        /// </summary>
+        IEnumerator CheckForecast(string dir, System.Action<string, bool, string> report)
+        {
+            var seen = new HashSet<BorrowedSeconds.View.GhostPreview.Verdict>();
+            int frames = 0, mismatch = 0, termShown = 0, aimShown = 0;
+            string firstBad = "";
+            // 1-2 aiming at its slider for 6 s (no input), a thaw death on 1-2, then 1-5's solution
+            foreach (var (id, mode) in new[] { ("1-2", "aim"), ("1-2", "death"), ("1-5", "solution") })
+            {
+                int index = Catalog.Levels.FindIndex(l => l.Id == id);
+                StartLevel(index, false);
+                Hud.SkipIntro();
+                bool death = mode == "death", aiming = mode == "aim";
+                if (aiming) { Session.AllowInput = false; Session.ForcedAim = 0; }
+                else Session.Autoplay = death ? FindThawDeath(Catalog.Levels[index], out _) : Catalog.SolutionFor(Catalog.Levels[index]).Actions;
+                var run = new RunWatch(Session);
+                var shot = new HashSet<BorrowedSeconds.View.GhostPreview.Verdict>();
+                float until = Time.realtimeSinceStartup + 7f;
+                while (run.Alive() && (aiming ? Time.realtimeSinceStartup < until : death ? Session.Deaths == 0 : Session.State != LevelSession.Mode.Won))
+                {
+                    yield return new WaitForEndOfFrame(); // after the HUD's LateUpdate
+                    if (Session.State != LevelSession.Mode.Playing) continue;
+                    var v = Session.Ghost.Result;
+                    var cur = Session.Cur;
+                    frames++;
+                    string words = BorrowedSeconds.UI.Hud.VerdictText(v);
+                    bool debt = cur.PFrozen == 0 && (cur.Countdown > 0 || cur.Pending);
+                    bool ok = Hud.Forecast == v;
+                    if (ok && debt && words.Length > 0) { ok = Hud.TermText.Contains(words); termShown++; }
+                    if (ok && !debt && words.Length > 0 && Session.Aim >= 0) { ok = Hud.AimText.Contains(words); aimShown++; }
+                    if (!ok && mismatch++ == 0) firstBad = $"{id} tick {cur.Tick}: ghost={v} hud={Hud.Forecast} term=\"{Hud.TermText}\"";
+                    if (v == BorrowedSeconds.View.GhostPreview.Verdict.None) continue;
+                    seen.Add(v);
+                    if ((debt || aiming) && shot.Add(v))
+                    {
+                        Session.Paused = true;
+                        yield return Shot(dir, $"forecast_{id}_{mode}_{v.ToString().ToLowerInvariant()}");
+                        Session.Paused = false;
+                    }
+                }
+            }
+            bool lethal = seen.Contains(BorrowedSeconds.View.GhostPreview.Verdict.Lethal);
+            bool safe = seen.Contains(BorrowedSeconds.View.GhostPreview.Verdict.Safe) || seen.Contains(BorrowedSeconds.View.GhostPreview.Verdict.Charges);
+            Session.ForcedAim = -1;
+            report("forecast", mismatch == 0 && lethal && safe && termShown > 0 && aimShown > 0,
+                $"{frames} frames, verdicts seen {string.Join("/", seen)}, spelled out under the watch on {termShown} and in the aim tag on {aimShown}, mismatches {mismatch} {firstBad}");
         }
 
         IEnumerator Shot(string dir, string name)
