@@ -42,7 +42,7 @@ Every level is a single screen, the rules are fully deterministic, and an exhaus
 | Action | Keyboard + mouse | Gamepad |
 |---|---|---|
 | Move (one tile per step; hold to keep walking) | WASD / arrow keys | Left stick / D-pad |
-| Aim at an obstacle | Hover it with the mouse (or the ground it owns: a block's track, a laser's lane, a rotor's sweep), or cycle with Tab / Q / E | LB / RB |
+| Aim at an obstacle | Hover it with the mouse (or the ground it owns: a block's track, a laser's lane, a rotor's sweep), or cycle with the mouse wheel or Tab / Q / E | LB / RB |
 | **Borrow** (freeze the aimed obstacle for 3 s) | Left click or Space | A |
 | **Focus** (time runs at 20 % while you line up a shot) | Hold Shift or right mouse button (or tap to toggle; see Settings) | Hold LT (or tap to toggle) |
 | **Rewind** | Hold Z or Backspace | Hold X |

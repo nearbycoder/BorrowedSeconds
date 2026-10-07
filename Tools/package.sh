@@ -8,7 +8,7 @@ VERSION="${1:?usage: Tools/package.sh VERSION [linux|macos]}"
 PLATFORM="${2:-linux}"
 STAGE="$ROOT/Builds/Release/stage/BorrowedSeconds"
 CONTROLS="Move: WASD / arrows / left stick        Borrow (freeze the aimed obstacle): click / Space / A
-Aim: hover with the mouse, Tab / Q / E, LB / RB
+Aim: hover with the mouse, mouse wheel, Tab / Q / E, LB / RB
 Focus (slow time): hold Shift / right mouse / LT (Settings can make it a toggle)
 Rewind: hold Z / Backspace / X          Restart: R / Y          Pause: Esc / P / Start
 Hint: H / Select                        Stuck? Pause > Watch solution"

@@ -177,15 +177,18 @@ namespace BorrowedSeconds.Game
             int hovered = -1;
             if (cam != null && !input.UsingGamepad) hovered = PickAt(input.Pointer);
             if (input.PointerMoved) pointerAim = true;
-            if (input.CycleNext || input.CyclePrev)
+            // Tab, Q/E, LB/RB or the mouse wheel (down: next, up: previous) step through the obstacles,
+            // starting from the one the pointer aims at, else the nearest
+            bool next = input.CycleNext || input.Scroll < 0, prev = input.CyclePrev || input.Scroll > 0;
+            if (next || prev)
             {
-                pointerAim = false;
                 int n = Def.ObstacleCount;
                 if (n > 0)
                 {
-                    if (cycleIndex < 0) cycleIndex = Nearest();
-                    else cycleIndex = (cycleIndex + (input.CycleNext ? 1 : n - 1)) % n;
+                    int from = pointerAim && !input.UsingGamepad ? Aim : cycleIndex;
+                    cycleIndex = from < 0 ? Nearest() : (from + (next ? 1 : n - 1)) % n;
                 }
+                pointerAim = false;
             }
             if (pointerAim && hovered >= 0) Aim = hovered;
             else if (!pointerAim && cycleIndex >= 0) Aim = cycleIndex;

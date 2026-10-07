@@ -1164,7 +1164,7 @@ namespace BorrowedSeconds.UI
                     + $"<b>{p.Start}</b> pause";
             return $"<b>{input.MoveKeysName()}</b> move one tile; hold to keep walking\n"
                 + $"<b>Mouse</b> aim: hover a piece or its track\n"
-                + $"<b>{input.KeyName(KeyAction.AimPrev)}</b> <b>{input.KeyName(KeyAction.AimNext)}</b> or <b>Tab</b> cycle the aim\n"
+                + $"<b>{input.KeyName(KeyAction.AimPrev)}</b> <b>{input.KeyName(KeyAction.AimNext)}</b>, <b>Tab</b> or <b>Wheel</b> cycle the aim\n"
                 + $"<b>Click</b> or <b>{input.KeyName(KeyAction.Borrow)}</b> borrow: freeze it for 3 s\n"
                 + $"<b>{input.KeyName(KeyAction.Focus)}</b> {focus}: Focus slows time to aim\n"
                 + $"<b>{input.KeyName(KeyAction.Rewind)}</b> hold: rewind\n"

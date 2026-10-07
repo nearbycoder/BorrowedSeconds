@@ -117,6 +117,9 @@ namespace BorrowedSeconds.Game
             yield return null;
             log.Add(ok ? $"PASS 1-1 played through virtual keyboard + mouse, won at tick {Session.Cur.Tick}" : "FAIL keyboard + mouse");
             bool kbOk = ok;
+            bool wheelOk = false;
+            yield return WheelAimPass(dir, log, r => wheelOk = r);
+            kbOk &= wheelOk;
 
             bool padOk = false, rebindOk = false;
             yield return PadPass(dir, log, r => padOk = r);
@@ -134,6 +137,60 @@ namespace BorrowedSeconds.Game
             File.WriteAllLines(Path.Combine(dir, "inputbot.log"), log);
             Debug.Log("[InputBot] " + string.Join(" | ", log));
             Application.Quit(all ? 0 : 1);
+        }
+
+        /// <summary>
+        /// The mouse wheel steps the aim on 1-3 (two sliders): down to the next, up to the previous,
+        /// starting from the obstacle the pointer aims at; moving the pointer goes back to hover aim.
+        /// </summary>
+        IEnumerator WheelAimPass(string dir, List<string> log, System.Action<bool> result)
+        {
+            complete.Hide();
+            pendingComplete = null;
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "1-3"), false);
+            float deadline = Time.realtimeSinceStartup + 6f;
+            while (Session.State != LevelSession.Mode.Playing && Time.realtimeSinceStartup < deadline) yield return null;
+            var steps = new List<string>();
+            IEnumerator Point(Vector2 at)
+            {
+                botPointer = at;
+                InputSystem.QueueStateEvent(botMouse, new MouseState { position = at });
+                yield return null;
+                yield return null;
+            }
+            IEnumerator Wheel(float y)
+            {
+                InputSystem.QueueStateEvent(botMouse, new MouseState { position = botPointer, scroll = new Vector2(0, y) });
+                yield return null;
+                InputSystem.QueueStateEvent(botMouse, new MouseState { position = botPointer });
+                yield return null;
+                yield return null;
+                steps.Add($"{(y < 0 ? "down" : "up")}->{Session.Aim}");
+            }
+            bool ok = Session.Def.ObstacleCount == 2;
+            yield return Point(new Vector2(12, 12)); // a corner: nothing under the pointer
+            bool none = Session.Aim < 0;
+            yield return Wheel(-120);
+            int first = Session.Aim;
+            yield return Wheel(-120);
+            int second = Session.Aim;
+            yield return Wheel(120);
+            int back = Session.Aim;
+            ok &= none && first >= 0 && second == 1 - first && back == first;
+            // hover the other slider (following it, it moves), then wheel down from there
+            int other = 1 - first;
+            for (int i = 0; i < 4; i++) yield return Point(Cam.WorldToScreenPoint(Session.Board.ObstacleCenter(other)));
+            int hovered = Session.Aim;
+            yield return Wheel(-120);
+            int fromHover = Session.Aim;
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "bot_wheel.png"));
+            yield return null;
+            yield return Point(Cam.WorldToScreenPoint(Session.Board.ObstacleCenter(other)) + new Vector3(6, 0, 0));
+            int moved = Session.Aim;
+            ok &= hovered == other && fromHover == first && moved == other;
+            string detail = $"pointer on nothing aims {(none ? "nothing" : Session.Aim.ToString())}; {string.Join(", ", steps)}; hovering {hovered} then down -> {fromHover}; moving the pointer -> {moved}";
+            log.Add(ok ? "ok   wheel aim on 1-3: " + detail : "FAIL wheel aim on 1-3: " + detail);
+            result(ok);
         }
 
         // ---------------------------------------------------------------- rebound keyboard pass
