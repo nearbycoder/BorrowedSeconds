@@ -421,3 +421,30 @@ Items run in that order; item 4 is a stretch. Scratch output stays in `Builds/r6
 - **Verify:** a check that opens it and reads its text after a rebind, the input bot's controller-names pass reads it on each virtual pad, and screenshots at 1600×900 and 1024×768.
 
 **Not this round:** chapter VIII, replacing 7-4, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio peak limit and the mix by ear, human playtesting.
+
+## Round 6 results
+
+All four items shipped on `improvements-6`, including the stretch item. Final verification ran on the **release** build with this round's code: EditMode 145/145 (`Tools/test.sh`; 36 new aim-zone cases), autopilot 35/35 at exactly par, `checks.sh` with every check PASS (including the new `aim-reach`, `display` and `how-to-play` checks; *Watch solution* 35/35; audio balance median +9.8 dB, worst +4.1 dB, peak 0.80), the input bot's six passes PASS, `Tools/shapes.sh` at four sizes, the solver on 1-1 (whose tip changed) OK, and `Tools/docs_check.py` clean. The real save's SHA-256 and mtimes were the same before and after the round (`Builds/r6/save-*`). Images are in `docs/media/improvements/round6/`.
+
+| # | Item | Commit | Verification |
+|---|---|---|---|
+| 1 | Forgiving mouse aim: an obstacle's track, lane or sweep aims it | `805a19f` | `aim-reach`: a pointer parked on 1-1's lane at (1,4), (7,4) or (13,4) stays aimed at the slider on 100 % of frames over a full 56-tick cycle; the piece alone (the old behaviour, measured in the same run) managed 7–13 %. On all 35 levels, 614 tiles owned by a single obstacle aim at it (245 did before, all of them under the piece itself); 10 tiles were skipped because another piece stands in front. The input bot borrows 1-1's block with its pointer parked mid-lane (aimed on 46/46 frames) and still wins at tick 185. Shot 01. |
+| 2 | Display: fullscreen or a window of a chosen size | `54db083` | `display`: from a 1600×900 window, the Display row stepped the window through 1280×720, 1600×900, 1920×1080 and 2560×1440 (the sizes that fit this 3072×1728 desktop), each within 0.1–1.9 s, and the choice survives a save round trip. Shot 02. |
+| 3 | Render resolution (50–100 %) | `54db083` | `display`: the row sets URP's render scale to 0.50 and back, and it survives a save round trip. The 50 % capture keeps the HUD sharp (shot 02). The fps probe, see below. |
+| 4 | How to play, from the title and pause menus | `d72985f` | `how-to-play`: opens from both menus, lists the rules and the default keys, follows a rebound Borrow key, and returns to the menu it came from. The input bot's controller-names pass reads the controls on a virtual DualSense, DualShock 4, Switch Pro and plain pad. The menu tour captures it, and `shapes.sh` shows it fits at 21:9, 16:9, 16:10 and 4:3. Shots 03–05. |
+
+**Notes and limits.**
+- **The fps probe couldn't settle item 3's speed-up.** The iGPU is shared with the other sessions, and their editors and players kept it at 95–100 % busy for most of the round. Baseline at a quiet moment (load 10–19): 215 fps at 1600×900 and about 105 fps in a 3072×1728 window. Back-to-back runs in that window, 100 % then 50 %: 39–42 against 46–51 fps (load 22–23), and 41–47 against 72–79 fps (load 25). A third pair ran at about 17 fps either way, with the GPU at 100 % from other processes. So 50 % was faster whenever the GPU had room, but there's no clean number, and it hasn't been tried on a weaker GPU.
+- **Fullscreen was never entered by a script.** On the shared desktop, a fullscreen window would cover other sessions' windows. Leaving fullscreen now calls `Screen.SetResolution` with the saved window size, but that path was only checked by reading the code. Changing other settings no longer touches the window, so a window the player dragged to a new size keeps it.
+- **Overlapping zones go to the nearest piece.** A rotor's sweep covers a lot of floor (up to a 7×7 disc), so a click near a rotor borrows it. Clicks only ever borrow, so this can't move the player by mistake, but nobody has played with it yet.
+- **One failed run, under load.** The first input-bot run (dev build, load spiking to 67) failed the controller-names pass on two fixed-time waits (the focus prompt after 0.3 s and the folded tip two frames after Select). Neither touches this round's code. Run again on the release build at load 14–16, every pass passed.
+- **The trailer's settings shot** selects rows by index; `shots.json` now points at the same three rows (Music, Reduce flashing, Focus slow-motion), so a re-record shows the same adjustments. The trailer itself wasn't re-cut.
+- **Audio.** No audio changed. Balance passed this time, at peak 0.80; the worst stinger margin, +4.1 dB, is the lowest so far (the limit is +3 dB), measured while the machine was under load.
+- **Load.** Input-sensitive runs waited for a load average under 24. The machine ran at load 12–73 during the round.
+
+**Decisions for the owner.**
+- The earlier owner decisions are still open: chapter VIII's theme, replacing 7-4, the trailer re-cut, the audio peak limit, Windows Build Support, signing and notarization, a license, and releases.
+- Should *Watch solution* (or some number of defaults) be allowed to unlock the next level? Today a player stuck on one level can't reach any later level.
+- The sweep zone around rotors is generous. Keep it, or limit rotor zones to the tiles the arms rest on?
+
+Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including mouse aim near rotors, window sizes and render resolution on weaker GPUs), a listen to the mix, WebGL, Windows (needs the module) and touch.
