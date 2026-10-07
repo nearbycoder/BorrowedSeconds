@@ -68,6 +68,7 @@ namespace BorrowedSeconds.UI
         int lastLoans;
         bool wasFrozen;
         string termLine = "";
+        float hintWidth;
         /// <summary>The thaw forecast the HUD is spelling out this frame (None when there is none).</summary>
         public GhostPreview.Verdict Forecast { get; private set; }
         /// <summary>The term line under the watch as shown (the forecast while a debt runs).</summary>
@@ -302,7 +303,7 @@ namespace BorrowedSeconds.UI
         {
             if (text == hintSource) return;
             hintSource = text;
-            Kit.Keycaps(hintRow, text);
+            hintWidth = Kit.Keycaps(hintRow, text);
         }
 
         /// <summary>The level's one-line teaching tip, shown above the control hints.</summary>
@@ -330,6 +331,9 @@ namespace BorrowedSeconds.UI
             if (speedText.text != speedTag) speedText.text = speedTag;
             timeText.richText = true;
             AnimateIntro(dt);
+            // the key hints end short of the pocket watch: long labels or rebound key names shrink the row
+            float room = ((RectTransform)canvas.transform).rect.width * 0.5f - 150f - 56f;
+            hintRow.localScale = Vector3.one * Mathf.Min(1f, room / Mathf.Max(1f, hintWidth));
             if (titleGroup.gameObject.activeSelf == TrailerMode)
                 foreach (var rt in new[] { titleGroup, timeRoot, hintRow, tipRt, introBand.Rt }) rt.gameObject.SetActive(!TrailerMode);
 

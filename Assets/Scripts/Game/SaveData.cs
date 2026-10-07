@@ -18,9 +18,10 @@ namespace BorrowedSeconds.Game
         public int learned;                     // onboarding prompts retired (UI.Prompts bits)
 
         public float master = 0.8f, music = 0.7f, sfx = 0.9f, focus = 0.2f;
-        public float speed = 1f;
-        public string[] keys = new string[0];   // keyboard bindings by KeyAction (KeyBindings); empty = defaults                // game-speed assist; medals count sim ticks, so they stay fair
+        public float speed = 1f;                // game-speed assist; medals count sim ticks, so they stay fair
+        public string[] keys = new string[0];   // keyboard bindings by KeyAction (KeyBindings); empty = defaults
         public bool fullscreen = true, shake = true, reduceFlashing;
+        public bool focusToggle;                // a press turns Focus on and the next turns it off, instead of holding
 
         public static SaveData Load()
         {

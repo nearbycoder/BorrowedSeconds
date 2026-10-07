@@ -126,6 +126,8 @@ namespace BorrowedSeconds.Game
             Env.ReduceFlashing = Save.reduceFlashing;
             LevelSession.FocusScale = Save.focus;
             Input.Keys = KeyBindings.Load(Save.keys);
+            Input.FocusToggle = Save.focusToggle && !capturing;
+            if (Session != null) ShowControlHints(true);
             LevelSession.GameSpeed = capturing ? 1f : Mathf.Clamp(Save.speed, 0.5f, 1f);
             if (!Application.isEditor && !capturing)
             {
@@ -147,7 +149,7 @@ namespace BorrowedSeconds.Game
             promptDemo = System.Array.IndexOf(args, "-bsPrompts") >= 0;
             if (promptDemo) Save.learned = 0;
             Save.ReadOnly = capturing;
-            if (capturing) Input.Keys = KeyBindings.DefaultKeys(); // scripted runs never use the player's bindings
+            if (capturing) { Input.Keys = KeyBindings.DefaultKeys(); Input.FocusToggle = false; } // scripted runs never use the player's bindings
             // scripted runs play at full speed unless asked (-bsSpeed checks that slow play is still exact)
             LevelSession.GameSpeed = float.TryParse(Arg(args, "-bsSpeed"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float speed)
                 ? Mathf.Clamp(speed, 0.1f, 4f) : capturing ? 1f : LevelSession.GameSpeed;
@@ -373,6 +375,7 @@ namespace BorrowedSeconds.Game
             if (State != Flow.Playing || Session == null) return;
             State = Flow.Paused;
             Session.Paused = true;
+            Input.ReleaseFocus();
             Hud.RestartHold = -1f;
             restartArmed = false;
             Session.AllowInput = false;
@@ -398,6 +401,7 @@ namespace BorrowedSeconds.Game
         void Resume()
         {
             resumedFrame = Time.frameCount;
+            Input.ReleaseFocus(); // a Focus press in the menu must not come back as slow motion
             pause.Hide();
             State = Flow.Playing;
             Session.Paused = false;
@@ -477,6 +481,7 @@ namespace BorrowedSeconds.Game
         void OnWon()
         {
             wonAt = Clock.Now;
+            Input.ReleaseFocus();
             if (Session.Autoplay != null && State != Flow.Playing) return;
             var def = Session.Def;
             int prev = Save.Best(def.Id);
@@ -587,6 +592,7 @@ namespace BorrowedSeconds.Game
             if (Session != null) Destroy(Session.gameObject);
             if (State == Flow.Watching) State = Flow.Playing; // a new session ends any solution replay
             pendingComplete = null;
+            Input.ReleaseFocus();
             LevelIndex = index;
             var def = Catalog.Levels[index];
             Session = new GameObject("Level " + def.Id).AddComponent<LevelSession>();
@@ -625,16 +631,17 @@ namespace BorrowedSeconds.Game
 
         bool hintsForPad;
 
-        void ShowControlHints()
+        void ShowControlHints(bool force = false)
         {
-            bool changed = hintsForPad != Input.UsingGamepad;
+            bool changed = force || hintsForPad != Input.UsingGamepad;
+            string focus = Input.FocusToggle ? "focus on/off" : "focus";
             hintsForPad = Input.UsingGamepad;
             if (State == Flow.Watching)
                 Hud.SetHints(hintsForPad ? "<b>B</b> stop watching" : "<b>Esc</b> stop watching");
             else
                 Hud.SetHints(hintsForPad
-                    ? "<b>Stick</b> move     <b>LB/RB</b> aim     <b>A</b> borrow     <b>LT</b> focus     <b>X</b> rewind     <b>Y</b> restart     <b>Select</b> hint     <b>Start</b> pause"
-                    : $"<b>{Input.MoveKeysName()}</b> move     <b>Click</b> borrow     <b>{Input.KeyName(KeyAction.Focus)}</b> focus     <b>{Input.KeyName(KeyAction.Rewind)}</b> rewind     "
+                    ? $"<b>Stick</b> move     <b>LB/RB</b> aim     <b>A</b> borrow     <b>LT</b> {focus}     <b>X</b> rewind     <b>Y</b> restart     <b>Select</b> hint     <b>Start</b> pause"
+                    : $"<b>{Input.MoveKeysName()}</b> move     <b>Click</b> borrow     <b>{Input.KeyName(KeyAction.Focus)}</b> {focus}     <b>{Input.KeyName(KeyAction.Rewind)}</b> rewind     "
                       + $"<b>{Input.KeyName(KeyAction.Restart)}</b> restart     <b>{Input.KeyName(KeyAction.Hint)}</b> hint     <b>Esc</b> pause");
             if (changed && Session != null) RefreshTip(false); // the folded tip names the device's hint key
         }

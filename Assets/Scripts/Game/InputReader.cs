@@ -22,6 +22,9 @@ namespace BorrowedSeconds.Game
         public Vector2 Pointer;
         public bool AnyKey;
         public bool UsingGamepad;
+        /// <summary>Focus toggles on each press instead of lasting while held (a Settings option).</summary>
+        public bool FocusToggle;
+        bool focusWasDown, focusLatched;
         /// <summary>The keyboard binding table (KeyBindings), indexed by KeyAction.</summary>
         public Key[] Keys = KeyBindings.DefaultKeys();
         /// <summary>A keyboard key pressed this frame (Key.None if none): the Controls page listens to it.</summary>
@@ -29,6 +32,9 @@ namespace BorrowedSeconds.Game
 
         readonly float[] heldSince = new float[4];
         Vector2 lastPointer;
+
+        /// <summary>Switches a toggled Focus off (a level starts, pauses or ends).</summary>
+        public void ReleaseFocus() => focusLatched = false;
 
         public void Poll()
         {
@@ -117,6 +123,11 @@ namespace BorrowedSeconds.Game
                 AnyKey |= pad.buttonSouth.wasPressedThisFrame || pad.startButton.wasPressedThisFrame;
                 if (padAny) UsingGamepad = true;
             }
+            // Focus as read from the devices is "held"; in toggle mode each fresh press flips it instead
+            bool focusDown = Focus;
+            if (FocusToggle && focusDown && !focusWasDown) focusLatched = !focusLatched;
+            focusWasDown = focusDown;
+            if (FocusToggle) Focus = focusLatched;
 
             float now = Clock.Now;
             for (int d = 0; d < 4; d++)

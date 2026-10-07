@@ -44,7 +44,7 @@ Every level is a single screen, the rules are fully deterministic, and an exhaus
 | Move (one tile per step; hold to keep walking) | WASD / arrow keys | Left stick / D-pad |
 | Aim at an obstacle | Hover it with the mouse, or cycle with Tab / Q / E | LB / RB |
 | **Borrow** (freeze the aimed obstacle for 3 s) | Left click or Space | A |
-| **Focus** (time runs at 20 % while you line up a shot) | Hold Shift or right mouse button | Hold LT |
+| **Focus** (time runs at 20 % while you line up a shot) | Hold Shift or right mouse button (or tap to toggle; see Settings) | Hold LT (or tap to toggle) |
 | **Rewind** | Hold Z or Backspace | Hold X |
 | Restart the level (tap in the first 3 s, then hold for 0.6 s) | R | Y |
 | Show or fold the level's hint | H | Select / View |
@@ -69,7 +69,7 @@ Every keyboard action (movement, Borrow, Focus, Rewind, Restart, Hint, aiming an
 - **Teaches without text walls.** Keycap prompts float in the world over the thing they mean, such as *Hover + click, freeze it* over the nearest slider, then retire for good once you've done it. Each level adds one idea, along with a one-line tip.
 - **Juice everywhere.** Hit-stop on every borrow, a full-screen time-ripple with chromatic split, a rewind smear, screen shake, dial-latch flashes, a medal coin that drops and stamps, and clock-hand wipes between screens.
 - **Pauses when you look away.** If the window loses focus mid-level, the pause menu opens, so the debt never falls due while you're in another window.
-- **Comfort settings.** Master, music and effects volume, fullscreen, screen shake, reduced flashing, Focus strength, and a **game speed** assist (100, 85, 70 or 50 %) that slows the whole level in real time. Times and medals count game ticks, so they mean the same at any speed; the HUD shows the speed when it isn't 100 %. Progress and settings save automatically.
+- **Comfort settings.** Master, music and effects volume, fullscreen, screen shake, reduced flashing, Focus strength, Focus as a toggle instead of a hold, and a **game speed** assist (100, 85, 70 or 50 %) that slows the whole level in real time. Times and medals count game ticks, so they mean the same at any speed; the HUD shows the speed when it isn't 100 %. Progress and settings save automatically.
 
 <img src="docs/media/screenshots/04_in-the-beams.png" width="49%" alt="Frozen on a gold dial at the crossing of two laser beams, which pass harmlessly through"> <img src="docs/media/screenshots/06_crystal-bar.png" width="49%" alt="A laser frozen mid-shot becomes a cyan crystal bar that blocks the other beam">
 

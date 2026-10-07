@@ -119,9 +119,11 @@ namespace BorrowedSeconds.Game
             bool restartOk = false;
             yield return RestartPass(dir, log, r => restartOk = r);
             rebindOk &= restartOk;
+            bool toggleOk = false;
+            yield return FocusTogglePass(dir, log, r => toggleOk = r);
             log.Add($"info frames {Time.frameCount} over {Time.realtimeSinceStartup:0.0}s real");
-            bool all = kbOk && padOk && rebindOk;
-            log.Add(all ? "RESULT PASS keyboard + mouse, gamepad, rebound keyboard, restart" : "RESULT FAIL");
+            bool all = kbOk && padOk && rebindOk && toggleOk;
+            log.Add(all ? "RESULT PASS keyboard + mouse, gamepad, rebound keyboard, restart, focus toggle" : "RESULT FAIL");
             File.WriteAllLines(Path.Combine(dir, "inputbot.log"), log);
             Debug.Log("[InputBot] " + string.Join(" | ", log));
             Application.Quit(all ? 0 : 1);
@@ -288,6 +290,94 @@ namespace BorrowedSeconds.Game
             if (Session == late) Fail($"holding R for 0.9 s did not restart (hold peaked at {peak:0.00}, state {State}, held={Input.RestartHeld})");
             log.Add(ok ? $"PASS restart: early tap restarts; at tick {tick} a tap only shows the hold tag ({shown:0.00}); a hold restarts" : "FAIL restart");
             botDrivesFlow = false;
+            result(ok);
+        }
+
+        // ---------------------------------------------------------------- focus toggle pass
+
+        /// <summary>
+        /// Settings > Toggle Focus: switched on through its menu row, a tap of the Focus key keeps time
+        /// slowed after release and a second tap ends it; so do the right mouse button and LT. Pausing
+        /// switches it off. Then the row is switched back and a tap only lasts as long as it's held.
+        /// </summary>
+        IEnumerator FocusTogglePass(string dir, List<string> log, System.Action<bool> result)
+        {
+            bool ok = true;
+            var notes = new List<string>();
+            void Fail(string why) { if (ok) log.Add("FAIL focus toggle " + why); ok = false; }
+            complete.Hide();
+            StartLevel(0, false);
+            float deadline = Time.realtimeSinceStartup + 6f;
+            while (Session.State != LevelSession.Mode.Playing && Time.realtimeSinceStartup < deadline) yield return null;
+            // the real Settings row (scripted runs ignore the saved option, so apply it by hand)
+            Pause();
+            OpenSettings(Flow.Paused);
+            var row = settings.Menu.Items.Find(i => i.Label.StartsWith("Toggle Focus"));
+            if (row == null) { Fail("no Toggle Focus row in Settings"); result(false); yield break; }
+            row.Adjust(1);
+            bool saved = Save.focusToggle && JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(Save)).focusToggle;
+            if (!saved) Fail("the row did not set the saved option");
+            Input.FocusToggle = Save.focusToggle;
+            settings.Menu.Selected = settings.Menu.Items.IndexOf(row);
+            yield return new WaitForSecondsRealtime(2f); // the window's intro, even at a low frame rate
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "focus_toggle_setting.png"));
+            yield return null;
+            CloseSettings();
+            Resume();
+            ShowControlHints(true);
+            if (!Hud.HintsText.Contains("focus on/off")) Fail($"key hints don't say the focus key toggles: {Hud.HintsText}");
+            Key fk = Input.Keys[(int)KeyAction.Focus];
+            yield return new WaitForSecondsRealtime(2.5f); // the level-title intro, so the key hints are up
+
+            // one source at a time: tap, wait a second (blend should hold at 1), tap, wait (back to 0)
+            IEnumerator Tap(string name, System.Action down, System.Action up)
+            {
+                down(); yield return null; yield return null; up();
+                yield return new WaitForSecondsRealtime(1f);
+                float on = Session.FocusBlend;
+                if (name == "key") { ScreenCapture.CaptureScreenshot(Path.Combine(dir, "focus_toggle_on.png")); yield return null; }
+                down(); yield return null; yield return null; up();
+                yield return new WaitForSecondsRealtime(0.6f);
+                float off = Session.FocusBlend;
+                notes.Add($"{name} {on:0.00}->{off:0.00}");
+                if (on < 0.9f || off > 0.1f) Fail($"{name}: blend {on:0.00} a second after a tap, {off:0.00} after the second tap");
+            }
+            yield return Tap("key", () => InputSystem.QueueStateEvent(botKb, new KeyboardState(fk)), () => InputSystem.QueueStateEvent(botKb, new KeyboardState()));
+            // earlier passes leave the bot mouse and pad disabled
+            InputSystem.EnableDevice(botMouse);
+            botMouse.MakeCurrent();
+            yield return Tap("right-mouse", () => InputSystem.QueueStateEvent(botMouse, new MouseState { position = botPointer, buttons = 2 }),
+                () => InputSystem.QueueStateEvent(botMouse, new MouseState { position = botPointer }));
+            if (botPad != null)
+            {
+                InputSystem.EnableDevice(botPad);
+                botPad.MakeCurrent();
+                PadSet(new GamepadState());
+                yield return Tap("LT", () => PadSet(new GamepadState { leftTrigger = 1f }), () => PadSet(new GamepadState()));
+                InputSystem.DisableDevice(botPad);
+            }
+
+            // a pause switches it off
+            yield return KeyTap(fk);
+            yield return new WaitForSecondsRealtime(0.5f);
+            Pause();
+            yield return new WaitForSecondsRealtime(0.2f);
+            Resume();
+            yield return new WaitForSecondsRealtime(0.8f);
+            if (Session.FocusBlend > 0.1f) Fail($"still focused after pause and resume (blend {Session.FocusBlend:0.00})");
+
+            // back to hold: the same tap is gone once released
+            Pause();
+            OpenSettings(Flow.Paused);
+            row.Adjust(1);
+            Input.FocusToggle = Save.focusToggle;
+            CloseSettings();
+            Resume();
+            yield return KeyTap(fk);
+            yield return new WaitForSecondsRealtime(0.8f);
+            if (Save.focusToggle || Session.FocusBlend > 0.1f) Fail($"hold mode: option={Save.focusToggle}, blend {Session.FocusBlend:0.00} after a released tap");
+            ShowControlHints(true);
+            log.Add(ok ? $"PASS focus toggle via Settings: {string.Join(", ", notes)}; pause ends it; hold mode restored" : "FAIL focus toggle");
             result(ok);
         }
 

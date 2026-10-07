@@ -897,11 +897,11 @@ namespace BorrowedSeconds.UI
         readonly CanvasGroup footGroup;
 
         /// <summary>Index of the Controls row (after the original rows, which scripted tours select by index).</summary>
-        public const int ControlsRow = 8;
+        public const int ControlsRow = 9;
         string footText;
 
         public SettingsScreen(Transform canvas, SaveData save, Action apply, Action onBack, Action onControls)
-            : base(canvas, "Settings", new Vector2(860, 936), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
+            : base(canvas, "Settings", new Vector2(860, 1004), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
         {
             this.onBack = onBack;
             menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -180), 740, 68, 27, true);
@@ -920,6 +920,7 @@ namespace BorrowedSeconds.UI
             int SpeedStep() { int k = 0; for (int i = 0; i < speeds.Length; i++) if (Mathf.Abs(speeds[i] - save.speed) < Mathf.Abs(speeds[k] - save.speed)) k = i; return k; }
             menu.AddSlider("Game speed", () => SpeedStep() / (float)(speeds.Length - 1), () => Pct(speeds[SpeedStep()]),
                 d => { save.speed = speeds[Mathf.Clamp(SpeedStep() + d, 0, speeds.Length - 1)]; apply(); });
+            menu.AddToggle("Toggle Focus (press, not hold)", () => save.focusToggle, () => { save.focusToggle = !save.focusToggle; apply(); });
             menu.Add("Controls", onControls, () => "keyboard  ›");
             menu.Add("Back", onBack);
             menu.IntroDelay = 0.25f;
