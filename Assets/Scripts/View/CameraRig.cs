@@ -86,8 +86,9 @@ namespace BorrowedSeconds.View
         }
 
         // HUD keep-out boxes in canvas units (the UI scales so the canvas is at least 1920x1080):
-        // the title (top left), the clock (top right), the key hints (bottom left) and the watch
-        static readonly Vector4[] LeftBoxes = { new Vector4(0f, -170f, 720f, 0f), new Vector4(0f, 0f, 760f, 120f) };   // x0, y0, x1, y1 from the left edge; y < 0 from the top
+        // the title (top left), the clock (top right), the key hints and a two-line tip (bottom left)
+        // and the watch
+        static readonly Vector4[] LeftBoxes = { new Vector4(0f, -170f, 720f, 0f), new Vector4(0f, 0f, 760f, 180f) };   // x0, y0, x1, y1 from the left edge; y < 0 from the top
         static readonly Vector4 ClockBox = new Vector4(-420f, -150f, 0f, 0f);  // from the top-right corner
         static readonly Vector4 WatchBox = new Vector4(-130f, 0f, 130f, 285f); // from the bottom centre, up to the bow
 
