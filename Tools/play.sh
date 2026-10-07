@@ -10,12 +10,13 @@
 #                                     desktop: every scripted tool sets this unless BS_NESTED=0
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GAME="$ROOT/Builds/Linux/BorrowedSeconds.x86_64"
-if [ "${1:-}" = "dev" ]; then GAME="$ROOT/Builds/LinuxDev/BorrowedSeconds.x86_64"; shift; fi
-[ -x "$GAME" ] || { echo "No build at $GAME. Run Tools/unity.sh build-linux first." >&2; exit 1; }
+# hand the whole command line (including "dev") to a copy of this script inside the compositor
 if [ "${BS_NESTED:-0}" = 1 ] && [ -z "${BS_NESTED_SOCKET:-}" ] && command -v kwin_wayland > /dev/null; then
   exec "$ROOT/Tools/nested.sh" --dir "$(dirname "$(realpath -m "${BS_CONFIG:-$ROOT/Builds/play/config}")")/nested" -- "${BASH_SOURCE[0]}" "$@"
 fi
+GAME="$ROOT/Builds/Linux/BorrowedSeconds.x86_64"
+if [ "${1:-}" = "dev" ]; then GAME="$ROOT/Builds/LinuxDev/BorrowedSeconds.x86_64"; shift; fi
+[ -x "$GAME" ] || { echo "No build at $GAME. Run Tools/unity.sh build-linux first." >&2; exit 1; }
 SIZE="${BS_SIZE:-1600x900}"
 args=(-screen-fullscreen 0 -screen-width "${SIZE%x*}" -screen-height "${SIZE#*x}")
 if [ -n "${BS_CONFIG:-}" ]; then mkdir -p "$BS_CONFIG"; export XDG_CONFIG_HOME="$(realpath "$BS_CONFIG")"; fi
