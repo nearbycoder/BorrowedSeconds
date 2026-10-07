@@ -65,8 +65,8 @@ namespace BorrowedSeconds.View
             float bestK = 1f;
             Vector3 bestFocus = baseFocus;
             // smallest pull-back first, then the smallest slide; slides are in world units (z is up-screen)
-            float[] dzs = { 0f, -0.3f, 0.3f, -0.6f, 0.6f, -0.9f, 0.9f };
-            float[] dxs = { 0f, 0.5f, -0.5f, 1f, -1f };
+            float[] dzs = { 0f, -0.3f, 0.3f, -0.6f, 0.6f, -0.9f, 0.9f, -1.2f, 1.2f, -1.6f, 1.6f, -2f, 2f };
+            float[] dxs = { 0f, 0.5f, -0.5f, 1f, -1f, 1.5f, -1.5f, 2f, -2f };
             for (float k = 1f; k <= 1.401f && best > 0; k += 0.025f)
                 foreach (float dz in dzs)
                 {
