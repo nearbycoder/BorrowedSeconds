@@ -146,10 +146,10 @@ Eighteen levels are proven to need *the debt itself*. Even with unlimited debt-f
 ## Play it
 
 1. Download `BorrowedSeconds-v0.1.0-linux-x86_64.zip` from the [latest release](https://github.com/nearbycoder/BorrowedSeconds/releases/latest).
-2. Unzip it and run `./BorrowedSeconds.x86_64`. If the file manager lost the executable bit, run `chmod +x BorrowedSeconds.x86_64` first.
+2. Unzip it and run `./BorrowedSeconds.sh`. If the file manager lost the executable bits, run `chmod +x BorrowedSeconds.sh BorrowedSeconds.x86_64` first.
 3. Optionally, run `./install-launcher.sh` in the same folder to add the game, with its icon, to your applications menu (`--uninstall` removes it; run it again if you move the folder). On Wayland desktops this is also what gives the game's window its icon.
 
-Requirements: 64-bit Linux and an OpenGL 4.5-capable GPU. The game starts fullscreen; *Settings > Display* switches to a window of 1280×720 up to the largest size that fits your screen. If it runs slowly, lower *Render resolution*. On Wayland desktops where XWayland is unreliable, add `-force-wayland` to use Unity's native Wayland backend. This build has only been tested on Linux (CachyOS, AMD iGPU).
+Requirements: 64-bit Linux and an OpenGL 4.5-capable GPU. The game starts fullscreen; *Settings > Display* switches to a window of 1280×720 up to the largest size that fits your screen. If it runs slowly, lower *Render resolution*. On a Wayland desktop, `BorrowedSeconds.sh` (and the menu entry) starts the game with Unity's native Wayland backend, because Unity's default X11 path through XWayland can hang at startup before the window opens; `BS_X11=1 ./BorrowedSeconds.sh` uses X11 anyway. The v0.1.0 zip predates the script: there, run `./BorrowedSeconds.x86_64 -force-wayland`. This build has only been tested on Linux (CachyOS, KDE Plasma on Wayland, AMD iGPU).
 
 There's no published macOS or Windows build yet. You can make a macOS app yourself with `Tools/unity.sh build-mac` (see below), but it has never been run on a Mac.
 

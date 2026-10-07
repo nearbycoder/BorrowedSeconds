@@ -41,13 +41,16 @@ if [ "$PLATFORM" = linux ]; then
 if command -v magick > /dev/null; then magick "$ROOT/Assets/Icon/BorrowedSeconds.png" -resize 512x512 "$STAGE/icon.png"
 else cp "$ROOT/Assets/Icon/BorrowedSeconds.png" "$STAGE/icon.png"; fi
 install -m 755 "$ROOT/Tools/linux/install-launcher.sh" "$STAGE/install-launcher.sh"
+install -m 755 "$ROOT/Tools/linux/BorrowedSeconds.sh" "$STAGE/BorrowedSeconds.sh"
 cat > "$STAGE/README.txt" <<EOF
 Borrowed Seconds $VERSION for Linux (x86_64)
 https://github.com/nearbycoder/BorrowedSeconds
 
-Run:   ./BorrowedSeconds.x86_64
-       (if it isn't executable: chmod +x BorrowedSeconds.x86_64)
-       On Wayland, add -force-wayland if the game hangs at startup under XWayland.
+Run:   ./BorrowedSeconds.sh
+       (if it isn't executable: chmod +x BorrowedSeconds.sh BorrowedSeconds.x86_64)
+       On a Wayland desktop it uses Unity's native Wayland backend, because the default
+       X11/XWayland path can hang at startup; BS_X11=1 ./BorrowedSeconds.sh skips that.
+       Running ./BorrowedSeconds.x86_64 directly also works on X11 desktops.
 Menu:  ./install-launcher.sh adds the game, with its icon, to your applications menu
        (--uninstall removes it; run it again if you move this folder).
 
