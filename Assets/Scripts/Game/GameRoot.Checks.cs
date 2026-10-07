@@ -44,6 +44,7 @@ namespace BorrowedSeconds.Game
             if (Want("watch")) yield return CheckWatch(dir, Report);
             if (Want("run-watch")) yield return CheckRunWatch(Report);
             if (Want("forecast")) yield return CheckForecast(dir, Report);
+            if (Want("aim-reach")) yield return CheckAimReach(dir, Report);
 
             log.Add($"done fail={fail}");
             File.WriteAllLines(Path.Combine(dir, "checks.log"), log);
@@ -219,6 +220,76 @@ namespace BorrowedSeconds.Game
             Session.ForcedAim = -1;
             report("forecast", mismatch == 0 && lethal && safe && termShown > 0 && aimShown > 0,
                 $"{frames} frames, verdicts seen {string.Join("/", seen)}, spelled out under the watch on {termShown} and in the aim tag on {aimShown}, mismatches {mismatch} {firstBad}");
+        }
+
+        /// <summary>
+        /// Pointer aim reaches what it should. On 1-1, a pointer parked on lane tiles stays aimed at
+        /// the 10-tiles-a-second slider on every frame of a full cycle (counted both for the piece
+        /// alone, which is how aim worked before round 6, and with its track). On every level, a
+        /// pointer over each tile that belongs to one obstacle's zone aims at that obstacle, unless
+        /// another piece stands in front of it.
+        /// </summary>
+        IEnumerator CheckAimReach(string dir, System.Action<string, bool, string> report)
+        {
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "1-1"), false);
+            Hud.SkipIntro();
+            Session.AllowInput = false; // the player stands still at the start, clear of the lane
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (Session.State != LevelSession.Mode.Playing && Time.realtimeSinceStartup < deadline) yield return null;
+            var def = Session.Def;
+            int[] park = { def.Idx(1, 4), def.Idx(7, 4), def.Idx(13, 4) };
+            int[] direct = new int[park.Length], zoned = new int[park.Length];
+            int frames = 0, t0 = Session.Tick;
+            int cycle = 2 * (def.Sliders[0].Path.Length - 1) * def.Sliders[0].Speed + 2 * def.Sliders[0].Dwell;
+            while (Session.Tick - t0 <= cycle && Time.realtimeSinceStartup < deadline + 10f)
+            {
+                yield return null;
+                frames++;
+                for (int k = 0; k < park.Length; k++)
+                {
+                    var screen = (Vector2)Cam.WorldToScreenPoint(Session.Board.At(park[k]));
+                    if (Session.Board.Pick(Cam.ScreenPointToRay(screen)) == 0) direct[k]++;
+                    if (Session.PickAt(screen) == 0) zoned[k]++;
+                }
+                if (frames == 20) yield return Shot(dir, "aim_1-1_parked");
+            }
+            string Pct(int n) => (100f * n / Mathf.Max(1, frames)).ToString("0") + "%";
+            bool parked = System.Array.TrueForAll(zoned, n => n == frames) && frames > 0;
+            report("aim-reach 1-1", parked,
+                $"pointer parked on lane tiles (1,4) (7,4) (13,4) over a {cycle}-tick cycle ({frames} frames): aimed {Pct(zoned[0])} {Pct(zoned[1])} {Pct(zoned[2])} "
+                + $"(the piece alone: {Pct(direct[0])} {Pct(direct[1])} {Pct(direct[2])})");
+
+            int levelsOk = 0, tilesOk = 0, tilesDirect = 0, covered = 0;
+            var misses = new List<string>();
+            for (int index = 0; index < Catalog.Levels.Count; index++)
+            {
+                StartLevel(index, false);
+                Session.AllowInput = false;
+                Session.Paused = true;
+                yield return null;
+                yield return null;
+                var d = Session.Def;
+                var zones = AimZones.Build(d);
+                bool levelOk = true;
+                for (int t = 0; t < d.Tiles.Length; t++)
+                {
+                    int owner = -1, owners = 0;
+                    for (int o = 0; o < zones.Length; o++) if (zones[o].Has(t)) { owner = o; owners++; }
+                    if (owners != 1) continue;
+                    var sp = Cam.WorldToScreenPoint(Session.Board.At(t));
+                    if (sp.z <= 0 || sp.x < 0 || sp.y < 0 || sp.x >= Screen.width || sp.y >= Screen.height) { levelOk = false; misses.Add($"{d.Id} ({d.X(t)},{d.Y(t)}) off screen"); continue; }
+                    int hit = Session.Board.Pick(Cam.ScreenPointToRay(sp));
+                    if (hit >= 0 && hit != owner) { covered++; continue; } // another piece stands in front
+                    if (hit == owner) tilesDirect++;
+                    if (Session.PickAt(sp) == owner) tilesOk++;
+                    else { levelOk = false; misses.Add($"{d.Id} ({d.X(t)},{d.Y(t)}) aimed {Session.PickAt(sp)}, not {owner}"); }
+                }
+                if (levelOk) levelsOk++;
+            }
+            Session.Paused = false;
+            report("aim-reach zones", levelsOk == Catalog.Levels.Count,
+                $"{levelsOk}/{Catalog.Levels.Count} levels: {tilesOk} single-owner zone tiles aim at their obstacle (the piece alone at tick 0: {tilesDirect}); "
+                + $"{covered} skipped behind another piece" + (misses.Count > 0 ? "; misses: " + string.Join(", ", misses.GetRange(0, Mathf.Min(8, misses.Count))) : ""));
         }
 
         IEnumerator Shot(string dir, string name)

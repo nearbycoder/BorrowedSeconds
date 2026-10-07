@@ -52,19 +52,22 @@ namespace BorrowedSeconds.Game
             ok &= Session.Cur.P == def.Idx(3, 3);
             if (!ok) log.Add($"FAIL walk: player at {def.X(Session.Cur.P)},{def.Y(Session.Cur.P)}");
 
-            // hold Shift (focus slows time), track the slider with the pointer, click once it is
-            // both under the cursor and in the far alcove
+            // hold Shift (focus slows time), rest the pointer on the middle of the lane (the
+            // slider's track aims it, so there's no chasing the block), click once the block is in
+            // the far alcove, well away from the pointer
             int borrowsBefore = Session.Cur.Loans;
             deadline = Time.realtimeSinceStartup + 20f;
             bool hovered = false;
+            int parkedFrames = 0, parkedAimed = 0;
             InputSystem.QueueStateEvent(botKb, new KeyboardState(Key.LeftShift));
             while (ok && Time.realtimeSinceStartup < deadline)
             {
-                var target = (Vector2)Cam.WorldToScreenPoint(Session.Board.ObstacleCenter(0));
+                var target = (Vector2)Cam.WorldToScreenPoint(Session.Board.At(def.Idx(7, 4)));
                 botPointer = target;
                 InputSystem.QueueStateEvent(botMouse, new MouseState { position = target });
                 yield return null;
                 hovered |= Session.Aim == 0;
+                if (hovered && Session.State == LevelSession.Mode.Playing) { parkedFrames++; if (Session.Aim == 0) parkedAimed++; }
                 var s = Session.Cur;
                 bool far = s.SIdx[0] >= 13 || (s.SIdx[0] == 12 && s.SDir[0] > 0);
                 if (Session.Aim == 0 && far)
@@ -80,6 +83,8 @@ namespace BorrowedSeconds.Game
             }
             InputSystem.QueueStateEvent(botKb, new KeyboardState());
             if (ok && !hovered) { ok = false; log.Add("FAIL hover: aim never landed on the slider"); }
+            if (ok && parkedAimed < parkedFrames) { ok = false; log.Add($"FAIL parked pointer: aimed at the slider on {parkedAimed} of {parkedFrames} frames"); }
+            if (ok) log.Add($"ok   pointer parked mid-lane: aimed at the slider on {parkedAimed}/{parkedFrames} frames");
             deadline = Time.realtimeSinceStartup + 2f;
             while (ok && Session.Cur.Loans == borrowsBefore && Time.realtimeSinceStartup < deadline) yield return null;
             if (ok && Session.Cur.Loans == borrowsBefore) { ok = false; log.Add("FAIL click: no loan was taken"); }

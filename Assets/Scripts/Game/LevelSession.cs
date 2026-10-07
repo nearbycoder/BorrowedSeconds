@@ -175,8 +175,7 @@ namespace BorrowedSeconds.Game
         void UpdateAim()
         {
             int hovered = -1;
-            if (cam != null && !input.UsingGamepad)
-                hovered = Board.Pick(cam.ScreenPointToRay(input.Pointer));
+            if (cam != null && !input.UsingGamepad) hovered = PickAt(input.Pointer);
             if (input.PointerMoved) pointerAim = true;
             if (input.CycleNext || input.CyclePrev)
             {
@@ -192,6 +191,17 @@ namespace BorrowedSeconds.Game
             else if (!pointerAim && cycleIndex >= 0) Aim = cycleIndex;
             else if (input.UsingGamepad) Aim = cycleIndex >= 0 ? cycleIndex : Nearest();
             else Aim = hovered;
+        }
+
+        /// <summary>
+        /// The obstacle a pointer at <paramref name="screen"/> aims at: the piece under it, else the
+        /// one whose track, lane or sweep it rests on, so a fast block can be aimed without chasing it.
+        /// </summary>
+        public int PickAt(Vector2 screen)
+        {
+            var ray = cam.ScreenPointToRay(screen);
+            int hit = Board.Pick(ray);
+            return hit >= 0 ? hit : Board.PickZone(ray);
         }
 
         /// <summary>The target of the replay's next borrow if it fires within <paramref name="lead"/> ticks, else -1.</summary>

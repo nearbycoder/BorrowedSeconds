@@ -149,6 +149,33 @@ namespace BorrowedSeconds.View
             return best;
         }
 
+        TileMask[] zones;
+
+        /// <summary>
+        /// The obstacle whose ground (<see cref="AimZones"/>: track, lane or sweep) is under the ray
+        /// on the floor plane, or -1. Where zones overlap, the obstacle nearest the point wins.
+        /// </summary>
+        public int PickZone(Ray ray)
+        {
+            zones ??= AimZones.Build(Def);
+            var o = transform.InverseTransformPoint(ray.origin);
+            var dir = transform.InverseTransformDirection(ray.direction);
+            if (dir.y > -1e-4f) return -1;
+            var p = o + dir * (-o.y / dir.y);
+            int x = Mathf.RoundToInt(p.x + (Def.W - 1) * 0.5f), y = Mathf.RoundToInt((Def.H - 1) * 0.5f - p.z);
+            if (!Def.InBounds(x, y)) return -1;
+            int tile = Def.Idx(x, y), best = -1;
+            float bestD = float.MaxValue;
+            for (int i = 0; i < zones.Length; i++)
+            {
+                if (!zones[i].Has(tile)) continue;
+                var c = transform.InverseTransformPoint(ObstacleCenter(i));
+                float d = new Vector2(c.x - p.x, c.z - p.z).sqrMagnitude;
+                if (d < bestD) { bestD = d; best = i; }
+            }
+            return best;
+        }
+
         /// <summary>World-space centre of an obstacle right now (for tethers and labels).</summary>
         public Vector3 ObstacleCenter(int obstacle)
         {
