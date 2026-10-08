@@ -60,6 +60,14 @@ namespace BorrowedSeconds.Game
         public bool Viewer;
         public const int ViewerAimLead = 16;
         bool seeking;
+        /// <summary>
+        /// Time waits for the player: a fresh start holds at tick 0 until the first move, borrow or
+        /// Focus, so the board can be read (and aimed at) before anything moves. Tick counts don't
+        /// change, so par and medals mean the same. Replays never wait.
+        /// </summary>
+        public bool WaitForStart;
+        bool started;
+        public bool Waiting => WaitForStart && !started && Autoplay == null && Cur.Tick == 0;
 
         readonly List<SimState> history = new List<SimState>();
         readonly Stack<SimState> pool = new Stack<SimState>();
@@ -128,6 +136,7 @@ namespace BorrowedSeconds.Game
                 if (input.PressedDir >= 0) queuedDir = input.PressedDir;
                 if (input.Borrow) RequestBorrow();
                 Focusing = input.Focus;
+                if (queuedDir >= 0 || queuedBorrow >= 0 || input.HeldDir >= 0 || Focusing) started = true;
             }
             else if (Viewer && Autoplay != null)
             {
@@ -144,7 +153,7 @@ namespace BorrowedSeconds.Game
             Board.SetHighlight(LoanAvailable ? Aim : -1);
 
             float scale = Mathf.Lerp(1f, FocusScale, focusBlend) * Speed * (Muted ? 1f : GameSpeed);
-            if (Paused) scale = 0f;
+            if (Paused || Waiting) scale = 0f;
             if (hitstop > 0f)
             {
                 hitstop -= dt;

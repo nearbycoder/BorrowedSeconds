@@ -69,6 +69,16 @@ namespace BorrowedSeconds.UI
         public string RestartLabel = "HOLD R TO RESTART";
         RectTransform restartRoot, restartFill;
         CanvasGroup restartGroup;
+        // the level waits at tick 0 for the first move (LevelSession.Waiting)
+        RectTransform readyRoot;
+        CanvasGroup readyGroup;
+        TextMeshProUGUI readyText;
+        Panel readyTag;
+        /// <summary>The waiting tag's second line, e.g. "move or click to start" (GameRoot names the device's keys).</summary>
+        public string ReadyLabel = "move or borrow to start";
+        /// <summary>The waiting tag is showing (checks read it).</summary>
+        public bool ReadyShown => readyGroup != null && readyGroup.alpha > 0.5f;
+        public string ReadyText => readyText.text;
         TextMeshProUGUI restartText;
         // 3D pocket watch + level title intro + banner band
         WatchStage watch3d;
@@ -231,6 +241,17 @@ namespace BorrowedSeconds.UI
             Ui.Fill(rewindText.rectTransform);
             rewindText.rectTransform.offsetMin = new Vector2(40, 0);
             rewindText.characterSpacing = 22;
+
+            // ---- the waiting tag (the focus/rewind tags' spot: either starts the clock or follows it)
+            readyRoot = Ui.Rect("ReadyTag", root, new Vector2(0.5f, 1), new Vector2(0.5f, 0.5f), new Vector2(0, -70), new Vector2(420, 64));
+            readyGroup = readyRoot.gameObject.AddComponent<CanvasGroup>();
+            readyGroup.alpha = 0f;
+            readyTag = new Panel("Tag", readyRoot, new Vector2(420, 64), Panel.Style.Tag);
+            readyTag.Rt.anchoredPosition = Vector2.zero;
+            readyText = Ui.Text("Text", readyRoot, "", Ui.Semi, 22, Palette.Gold);
+            Ui.Fill(readyText.rectTransform);
+            readyText.richText = true;
+            readyText.lineSpacing = -8;
 
             // ---- hold-to-restart tag (below the focus/rewind tags)
             restartRoot = Ui.Rect("RestartTag", root, new Vector2(0.5f, 1), new Vector2(0.5f, 0.5f), new Vector2(0, -124), new Vector2(360, 50));
@@ -586,6 +607,13 @@ namespace BorrowedSeconds.UI
             if (RestartHold >= 0f) restartFill.sizeDelta = new Vector2(300f * Mathf.Clamp01(RestartHold), 5f);
             if (restartText.text != RestartLabel) restartText.text = RestartLabel;
             rewindRoot.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, Ease.OutBack(rewindGroup.alpha, 2f)) * HudLayout.Scale;
+            bool ready = session.Waiting && session.State == LevelSession.Mode.Playing && !session.Paused && !TrailerMode;
+            readyGroup.alpha = Mathf.MoveTowards(readyGroup.alpha, ready ? 1f : 0f, dt * (ready ? 5f : 8f));
+            readyRoot.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, Ease.OutBack(readyGroup.alpha, 2f)) * HudLayout.Scale;
+            string readyLine = $"<b><cspace=0.3em>TIME WAITS</cspace></b>\n<size=17><color=#C9D3F0>{ReadyLabel}</color></size>";
+            if (readyText.text != readyLine) readyText.text = readyLine;
+            readyTag.Glow = 0.3f + 0.2f * Mathf.Sin(Clock.Now * 2.5f);
+            readyTag.Apply();
             rewindDial.localRotation = Quaternion.Euler(0, 0, Clock.Now * 540f); // hands run backwards
             rewindTag.Glow = 0.5f;
             rewindTag.Apply();

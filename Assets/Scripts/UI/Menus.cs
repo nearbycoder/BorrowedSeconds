@@ -1117,7 +1117,7 @@ namespace BorrowedSeconds.UI
             "<b><color=#7CF4FF>Borrow.</color></b> Aim at a moving obstacle and borrow: it freezes into crystal for 3 seconds. Anything frozen is solid.\n"
             + "<b><color=#7CF4FF>The debt.</color></b> The pocket watch counts down the term, usually 5 seconds. When it runs out, <i>you</i> freeze for 3 seconds wherever you stand. One loan at a time; the pips count a level's cap.\n"
             + "<b><color=#7CF4FF>Thaw safely.</color></b> While frozen, nothing can hurt you: hazards pass straight through. Thaw inside one and you default, and time rewinds.\n"
-            + "<b><color=#7CF4FF>Ghosts.</color></b> Aiming shows where every hazard will be when you thaw, and whether your tile is <b>SAFE</b> or <b>LETHAL</b>.\n"
+            + "<b><color=#7CF4FF>Ghosts.</color></b> A level waits at 0.00 until you move or borrow, so aim first: it shows where every hazard will be when you thaw, and whether your tile is <b>SAFE</b> or <b>LETHAL</b>.\n"
             + "<b><color=#7CF4FF>Plates and gates.</color></b> A plate holds open every gate (and darkens every laser) with its colour and dots, while anything rests on it.\n"
             + "<b><color=#FFD27A>Dials.</color></b> A gold dial latches after 3 seconds of weight: yours, frozen or not, or a frozen block's.\n"
             + "<b><color=#FFD27A>The exit</color></b> opens when every dial is latched. Settle your debt before you leave.\n"

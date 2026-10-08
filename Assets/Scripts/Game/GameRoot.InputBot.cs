@@ -127,6 +127,9 @@ namespace BorrowedSeconds.Game
             bool restartOk = false;
             yield return RestartPass(dir, log, r => restartOk = r);
             rebindOk &= restartOk;
+            bool readyOk = false;
+            yield return ReadyHoldPass(dir, log, r => readyOk = r);
+            kbOk &= readyOk;
             bool toggleOk = false;
             yield return FocusTogglePass(dir, log, r => toggleOk = r);
             bool namesOk = false;
@@ -353,6 +356,103 @@ namespace BorrowedSeconds.Game
             yield return null;
             if (Session == late) Fail($"holding R for 0.9 s did not restart (hold peaked at {peak:0.00}, state {State}, held={Input.RestartHeld})");
             log.Add(ok ? $"PASS restart: early tap restarts; at tick {tick} a tap only shows the hold tag ({shown:0.00}); a hold restarts" : "FAIL restart");
+            botDrivesFlow = false;
+            result(ok);
+        }
+
+        // ---------------------------------------------------------------- time waits pass
+
+        /// <summary>
+        /// Time waits for the first move (the hold a player gets, switched on for this pass): 1-1
+        /// stays at tick 0 with its tag up while the pointer aims the slider and the aim tag reads a
+        /// verdict; a tap of S starts the clock; a death's rewind doesn't hold again; a held R
+        /// restarts into a fresh hold; and a click as the first action borrows on tick 0.
+        /// </summary>
+        IEnumerator ReadyHoldPass(string dir, List<string> log, System.Action<bool> result)
+        {
+            botDrivesFlow = true;
+            forceReadyHold = true;
+            bool ok = true;
+            var notes = new List<string>();
+            void Fail(string why) { if (ok) log.Add("FAIL time waits: " + why); ok = false; }
+            // earlier passes leave the bot mouse disabled, and Down may be rebound (the rebind pass)
+            InputSystem.EnableDevice(botMouse);
+            botMouse.MakeCurrent();
+            InputSystem.QueueStateEvent(botKb, new KeyboardState());
+            var down = Input.Keys[(int)KeyAction.Down];
+            complete.Hide();
+            pendingComplete = null;
+            StartLevel(0, false);
+            var def = Session.Def;
+            float deadline = Time.realtimeSinceStartup + 6f;
+            while (Session.State != LevelSession.Mode.Playing && Time.realtimeSinceStartup < deadline) yield return null;
+            // the camera glides into place as a level starts: aim once it has settled
+            yield return new WaitForSecondsRealtime(1.2f);
+            var lane = (Vector2)Cam.WorldToScreenPoint(Session.Board.At(def.Idx(7, 4)));
+            yield return BotMouse(lane, false);
+            yield return new WaitForSecondsRealtime(0.8f);
+            int aim = Session.Aim;
+            string aimText = Hud.AimText;
+            bool verdict = aimText.Contains("SAFE") || aimText.Contains("LETHAL") || aimText.Contains("HIT");
+            if (Session.Tick != 0) Fail($"the clock ran with no input (tick {Session.Tick} after 2 s)");
+            if (!Hud.ReadyShown || !Hud.ReadyText.Contains("TIME WAITS") || !Hud.ReadyText.Contains("click")) Fail($"no waiting tag (\"{Hud.ReadyText}\", shown={Hud.ReadyShown})");
+            if (aim != 0 || !verdict) Fail($"the pointer on the lane did not aim with a forecast during the hold (aim {aim}, pointer {Input.Pointer} for {lane}, pick {Session.PickAt(lane)}, pad {Input.UsingGamepad})");
+            notes.Add($"held at tick 0 for 2 s with the tag up; pointer aims {aim}, tag \"{aimText.Replace("\n", " / ")}\"");
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "ready_hold.png"));
+            yield return null;
+            yield return null;
+
+            // a step starts the clock
+            if (ok) yield return BotSteps(down, 1, log, r => { if (!r) Fail("the first step did not move"); });
+            yield return new WaitForSecondsRealtime(0.5f);
+            int afterStep = Session.Tick;
+            if (afterStep < 5) Fail($"the clock did not start after a step (tick {afterStep})");
+            if (Hud.ReadyShown) Fail("the waiting tag stayed up after the clock started");
+            notes.Add($"a tap of {down} started it (tick {afterStep} 0.5 s later)");
+
+            // walk into the lane and let the block take you: the rewind after a death doesn't hold
+            if (ok) yield return BotSteps(down, 1, log, r => { if (!r) Fail("could not reach the lane's edge"); });
+            InputSystem.QueueStateEvent(botKb, new KeyboardState(down)); // held: in as soon as the block has passed
+            deadline = Time.realtimeSinceStartup + 8f;
+            while (ok && Session.Deaths == 0 && Time.realtimeSinceStartup < deadline) yield return null;
+            InputSystem.QueueStateEvent(botKb, new KeyboardState());
+            while (ok && Session.State != LevelSession.Mode.Playing && Time.realtimeSinceStartup < deadline) yield return null;
+            int rewoundTo = Session.Tick;
+            yield return new WaitForSecondsRealtime(0.6f);
+            if (Session.Deaths == 0) Fail("standing in the lane never died");
+            else if (Session.Tick <= rewoundTo) Fail($"after the rewind the clock held (tick {rewoundTo} -> {Session.Tick})");
+            else notes.Add($"died, rewound to tick {rewoundTo}, ran on to {Session.Tick} with no input");
+
+            // hold R: the fresh start waits again
+            var before = Session;
+            InputSystem.QueueStateEvent(botKb, new KeyboardState(Input.Keys[(int)KeyAction.Restart]));
+            deadline = Time.realtimeSinceStartup + 1.5f;
+            while (Session == before && Time.realtimeSinceStartup < deadline) yield return null;
+            InputSystem.QueueStateEvent(botKb, new KeyboardState());
+            if (Session == before) Fail("holding R did not restart");
+            deadline = Time.realtimeSinceStartup + 6f;
+            while (Session.State != LevelSession.Mode.Playing && Time.realtimeSinceStartup < deadline) yield return null;
+            yield return new WaitForSecondsRealtime(1f);
+            if (Session.Tick != 0 || !Hud.ReadyShown) Fail($"the restart did not wait (tick {Session.Tick}, tag {Hud.ReadyShown})");
+            else notes.Add("a held R restarted into a fresh hold");
+
+            // a click as the first action borrows on tick 0
+            int borrowedOn = -1;
+            Session.Events += (st, evs) => { foreach (var e in evs) if (e.Type == Ev.Borrow && borrowedOn < 0) borrowedOn = st.Tick - 1; };
+            lane = Cam.WorldToScreenPoint(Session.Board.At(def.Idx(7, 4)));
+            yield return BotMouse(lane, false);
+            yield return null;
+            int clickAim = Session.Aim;
+            InputSystem.QueueStateEvent(botMouse, new MouseState { position = lane, buttons = 1 });
+            yield return null;
+            InputSystem.QueueStateEvent(botMouse, new MouseState { position = lane });
+            deadline = Time.realtimeSinceStartup + 2f;
+            while (borrowedOn < 0 && Time.realtimeSinceStartup < deadline) yield return null;
+            if (borrowedOn != 0) Fail($"a click as the first action did not borrow on tick 0 (aim {clickAim}, borrowed on {borrowedOn})");
+            else notes.Add("a click as the first action borrowed on tick 0");
+
+            log.Add(ok ? "PASS time waits on 1-1: " + string.Join("; ", notes) : "info time waits: " + string.Join("; ", notes));
+            forceReadyHold = false;
             botDrivesFlow = false;
             result(ok);
         }

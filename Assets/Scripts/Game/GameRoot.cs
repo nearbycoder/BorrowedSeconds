@@ -177,6 +177,8 @@ namespace BorrowedSeconds.Game
         }
 
         bool vibrationWas = true;
+        /// <summary>Set by the ready-hold check: scripted runs otherwise start the clock at once.</summary>
+        bool forceReadyHold;
         /// <summary>Scripted runs keep a 100 % HUD unless started with -bsHudScale (or the HUD-size
         /// check sets forceHudScale; it must not use forceDisplay, which would apply the run's save
         /// to the window too).</summary>
@@ -731,6 +733,7 @@ namespace BorrowedSeconds.Game
             var def = Catalog.Levels[index];
             Session = new GameObject("Level " + def.Id).AddComponent<LevelSession>();
             Session.Init(def, Input, Cam);
+            Session.WaitForStart = !capturing || forceReadyHold; // the board can be read before the clock runs
             Session.Events += OnSimEvents;
             Prompts.ResetLevel();
             Session.Events += (st, evs) => { if ((promptDemo || !capturing) && !Session.Muted) Prompts.OnEvents(Save, evs); };
@@ -776,6 +779,7 @@ namespace BorrowedSeconds.Game
             hintsForPad = Input.UsingGamepad;
             hintsPad = Input.Pad;
             var p = Input.Pad;
+            Hud.ReadyLabel = hintsForPad ? $"move or press {p.South} to start" : "move or click to start";
             if (State == Flow.Watching)
                 Hud.SetHints(hintsForPad
                     ? $"<b>{p.LeftTrigger}</b> slow     <b>{p.West}</b> rewind     <b>{p.East}</b> stop watching"

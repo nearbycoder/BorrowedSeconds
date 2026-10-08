@@ -27,6 +27,7 @@ You plan where your future self will be standing when the debt comes due, and th
 ### 4.1 Time
 
 - The simulation runs at **20 ticks per second** with integer state only (no floats, no unordered containers, no randomness). Rendering interpolates between the previous and current tick.
+- **Time waits for the first move.** Entering or restarting a level holds it at tick 0 until the player first moves, borrows or focuses, so the board can be read and aimed at (with the forecast) before anything moves. Tick counts don't change, so par and medals mean the same. A death's automatic rewind, a manual rewind and replays don't hold.
 - The **loan** is a 3.0 s (60 tick) freeze of the target obstacle.
 - The **term** is how long until the debt is due. Each level sets its own (default 5.0 s = 100 ticks), and the HUD shows it on the pocket watch.
 - The **debt** freezes the player for 3.0 s (60 ticks), starting when the countdown reaches zero.

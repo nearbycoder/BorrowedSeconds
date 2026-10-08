@@ -39,6 +39,7 @@ namespace BorrowedSeconds.Game
                     yield return CheckDeathReport(dir, id, true, noun, Report);
                     yield return CheckDeathReport(dir, id, false, noun, Report);
                 }
+            if (Want("ready-hold")) yield return CheckReadyHold(dir, Report);
             if (Want("focus")) yield return CheckFocusPause(dir, Report);
             if (Want("hint")) yield return CheckHint(dir, Report);
             if (Want("ledger-tips")) yield return CheckLedgerTips(dir, Report);
@@ -1204,6 +1205,38 @@ namespace BorrowedSeconds.Game
             report(name, ok, $"died at tick {deathTick}, cause {cause} ({(cause >= 0 ? DeathReport.Noun(def, cause) : "none")}), thawed={thawed}; "
                 + $"banner \"{sub}\"; marked {marked} piece(s), culprit {culprit}; after the pause {markedAfter} marked");
             while (Session.State == LevelSession.Mode.Rewinding && Time.realtimeSinceStartup < deadline) yield return null;
+        }
+
+        /// <summary>
+        /// Time waits for the first move: a fresh start (with the hold a player gets) stays at tick 0
+        /// with its tag up, and starts again from 0 on a restart; Watch solution and the title's
+        /// replays never wait. The input bot covers what starts the clock, through real input.
+        /// </summary>
+        IEnumerator CheckReadyHold(string dir, System.Action<string, bool, string> report)
+        {
+            forceReadyHold = true;
+            int index = Catalog.Levels.FindIndex(l => l.Id == "1-2");
+            StartLevel(index, false);
+            yield return new WaitForSecondsRealtime(3.5f);
+            int held = Session.Tick;
+            bool tag = Hud.ReadyShown && Hud.ReadyText.Contains("TIME WAITS");
+            yield return Shot(dir, "ready-hold_1-2");
+            StartLevel(index, false); // what a restart does
+            yield return new WaitForSecondsRealtime(1.5f);
+            int again = Session.Tick;
+            bool tagAgain = Hud.ReadyShown;
+            StartWatch(index);
+            yield return new WaitForSecondsRealtime(1.5f);
+            int watched = Session.Tick;
+            bool watchTag = Hud.ReadyShown;
+            LoadAttract();
+            yield return new WaitForSecondsRealtime(2f);
+            int attract = Session.Tick;
+            forceReadyHold = false;
+            bool ok = held == 0 && tag && again == 0 && tagAgain && watched > 0 && !watchTag && attract > 0; // replays run on (their intros are 0.6 and 1.2 s)
+            report("ready-hold", ok, $"fresh start: tick {held} after 3.5 s, tag {tag}; restart: tick {again}, tag {tagAgain}; "
+                + $"Watch solution ran to tick {watched} in 1.5 s (tag {watchTag}); title replay ran to tick {attract} in 2 s");
+            StartLevel(0, false);
         }
 
         /// <summary>
