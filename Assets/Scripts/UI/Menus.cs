@@ -906,10 +906,10 @@ namespace BorrowedSeconds.UI
         public readonly MenuList Menu;
         readonly Action onResume;
 
-        readonly MenuList.Item clueItem;
+        readonly MenuList.Item clueItem, ghostItem;
 
-        public PauseScreen(Transform canvas, Action onResume, Action onRestart, Action onClue, Action onWatch, Action onLevels, Action onSettings, Action onHowTo, Action onTitle)
-            : base(canvas, "Pause", new Vector2(560, 836), "TIME  STOPPED", "PAUSED", 0.3f)
+        public PauseScreen(Transform canvas, Action onResume, Action onRestart, Action onClue, Action onWatch, Action onGhost, Action onLevels, Action onSettings, Action onHowTo, Action onTitle)
+            : base(canvas, "Pause", new Vector2(560, 908), "TIME  STOPPED", "PAUSED", 0.3f)
         {
             this.onResume = onResume;
             Menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(0, -186), 420, 72, 32, false);
@@ -917,6 +917,7 @@ namespace BorrowedSeconds.UI
             Menu.Add("Restart", onRestart);
             clueItem = Menu.Add(ClueLabel(false), onClue);
             Menu.Add("Watch solution", onWatch);
+            ghostItem = Menu.Add(GhostLabel(true), onGhost);
             Menu.Add("Levels", onLevels);
             Menu.Add("Settings", onSettings);
             Menu.Add("How to play", onHowTo);
@@ -927,6 +928,14 @@ namespace BorrowedSeconds.UI
         public override void Show() { base.Show(); Menu.Selected = 0; }
 
         static string ClueLabel(bool shown) => shown ? "Hide the clue" : "Show a clue";
+
+        static string GhostLabel(bool on) => on ? "Best-run ghost: On" : "Best-run ghost: Off";
+
+        public void SetGhostOn(bool on)
+        {
+            ghostItem.Label = GhostLabel(on);
+            ghostItem.LabelText.text = ghostItem.Label;
+        }
 
         /// <summary>The clue row offers to hide the clue while it's showing.</summary>
         public void SetClueShown(bool shown)

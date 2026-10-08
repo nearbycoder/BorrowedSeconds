@@ -70,6 +70,8 @@ namespace BorrowedSeconds.Game
         public bool Waiting => WaitForStart && !started && Autoplay == null && Cur.Tick == 0;
 
         readonly List<SimState> history = new List<SimState>();
+        /// <summary>The actions of the run that survives rewinds (a win saves them for the best-run ghost).</summary>
+        public readonly RunLog Run = new RunLog();
         readonly Stack<SimState> pool = new Stack<SimState>();
         InputReader input;
         float acc, hitstop, stateTimer, rewindPos, rewindSpeed;
@@ -286,6 +288,7 @@ namespace BorrowedSeconds.Game
             if (Cur.PFrozen > 1) queuedDir = -1; // don't stack moves while frozen
 
             bool wasFrozen = Cur.PFrozen > 0;
+            Run.Add(Cur.Tick, act);
             Simulation.Step(Def, Cur, act);
             var snap = pool.Count > 0 ? pool.Pop() : new SimState(Def);
             snap.CopyFrom(Cur);
@@ -381,6 +384,7 @@ namespace BorrowedSeconds.Game
             }
             Cur.CopyFrom(history[at]);
             Cur.Events.Clear();
+            Run.TruncateTo(Cur.Tick); // the rewound-over actions are no longer part of the run
             autoplayCursor = 0; // a replay picks up from the rewound tick (DoTick skips the actions before it)
             Look.CopyFrom(Cur);
             Simulation.Step(Def, Look, Act.None);

@@ -41,6 +41,7 @@ namespace BorrowedSeconds.Game
                 }
             if (Want("ready-hold")) yield return CheckReadyHold(dir, Report);
             if (Want("clue")) yield return CheckClue(dir, Report);
+            if (Want("best-ghost")) yield return CheckBestGhost(dir, Report);
             if (Want("focus")) yield return CheckFocusPause(dir, Report);
             if (Want("hint")) yield return CheckHint(dir, Report);
             if (Want("ledger-tips")) yield return CheckLedgerTips(dir, Report);
@@ -1206,6 +1207,123 @@ namespace BorrowedSeconds.Game
             report(name, ok, $"died at tick {deathTick}, cause {cause} ({(cause >= 0 ? DeathReport.Noun(def, cause) : "none")}), thawed={thawed}; "
                 + $"banner \"{sub}\"; marked {marked} piece(s), culprit {culprit}; after the pause {markedAfter} marked");
             while (Session.State == LevelSession.Mode.Rewinding && Time.realtimeSinceStartup < deadline) yield return null;
+        }
+
+        /// <summary>
+        /// Race your best: the run that survives a death's rewind is what's kept; a win saves a run
+        /// that replays to a win at exactly its time; on the next attempt the ghost stands on the
+        /// run's tile on every tick; the pause row hides it and is saved; a save from before the
+        /// ghost loads without one; unsettled levels and Watch solution show none.
+        /// </summary>
+        IEnumerator CheckBestGhost(string dir, System.Action<string, bool, string> report)
+        {
+            var ids = Save.ids; var best = Save.best; var runs = Save.runs; var runTicks = Save.runTicks; bool ghostWas = Save.bestGhost;
+            Save.ids = new string[0]; Save.best = new int[0]; Save.runs = new string[0]; Save.runTicks = new int[0]; Save.bestGhost = true;
+            forceBestRun = true;
+            var notes = new List<string>();
+            bool ok = true;
+            void Fail(string why) { ok = false; notes.Add("FAIL " + why); }
+
+            // 1. a death's rewind drops the rewound-over actions from the run
+            int i12 = Catalog.Levels.FindIndex(l => l.Id == "1-2");
+            var deathActs = FindThawDeath(Catalog.Levels[i12], out int deathTick);
+            LoadLevel(i12);
+            State = Flow.Playing;
+            Session.IntroTime = 0.2f;
+            Session.Autoplay = deathActs;
+            Session.Speed = 3f;
+            int landedAt = -1, runCount = -1;
+            List<TimedAction> kept = null;
+            Session.RewindChanged += on => { if (!on && landedAt < 0) { landedAt = Session.Tick; runCount = Session.Run.Count; kept = Session.Run.Actions(); Session.Paused = true; } };
+            float deadline = Time.realtimeSinceStartup + 30f;
+            while (landedAt < 0 && Time.realtimeSinceStartup < deadline) yield return null;
+            var wantKept = deathActs.FindAll(a => a.Tick < landedAt);
+            if (landedAt < 0 || runCount != landedAt || kept == null || RunLog.Encode(kept) != RunLog.Encode(wantKept))
+                Fail($"rewind: died at {deathTick}, landed at {landedAt}, run holds {runCount} ticks and {kept?.Count} actions (want {wantKept.Count})");
+            else notes.Add($"died at tick {deathTick}, rewound to {landedAt}: the run kept {kept.Count} of {deathActs.Count} actions, all before {landedAt}");
+
+            // 2. a win saves its run, which replays to a win at exactly the saved time
+            int i11 = Catalog.Levels.FindIndex(l => l.Id == "1-1");
+            var def = Catalog.Levels[i11];
+            var sol = Catalog.SolutionFor(def);
+            StartLevel(i11, false);
+            Session.IntroTime = 0.2f;
+            Session.Autoplay = sol.Actions;
+            Session.Speed = 3f;
+            var run = new RunWatch(Session);
+            while (Session.State != LevelSession.Mode.Won && run.Alive()) yield return null;
+            pendingComplete = null;
+            string saved = Save.Run(def.Id, out int savedTicks);
+            var decoded = RunLog.Decode(saved);
+            var end = decoded != null ? Solver.Replay(def, decoded, savedTicks + 20) : null;
+            if (end == null || !end.Won || end.Tick != savedTicks || savedTicks != Save.Best(def.Id))
+                Fail($"win: saved run \"{saved}\" ({savedTicks} ticks, best {Save.Best(def.Id)}) replays to won={end?.Won} at {end?.Tick}");
+            else notes.Add($"a win at {savedTicks} saved {decoded.Count} actions, which replay to a win at {end.Tick}");
+
+            // 3. the next attempt: the ghost stands where the run stood, tick by tick
+            StartLevel(i11, false);
+            Session.IntroTime = 0.2f;
+            Session.Autoplay = sol.Actions; // the same route, so the ghost and the player coincide
+            int samples = 0, off = 0, hidden = 0, lastTick = -1;
+            run = new RunWatch(Session);
+            while (Session.State != LevelSession.Mode.Won && run.Alive())
+            {
+                yield return null;
+                if (Session.State != LevelSession.Mode.Playing || Session.Tick == lastTick || bestRun == null) continue;
+                lastTick = Session.Tick;
+                samples++;
+                if (bestRun.TileAt(Session.Tick) != View.BoardView.PlayerTile(def, Session.Cur) || bestRun.FrozenAt(Session.Tick) != (Session.Cur.PFrozen > 0)) off++;
+                if (Session.Tick > 10 && !BestRunShowing) hidden++;
+            }
+            pendingComplete = null;
+            if (bestRun == null || samples < 50 || off > 0 || hidden > 0) Fail($"ghost: {samples} ticks sampled, {off} off the run's tile, {hidden} hidden");
+            else notes.Add($"the ghost matched the run's tile and freeze on {samples}/{samples} ticks");
+
+            // a still player, for the picture: the ghost walks off on its own
+            StartLevel(i11, false);
+            Session.IntroTime = 0.2f;
+            Session.Autoplay = new List<TimedAction>();
+            while (Session.Tick < 70 && Time.realtimeSinceStartup < deadline + 60f) yield return null;
+            Session.Paused = true;
+            yield return Shot(dir, "best-ghost_1-1");
+
+            // 4. the pause row hides it, and the choice is saved
+            State = Flow.Playing;
+            Pause();
+            var row = pause.Menu.Items.Find(it => it.Label == "Best-run ghost: On");
+            row?.Activate();
+            Resume();
+            Session.Paused = true;
+            yield return new WaitForSecondsRealtime(1f);
+            var back = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(Save));
+            bool offOk = row != null && !Save.bestGhost && !BestRunShowing && pause.Menu.Items.Exists(it => it.Label == "Best-run ghost: Off")
+                && !back.bestGhost && back.Run(def.Id, out int backTicks) == saved && backTicks == savedTicks;
+            Pause();
+            pause.Menu.Items.Find(it => it.Label == "Best-run ghost: Off")?.Activate();
+            Resume();
+            Session.Paused = true;
+            yield return new WaitForSecondsRealtime(1f);
+            bool onAgain = Save.bestGhost && BestRunShowing;
+            if (!offOk || !onAgain) Fail($"toggle: row found={row != null}, off hides it and saves={offOk}, on shows it again={onAgain}");
+            else notes.Add("the pause row hid it, the save kept Off and the run, and On brought it back");
+
+            // 5. a save from before the ghost, an unsettled level, Watch solution: no ghost
+            var old = JsonUtility.FromJson<SaveData>("{\"ids\":[\"1-1\"],\"best\":[200]}");
+            bool oldOk = old.bestGhost && old.Run("1-1", out _) == null;
+            old.Record("1-2", 180, "3:1");
+            oldOk &= old.Run("1-2", out int t12) == "3:1" && t12 == 180 && old.Run("1-1", out _) == null;
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "2-1"), false);
+            bool unsettled = bestRun == null;
+            StartWatch(i11);
+            yield return new WaitForSecondsRealtime(1.5f);
+            bool watchNone = !BestRunShowing;
+            if (!oldOk || !unsettled || !watchNone) Fail($"old save loads without a run={oldOk}, unsettled level has none={unsettled}, none while watching={watchNone}");
+            else notes.Add("a save from before loads with no ghost; an unsettled level and Watch solution show none");
+
+            forceBestRun = false;
+            Save.ids = ids; Save.best = best; Save.runs = runs; Save.runTicks = runTicks; Save.bestGhost = ghostWas;
+            StartLevel(0, false);
+            report("best-ghost", ok, string.Join("; ", notes));
         }
 
         /// <summary>

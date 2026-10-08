@@ -111,6 +111,17 @@ namespace BorrowedSeconds.Game
             if (ok && !froze) log.Add("FAIL the debt never froze the player");
             if (ok && !won) log.Add($"FAIL no win (dead={Session.Cur.Dead}, tick {Session.Cur.Tick})");
             ok &= froze && won;
+            // the win kept its run (the best-run ghost): it must replay to a win on the same tick
+            if (won)
+            {
+                string saved = Save.Run(def.Id, out int savedTicks);
+                var decoded = RunLog.Decode(saved);
+                var end = decoded != null ? Solver.Replay(def, decoded, savedTicks + 20) : null;
+                bool same = end != null && end.Won && end.Tick == Session.Cur.Tick && savedTicks == Session.Cur.Tick;
+                log.Add(same ? $"ok   the win's run was kept: {decoded.Count} actions, replayed in the simulation to a win at tick {end.Tick}"
+                             : $"FAIL the win's run \"{saved}\" ({savedTicks} ticks) replays to won={end?.Won} at {end?.Tick}, not {Session.Cur.Tick}");
+                ok &= same;
+            }
             yield return new WaitForSecondsRealtime(1.5f);
             ScreenCapture.CaptureScreenshot(Path.Combine(dir, "bot_4_win.png"));
             yield return null;
@@ -229,7 +240,7 @@ namespace BorrowedSeconds.Game
 
             yield return KeyTap(Key.Escape);
             yield return new WaitForSecondsRealtime(0.6f);
-            yield return KeyTap(Key.DownArrow, 4);              // Resume, Restart, Watch solution, Levels, Settings
+            yield return KeyTap(Key.DownArrow, 6);              // Resume, Restart, Show a clue, Watch solution, Best-run ghost, Levels, Settings
             yield return KeyTap(Key.Enter);
             yield return new WaitForSecondsRealtime(0.7f);
             yield return KeyTap(Key.DownArrow, SettingsScreen.ControlsRow);
@@ -803,10 +814,12 @@ namespace BorrowedSeconds.Game
                 yield return new WaitForSecondsRealtime(0.8f);
                 yield return PadTap(GamepadButton.Start);
                 yield return new WaitForSecondsRealtime(0.8f);
-                yield return PadTap(GamepadButton.DpadDown);
-                yield return new WaitForSecondsRealtime(0.15f);
-                yield return PadTap(GamepadButton.DpadDown);
-                yield return new WaitForSecondsRealtime(0.5f);
+                for (int i = 0; i < 3; i++) // Resume, Restart, Show a clue, Watch solution
+                {
+                    yield return PadTap(GamepadButton.DpadDown);
+                    yield return new WaitForSecondsRealtime(0.15f);
+                }
+                yield return new WaitForSecondsRealtime(0.35f);
                 yield return PadTap(GamepadButton.South);
                 deadline = Time.realtimeSinceStartup + 3f;
                 while (State != Flow.Watching && Time.realtimeSinceStartup < deadline) yield return null;

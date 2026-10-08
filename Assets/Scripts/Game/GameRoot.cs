@@ -95,6 +95,7 @@ namespace BorrowedSeconds.Game
             Audio = AudioDirector.Create(transform);
             BuildMenus();
             ApplySettings();
+            pause.SetGhostOn(Save.bestGhost);
             UnityEngine.InputSystem.InputSystem.onDeviceChange += OnDeviceChange;
         }
 
@@ -136,7 +137,7 @@ namespace BorrowedSeconds.Game
             title = new TitleScreen(root, () => Go(Continue), () => Go(() => ShowLevels(Save.lastLevel), 0.7f), () => OpenHowTo(Flow.Title), () => OpenSettings(Flow.Title), Quit,
                 () => Save.ids.Length == 0 ? "Begin" : Save.finished ? "Replay" : "Continue");
             levels = new LevelSelectScreen(root, Catalog, Save, i => Go(() => StartLevel(i, true)), () => Go(ShowTitle, 0.7f));
-            pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); }, ToggleClue, WatchFromPause,
+            pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); }, ToggleClue, WatchFromPause, ToggleBestRun,
                 () => { pause.Hide(); Go(() => ShowLevels(LevelIndex)); }, () => OpenSettings(Flow.Paused), () => OpenHowTo(Flow.Paused), () => { pause.Hide(); Go(ShowTitle); });
             settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, () => { ApplyDisplay(true); Save.Save(); }, CloseSettings, OpenControls, EraseProgress);
             controls = new ControlsScreen(root, () => Input.Keys, BindKey, ResetKeys, CloseControls);
@@ -358,6 +359,7 @@ namespace BorrowedSeconds.Game
             LoadLevel(index);
             if (clueLevel != index) clueLevel = -1; // a clue lasts while you stay on its level, restarts included
             ApplyClue();
+            LoadBestRun();
             Save.lastLevel = index;
             Save.Save();
             var def = Catalog.Levels[index];
@@ -422,6 +424,44 @@ namespace BorrowedSeconds.Game
             Hud.SetClue(clue.Obstacle, clue.Tile);
             pause.SetClueShown(clue.Valid);
             RefreshTip(false);
+        }
+
+        // ---------------------------------------------------------------- race your best
+
+        /// <summary>A ghost of the saved run on a settled level (null: none).</summary>
+        BestRunView bestRun;
+        /// <summary>Set by the best-ghost check: scripted runs otherwise never show the ghost.</summary>
+        bool forceBestRun;
+        /// <summary>The best-run ghost is on screen (checks read it).</summary>
+        public bool BestRunShowing => bestRun != null && bestRun.Showing;
+
+        void LoadBestRun()
+        {
+            bestRun = null;
+            if (Session == null || !Save.Cleared(Session.Def.Id)) return;
+            var run = RunLog.Decode(Save.Run(Session.Def.Id, out _));
+            if (run == null) return;
+            var view = new BestRunView(Session.Board, run);
+            if (view.Valid) bestRun = view;
+        }
+
+        /// <summary>Pause > Best-run ghost: On/Off (saved).</summary>
+        void ToggleBestRun()
+        {
+            Save.bestGhost = !Save.bestGhost;
+            Save.Save();
+            pause.SetGhostOn(Save.bestGhost);
+        }
+
+        void RenderBestRun()
+        {
+            if (bestRun == null || Session == null) return;
+            bool show = Save.bestGhost && !Session.Muted && (!capturing || forceBestRun)
+                && (State == Flow.Playing || State == Flow.Paused || State == Flow.Complete);
+            // the ghost keeps to the level's clock, rewinds included
+            float pos = Session.State == LevelSession.Mode.Rewinding ? Session.RewindPos : Session.Tick + Session.Alpha;
+            int tick = Mathf.FloorToInt(pos);
+            bestRun.Render(tick, pos - tick, show, Mathf.Min(Clock.Dt, 0.05f), Time.time);
         }
 
         void WatchFromPause()
@@ -657,7 +697,7 @@ namespace BorrowedSeconds.Game
             if (Session.Autoplay != null && State != Flow.Playing) return;
             var def = Session.Def;
             int prev = Save.Best(def.Id);
-            Save.Record(def.Id, Session.Tick);
+            Save.Record(def.Id, Session.Tick, RunLog.Encode(Session.Run.Actions()));
             if (LevelIndex + 1 < Catalog.Levels.Count) Save.lastLevel = LevelIndex + 1;
             if (!capturing) Save.Save();
             pendingComplete = (Session.Tick, Catalog.SolutionFor(def)?.Par ?? 0, prev);
@@ -690,6 +730,7 @@ namespace BorrowedSeconds.Game
             ending.Update(Input, dt, top(ending));
 
             if (Session == null) return;
+            RenderBestRun();
             if (Input.UsingGamepad != hintsForPad || (hintsForPad && Input.Pad != hintsPad)) ShowControlHints();
             var s = Session.Cur;
             Env.FrozenAmount = Mathf.MoveTowards(Env.FrozenAmount, s.PFrozen > 0 && !s.Dead && !Session.Muted ? 1f : 0f, dt * 4f);
@@ -774,6 +815,7 @@ namespace BorrowedSeconds.Game
             Session = new GameObject("Level " + def.Id).AddComponent<LevelSession>();
             Session.Init(def, Input, Cam);
             clue = NoClue; // StartLevel puts a clue back on its own level
+            bestRun = null; // and the best-run ghost
             Session.WaitForStart = !capturing || forceReadyHold; // the board can be read before the clock runs
             Session.Events += OnSimEvents;
             Prompts.ResetLevel();
