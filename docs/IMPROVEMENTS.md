@@ -737,3 +737,38 @@ Items run in this order. Scratch output stays in `Builds/r11/`. Every tool run h
 - **Verify:** the `best-ghost` check extended to compare the outlines with the run's frozen obstacles on every tick of 1-1 and of a laser and a rotor level; screenshot.
 
 **Not this round:** chapter VIII, replacing 7-4, the unlock rule, rotor aim, the HUD-size and background-mute defaults, a second Settings page and *Reset settings*, the launcher default, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio peak limit and the mix by ear, human playtesting.
+
+## Round 11 results
+
+All four items shipped on `improvements-11`. Final verification ran on commit `dea40d5` (the last code commit; the commit after it changes only docs and images), on the **release** build, with every game window inside the private compositor:
+- **EditMode:** 379/379 (`Tools/test.sh`, `Builds/r11/tests-final`; 91 new).
+- **Autopilot:** 35/35 at exactly par, every level `hud=0` (`Builds/r11/capture-release/autopilot.log`, each tick compared with `solutions.json`).
+- **`checks.sh`:** every check PASS, including the new `exit-pill`, the extended `clue`, `best-ghost` and `medal-pace`, and the real-compositor `real-focus` and `fullscreen`. *Watch solution* 35/35; audio balance median +10.9 dB, worst +6.0 dB, peak 0.86. The run took 572 s in game, 9 min 40 s wall (`Builds/r11/checks-release/checks.log`).
+- **Input bot:** every pass PASS (`Builds/r11/inputbot-release/inputbot.log`).
+- **`Tools/shapes.sh`:** four sizes, each level pass (`Builds/r11/shapes`).
+- **Solver:** 1-2 and 4-2 OK (`Builds/r11/validate.log`). No level data changed; the new and changed `Sim` files compile in the .NET solver.
+- **`Tools/docs_check.py`:** clean.
+
+The real save's SHA-256 and mtimes, and the real `~/.config/kwinrc`, `kwinoutputconfig.json` and `kglobalshortcutsrc`, were the same before and after the round (`Builds/r11/save-*`, `kwin-before.sha`). No process from this round's runs was left running. Images are in `docs/media/improvements/round11/`.
+
+| # | Item | Commit | Verification |
+|---|---|---|---|
+| 1 | The exit says why you can't leave yet | `58d2c87` | `exit-pill`: on 18 of the 19 dial levels, a run that reaches the exit before its dials latch shows *Exit sealed: latch every dial (0 of 2 latched)* (or *latch the dial first*), matching the simulation's count. Each run is the solver's route up to some tick and then straight for the exit, or seeded play. On 1-4, stepping off clears the pill. 2-1's route waits on the open exit in debt and reads *Pay your debt here: you leave as you thaw*; the pill is gone after the win. No exit pill showed off the exit. EditMode: the wording and counts on all 19 dial levels, and along all 35 routes, every tick spent standing on the exit without winning has one of the two reasons. Shots 01, 02. |
+| 2 | *Settled* says what you gained | `f6a3b4f` | `medal-pace`: real wins on 1-1 at par read *FIRST CLEAR* with no saved best, *NEW BEST −0.75s* over a best 0.75 s slower, and show no ribbon over a faster best. The ribbon widens to fit. Shot 05; `shapes.sh` shows it at 4:3. |
+| 3 | The clue follows your loans | `60e5ca3` | `clue`: still 35/35 through the pause menu. On the five multi-loan levels (1-3, 4-2, 4-5, 7-3, 7-5), playing the route with the clue on, the mark, ring, label (*FREEZE FIRST* / *FREEZE NEXT*) and tip matched the loans taken on all 890 sampled ticks; *FREEZE NEXT* showed on 39 free ticks. EditMode: on all 35 levels, one step per borrow, each with its target and the tile the route is frozen on at that debt (by replay); the step at each borrow and each freeze; past the last loan it stays on the last; an earlier state, which is what a rewind restores, is back on step 0. Shot 03. |
+| 4 | The best-run ghost shows what it froze | `dea40d5` | `best-ghost`: on 1-1 (block), 4-3 (lit laser bar) and 3-1 (rotor arms), the violet crystals drawn on each of 162, 161 and 169 drawn ticks were exactly the run's frozen obstacles, at the place a separate replay gives (60 ticks with one frozen on each). The round-10 parts of the check still pass. Shot 04. |
+
+**Notes and limits.**
+- **6-3's exit can't be reached sealed.** The exit sits beyond the dial on a one-tile lane, and the only way past the lane's block is the debt trick, which also latches the dial. Neither the route-then-exit search nor 200,000 seeded runs (in a scratch program) put a player there with the dial unlatched. Its wording is covered by the EditMode test.
+- **The exit note is common.** On 11 of the 35 routes (2-1, 2-2, 3-1, 4-2, 4-3, 5-1 to 5-4, 6-1 and 6-2) the solver's route reaches the open exit with its debt still running and waits there, so the *Pay your debt here* pill is something most players will see. It shows over the pawn, where the onboarding pills go, and takes priority over them.
+- **The clue moves on when you can borrow again,** which is on the tick you thaw. The routes of 1-3, 4-5, 7-3 and 7-5 borrow on that very tick, so on those routes *FREEZE NEXT* is only seen by a player slower than the solver. On a one-loan level, the obstacle's mark now goes while your loan is out and comes back after you thaw. Before, it came back as soon as the block unfroze.
+- **The ghost's crystals use the ghost's violet.** Where your run freezes the same thing in the same place, your own cyan crystal covers it.
+- ***Settled* doesn't show the old best on a slower clear.** That was already the case, and is unchanged: the ribbon only appears for a first clear or a new best. The scope's line saying a slower clear "still shows the best" was wrong about the existing behaviour.
+- **The trailer wasn't re-cut.** If it is re-recorded, a replay that waits on an exit with prompts on would now show the exit pill.
+- **Load.** The release `checks.sh` started at load 24 and the 5-minute average rose to 41 during it (other sessions); it passed. The input bot ran at 21–25 and the autopilot at 23–32. Development runs during the round went up to 29.
+
+**Decisions for the owner.**
+- Still open: chapter VIII's theme, replacing 7-4, the unlock rule, rotor aim, the HUD-size and *Mute in background* defaults, a second Settings page (and *Reset settings*, and a setting for the start hold), whether the clue or the ghost should wait for a few defaults, the launcher default (Wayland or X11), the audio peak limit (0.86 this round), the trailer re-cut, Windows Build Support, signing and notarization, a license, and releases.
+- The exit pill shows on every attempt, not just until learned. Keep it that way, or retire it after a few levels like the onboarding pills?
+
+Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including the exit pill, the clue's steps and the ghost's crystals), a listen to the mix, WebGL and touch, Windows (needs the module), why this desktop's XWayland hangs the player, and fractional scaling on the Wayland backend.

@@ -62,7 +62,7 @@ You plan where your future self will be standing when the debt comes due, and th
 - **Gate** (`A`–`E`): open while any plate of the same letter is pressed. It stays open while something stands in it, so it never crushes.
 - **Laser link:** a laser can be configured to go dark while a plate is held.
 - **Time-lock** (`L`): needs **3.0 s of continuous pressure** to latch, and latches permanently. Its 12 dial segments fill as it charges and reset instantly if pressure lifts. The exit is sealed until every lock is latched.
-- **Exit** (`E`): win by standing on it while it's unsealed **with no outstanding debt**. It reads "settle up before you leave": if you arrive in debt, you pay on the exit tile and leave as you thaw.
+- **Exit** (`E`): win by standing on it while it's unsealed **with no outstanding debt**. It reads "settle up before you leave": if you arrive in debt, you pay on the exit tile and leave as you thaw. A tag over the player says so on the tile, and on a sealed exit counts the dials still to latch.
 
 ### 4.6 Tick order (deterministic)
 
