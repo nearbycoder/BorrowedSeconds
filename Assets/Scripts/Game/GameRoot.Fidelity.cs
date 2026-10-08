@@ -195,6 +195,36 @@ namespace BorrowedSeconds.Game
         }
 
         /// <summary>
+        /// The camera survives long frames: after a borrow's punch-in, eight 400 ms frames (a loading
+        /// hitch on a busy machine) leave the punch spring settled and the board on screen. Before the
+        /// fix the spring's explicit step grew on every long frame and ended in NaN.
+        /// </summary>
+        IEnumerator CheckCameraHitch(string dir, System.Action<string, bool, string> report)
+        {
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "1-1"), false);
+            Hud.SkipIntro();
+            Session.AllowInput = false;
+            yield return new WaitForSecondsRealtime(1f);
+            Rig.Punch(0.9f);
+            yield return null;
+            float peak = 0f;
+            for (int i = 0; i < 8; i++)
+            {
+                System.Threading.Thread.Sleep(400);
+                yield return null;
+                peak = Mathf.Max(peak, Mathf.Abs(Rig.PunchAmount));
+            }
+            yield return new WaitForSecondsRealtime(1f);
+            var cp = Cam.transform.position;
+            bool finite = float.IsFinite(cp.x) && float.IsFinite(cp.y) && float.IsFinite(cp.z);
+            var sp = Cam.WorldToScreenPoint(Session.Board.At(Session.Def.Exit));
+            bool onScreen = finite && sp.z > 0 && sp.x >= 0 && sp.y >= 0 && sp.x < Screen.width && sp.y < Screen.height;
+            yield return Shot(dir, "camera-hitch");
+            report("camera-hitch", finite && onScreen && peak < 1f && Mathf.Abs(Rig.PunchAmount) < 0.01f,
+                $"punch peak {peak:0.###} over eight 400 ms frames, settled at {Rig.PunchAmount:0.####}; camera finite={finite}, exit on screen={onScreen} ({sp.x:0},{sp.y:0})");
+        }
+
+        /// <summary>
         /// -bsFidelityShots DIR (Tools/fidelity.sh): for each level in SHOTS, plays its solution to a
         /// fixed tick, holds it there and screenshots the same frame at every step; then, for each level
         /// in TIMED, plays its solution at each step (Low to Ultra, then Ultra to Low) and logs frame

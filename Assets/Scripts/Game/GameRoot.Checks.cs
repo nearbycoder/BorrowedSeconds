@@ -63,6 +63,7 @@ namespace BorrowedSeconds.Game
             if (Want("fidelity")) yield return CheckFidelity(dir, Report);
             if (Want("settings-help")) yield return CheckSettingsHelp(dir, Report);
             if (Want("menus-clear-hud")) yield return CheckMenusClearHud(dir, Report);
+            if (Want("camera-hitch")) yield return CheckCameraHitch(dir, Report);
             if (Want("how-to-play")) yield return CheckHowTo(dir, Report);
             if (Want("erase-progress")) yield return CheckErase(dir, Report);
             if (Want("hud-size")) yield return CheckHudSize(dir, Report);

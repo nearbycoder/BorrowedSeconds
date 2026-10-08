@@ -132,6 +132,9 @@ namespace BorrowedSeconds.View
 
         public void Punch(float amount) => punchVel += amount;
 
+        /// <summary>The punch-in spring's position (checks read it).</summary>
+        public float PunchAmount => punch;
+
         /// <summary>Jumps to the current framing with no easing, shake or punch (for cuts).</summary>
         public void Snap()
         {
@@ -150,9 +153,13 @@ namespace BorrowedSeconds.View
             focus = Vector3.Lerp(focus, targetFocus, k);
             distance = Mathf.Lerp(distance, targetDistance, k);
 
-            // spring for punch-ins
-            punchVel += (-punch * 90f - punchVel * 14f) * dt;
-            punch += punchVel * dt;
+            // spring for punch-ins; stepped at most 1/30 s at a time: a long frame (a loading hitch under
+            // load) made the explicit step overshoot, grow on each long frame and end in NaN, which left
+            // the camera unable to draw the board for the rest of the session
+            float sdt = Mathf.Min(dt, 1f / 30f);
+            punchVel += (-punch * 90f - punchVel * 14f) * sdt;
+            punch += punchVel * sdt;
+            if (!float.IsFinite(punch) || !float.IsFinite(punchVel)) punch = punchVel = 0f;
 
             shake = Mathf.MoveTowards(shake, 0f, dt * 2.5f);
             float t = Clock.Now;
