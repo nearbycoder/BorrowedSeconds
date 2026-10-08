@@ -75,6 +75,13 @@ namespace BorrowedSeconds.Tests
         }
 
         [Test]
+        public void EveryStepKeepsTheBloomVariantTheBuildCarries()
+        {
+            // builds only carry high-quality bloom (the only setting the game had); without it beams lost their glow
+            foreach (var s in S) Assert.IsTrue(s.BloomHighQuality, s.Name);
+        }
+
+        [Test]
         public void EveryStepSaysWhatItChanges()
         {
             foreach (var s in S)

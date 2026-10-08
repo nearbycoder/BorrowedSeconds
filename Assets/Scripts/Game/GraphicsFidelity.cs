@@ -24,7 +24,7 @@ namespace BorrowedSeconds.Game
             public int Msaa;
             public Aa Antialiasing;
             public bool BloomHalfRes;        // else quarter resolution
-            public bool BloomHighQuality;
+            public bool BloomHighQuality;    // on at every step: builds only carry the high-quality bloom variant (off, beams lost their glow)
             public float AoIntensity;        // URP's SSAO renderer feature (0 = off); the game always had 0.4
             public float AoRadius;
             public bool AoDownsample;        // half-resolution occlusion
@@ -43,15 +43,15 @@ namespace BorrowedSeconds.Game
             new Step
             {
                 Name = "Low", SoftShadows = false, ShadowResolution = 1024, Cascades = 1, Msaa = 1, Antialiasing = Aa.Fxaa,
-                BloomHalfRes = false, BloomHighQuality = false, Particles = 0.5f, WatchTexture = 0.75f, WatchMsaa = 2,
+                BloomHalfRes = false, BloomHighQuality = true, Particles = 0.5f, WatchTexture = 0.75f, WatchMsaa = 2,
                 Summary = "Hard 1024 shadows, no ambient occlusion, FXAA, quarter-size bloom, half the particles.",
             },
             new Step
             {
                 Name = "Medium", SoftShadows = true, ShadowResolution = 2048, Cascades = 2, Msaa = 2, Antialiasing = Aa.SmaaMedium,
-                BloomHalfRes = true, BloomHighQuality = false, AoIntensity = 0.4f, AoRadius = 0.3f, AoDownsample = true, AoFastBlur = true,
+                BloomHalfRes = true, BloomHighQuality = true, AoIntensity = 0.4f, AoRadius = 0.3f, AoDownsample = true, AoFastBlur = true,
                 Particles = 0.75f, WatchTexture = 1f, WatchMsaa = 4,
-                Summary = "Soft 2048 shadows, half-size ambient occlusion, 2× MSAA with SMAA, lighter bloom.",
+                Summary = "Soft 2048 shadows, half-size ambient occlusion, 2× MSAA with SMAA, fewer particles.",
             },
             new Step
             {
