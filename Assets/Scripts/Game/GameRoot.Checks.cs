@@ -1381,6 +1381,7 @@ namespace BorrowedSeconds.Game
             for (int i = 0; i < Catalog.Levels.Count; i++)
             {
                 var def = Catalog.Levels[i];
+                var steps = Clue.Steps(def, Catalog.SolutionFor(def).Actions);
                 var want = Clue.For(def, Catalog.SolutionFor(def).Actions);
                 StartLevel(i, false);
                 Session.AllowInput = false;
@@ -1391,7 +1392,8 @@ namespace BorrowedSeconds.Game
                 yield return null;
                 string tip = Hud.TipText;
                 bool ok = State == Flow.Playing && Session.Board.ClueObstacle == want.Obstacle && Session.Board.ClueTile == want.Tile
-                    && Marked() == 1 && Hud.ClueShown && tip.Contains("Clue:") && tip.Contains(want.Words(def))
+                    && steps.Count > 0 && steps[0].Obstacle == want.Obstacle && steps[0].Tile == want.Tile && Hud.ClueObstacleLabel == "FREEZE FIRST"
+                    && Marked() == 1 && Hud.ClueShown && tip.Contains("Clue:") && tip.Contains(want.Words(def, 0, steps.Count))
                     && pause.Menu.Items.Exists(it => it.Label == "Hide the clue");
                 if (ok) shown++;
                 else bad.Add($"{def.Id}: marked {Session.Board.ClueObstacle}/{want.Obstacle} ({Marked()} piece(s)), ring {Session.Board.ClueTile}/{want.Tile}, labels {Hud.ClueShown}, state {State}");
@@ -1401,6 +1403,64 @@ namespace BorrowedSeconds.Game
                     yield return Shot(dir, $"clue_{def.Id}");
                 }
             }
+            // the levels whose route takes more than one loan: playing the route, the clue follows the
+            // loans taken on every sampled tick (the board, the labels and the tip)
+            var stepNotes = new List<string>();
+            int nextShown = 0;
+            bool shotNext = false;
+            foreach (var id in new[] { "1-3", "4-2", "4-5", "7-3", "7-5" })
+            {
+                int li = Catalog.Levels.FindIndex(l => l.Id == id);
+                var def = Catalog.Levels[li];
+                var sol = Catalog.SolutionFor(def);
+                var steps = Clue.Steps(def, sol.Actions);
+                StartLevel(li, false);
+                Pause();
+                pause.Menu.Items.Find(it => it.Label == "Show a clue")?.Activate();
+                Session.IntroTime = 0.2f;
+                Session.Autoplay = sol.Actions; // after the clue is applied, so it stays on
+                Session.Speed = 4f;
+                var seen = new HashSet<string>();
+                int samples = 0, wrong = 0;
+                string firstWrong = null;
+                var run = new RunWatch(Session);
+                while (Session.State != LevelSession.Mode.Won && run.Alive())
+                {
+                    Session.Paused = false;
+                    yield return null;
+                    // a frame with the clock held, so the game has caught up with this tick
+                    Session.Paused = true;
+                    yield return null;
+                    if (Session.State != LevelSession.Mode.Playing) continue;
+                    var cur = Session.Cur;
+                    int k = Clue.StepFor(cur, steps.Count);
+                    bool loanOut = Clue.LoanOut(cur);
+                    int wantObstacle = loanOut ? -1 : steps[k].Obstacle;
+                    string label = Clue.ObstacleLabel(k), words = steps[k].Words(def, k, steps.Count);
+                    samples++;
+                    seen.Add($"{k}{(loanOut ? "out" : "")}");
+                    bool ok = Session.Board.ClueObstacle == wantObstacle && Session.Board.ClueTile == steps[k].Tile && Marked() == (wantObstacle >= 0 ? 1 : 0)
+                        && Hud.ClueObstacleLabel == label && Hud.TipText.Contains(words);
+                    if (!ok && wrong++ == 0)
+                        firstWrong = $"{id} tick {cur.Tick} (loans {cur.Loans}, out {loanOut}): step {k} wants {wantObstacle}/{steps[k].Tile} \"{label}\", shows {Session.Board.ClueObstacle}/{Session.Board.ClueTile} \"{Hud.ClueObstacleLabel}\"";
+                    if (ok && k > 0 && !loanOut) nextShown++;
+                    if (ok && k > 0 && !loanOut && id == "4-2" && !shotNext)
+                    {
+                        shotNext = true;
+                        yield return new WaitForSecondsRealtime(0.6f); // the labels fade in
+                        yield return Shot(dir, "clue-next_4-2");
+                    }
+                }
+                Session.Paused = false;
+                pendingComplete = null;
+                bool every = true;
+                for (int k = 0; k < steps.Count; k++) every &= seen.Contains($"{k}out") || seen.Contains($"{k}");
+                if (Session.State != LevelSession.Mode.Won || wrong > 0 || !every || steps.Count < 2)
+                    bad.Add($"{id}: {steps.Count} steps, won={Session.State == LevelSession.Mode.Won}, {wrong}/{samples} ticks wrong, steps seen {string.Join(" ", seen)}" + (firstWrong != null ? "; first: " + firstWrong : ""));
+                stepNotes.Add($"{id} {steps.Count} loans {samples} ticks");
+            }
+            if (nextShown == 0) bad.Add("FREEZE NEXT never showed on a free tick");
+
             // 1-5: a restart keeps it, the row hides it, leaving the level drops it
             int index = Catalog.Levels.FindIndex(l => l.Id == "1-5");
             StartLevel(index, false);
@@ -1420,7 +1480,8 @@ namespace BorrowedSeconds.Game
             StartLevel(index, false);
             bool dropped = Session.Board.ClueTile < 0 && !Hud.TipText.Contains("Clue:");
             report("clue", bad.Count == 0 && kept && hidden && dropped,
-                $"{shown}/{Catalog.Levels.Count} levels marked and labelled through Pause > Show a clue; 1-5: kept through a restart={kept}, hidden from the row={hidden}, dropped on leaving={dropped}"
+                $"{shown}/{Catalog.Levels.Count} levels marked and labelled through Pause > Show a clue; following the loans on the route: {string.Join(", ", stepNotes)} ({nextShown} ticks showed FREEZE NEXT); "
+                + $"1-5: kept through a restart={kept}, hidden from the row={hidden}, dropped on leaving={dropped}"
                 + (bad.Count > 0 ? "; " + string.Join("; ", bad) : ""));
         }
 

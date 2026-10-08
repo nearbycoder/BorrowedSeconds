@@ -342,13 +342,18 @@ namespace BorrowedSeconds.UI
             return rt;
         }
 
-        /// <summary>The clue's labels: over the obstacle to freeze first and over the tile where the
-        /// route's first debt falls due (-1: none).</summary>
-        public void SetClue(int obstacle, int tile)
+        /// <summary>The clue's labels: over the obstacle to freeze (FREEZE FIRST, or FREEZE NEXT on a
+        /// later loan) and over the tile where that loan's debt falls due (-1: none).</summary>
+        public void SetClue(int obstacle, int tile, string obstacleLabel = "FREEZE FIRST")
         {
             clueObstacle = obstacle;
             clueTile = tile;
+            var t = clueObstacleTag.GetComponentInChildren<TextMeshProUGUI>();
+            if (t.text != obstacleLabel) t.text = obstacleLabel;
         }
+
+        /// <summary>The obstacle label's words (checks read them).</summary>
+        public string ClueObstacleLabel => clueObstacleTag.GetComponentInChildren<TextMeshProUGUI>().text;
 
         void PlaceClueLabel(RectTransform rt, CanvasGroup g, bool show, Vector3 world, float dt)
         {

@@ -400,7 +400,11 @@ namespace BorrowedSeconds.Game
         /// <summary>The level whose clue is showing (-1: none). Leaving the level drops it.</summary>
         int clueLevel = -1;
         static readonly Clue NoClue = new Clue(-1, -1, -1, -1);
+        /// <summary>The step showing (one per loan of the route) and all of them.</summary>
         Clue clue = NoClue;
+        List<Clue> clueSteps = new List<Clue>();
+        int clueStep = -2;
+        bool clueLoanOut;
 
         /// <summary>Pause > Show a clue / Hide the clue: toggles the clue and goes back to the level.</summary>
         void ToggleClue()
@@ -418,12 +422,30 @@ namespace BorrowedSeconds.Game
             if (Session == null) return;
             var sol = Catalog.SolutionFor(Session.Def);
             bool show = clueLevel == LevelIndex && State != Flow.Watching && Session.Autoplay == null && sol != null;
-            clue = show ? Clue.For(Session.Def, sol.Actions) : NoClue;
-            if (!clue.Valid) clue = NoClue;
-            Session.Board.SetClue(clue.Obstacle, clue.Tile);
-            Hud.SetClue(clue.Obstacle, clue.Tile);
-            pause.SetClueShown(clue.Valid);
+            clueSteps = show ? Clue.Steps(Session.Def, sol.Actions) : new List<Clue>();
+            clueSteps.RemoveAll(c => !c.Valid);
+            clueStep = -2; // not a step: the board and HUD take whatever comes next
+            UpdateClueStep();
+            pause.SetClueShown(clueSteps.Count > 0);
             RefreshTip(false);
+        }
+
+        /// <summary>The clue follows the loans taken (rewinds included): the step's obstacle is marked
+        /// until you borrow, its debt tile until you thaw from that loan, then the next step.</summary>
+        void UpdateClueStep()
+        {
+            if (Session == null) return;
+            int step = Clue.StepFor(Session.Cur, clueSteps.Count);
+            bool loanOut = Clue.LoanOut(Session.Cur);
+            if (step == clueStep && loanOut == clueLoanOut) return;
+            bool moved = step != clueStep;
+            clueStep = step;
+            clueLoanOut = loanOut;
+            clue = step >= 0 ? clueSteps[step] : NoClue;
+            int obstacle = clue.Valid && !loanOut ? clue.Obstacle : -1;
+            Session.Board.SetClue(obstacle, clue.Tile);
+            Hud.SetClue(obstacle, clue.Tile, Clue.ObstacleLabel(step));
+            if (moved && clue.Valid) RefreshTip(false);
         }
 
         // ---------------------------------------------------------------- race your best
@@ -522,7 +544,7 @@ namespace BorrowedSeconds.Game
             else if (attemptDeaths >= NudgeAfterDeaths)
                 text += (text.Length > 0 ? "\n" : "") + "<size=20><color=#C9D3F0>Still stuck? Pause and choose <b>Watch solution</b>.</color></size>";
             if (State != Flow.Watching && clue.Valid)
-                text += (text.Length > 0 ? "\n" : "") + $"<color=#FFD27A><b>Clue:</b></color> {clue.Words(def)}";
+                text += (text.Length > 0 ? "\n" : "") + $"<color=#FFD27A><b>Clue:</b></color> {clue.Words(def, clueStep, clueSteps.Count)}";
             if (slideIn) Hud.SetTip(text); else Hud.SetTipText(text);
         }
 
@@ -730,6 +752,7 @@ namespace BorrowedSeconds.Game
             ending.Update(Input, dt, top(ending));
 
             if (Session == null) return;
+            UpdateClueStep();
             RenderBestRun();
             if (Input.UsingGamepad != hintsForPad || (hintsForPad && Input.Pad != hintsPad)) ShowControlHints();
             var s = Session.Cur;
@@ -815,6 +838,8 @@ namespace BorrowedSeconds.Game
             Session = new GameObject("Level " + def.Id).AddComponent<LevelSession>();
             Session.Init(def, Input, Cam);
             clue = NoClue; // StartLevel puts a clue back on its own level
+            clueSteps = new List<Clue>();
+            clueStep = -2;
             bestRun = null; // and the best-run ghost
             Session.WaitForStart = !capturing || forceReadyHold; // the board can be read before the clock runs
             Session.Events += OnSimEvents;

@@ -72,6 +72,72 @@ namespace BorrowedSeconds.Tests
             Assert.AreEqual($"freeze the {kind} marked FREEZE FIRST, and be on the tile marked DEBT HERE when your debt falls due.", words);
         }
 
+        /// <summary>One step per loan: each borrow's target, and the tile the route is frozen on when
+        /// that loan's debt falls due; a player in the route's state is on the right step.</summary>
+        [TestCaseSource(nameof(LevelIds))]
+        public void StepsFollowEveryLoan(string id)
+        {
+            Load();
+            var d = levels.Find(l => l.Id == id);
+            var (par, actions) = solutions[id];
+            var steps = Clue.Steps(d, actions);
+            var borrows = actions.FindAll(a => Act.IsBorrow(a.Action));
+            Assert.AreEqual(borrows.Count, steps.Count, "a step per loan");
+            var first = Clue.For(d, actions);
+            Assert.AreEqual(first.Obstacle, steps[0].Obstacle);
+            Assert.AreEqual(first.Tile, steps[0].Tile);
+            Assert.AreEqual(first.FreezeTick, steps[0].FreezeTick);
+
+            var s = Simulation.Create(d);
+            SimState early = null;
+            int k = 0;
+            while (!s.Won && !s.Dead && s.Tick <= par)
+            {
+                for (int n = 0; n < steps.Count; n++)
+                {
+                    if (s.Tick == steps[n].BorrowTick)
+                    {
+                        Assert.IsFalse(Clue.LoanOut(s), $"step {n}: free to borrow at {s.Tick}");
+                        Assert.IsTrue(s.CanActNext);
+                        Assert.AreEqual(n, Clue.StepFor(s, steps.Count), $"on step {n} when its borrow comes");
+                    }
+                    if (s.Tick == steps[n].FreezeTick)
+                    {
+                        Assert.Greater(s.PFrozen, 0, $"step {n}: frozen at its tick");
+                        Assert.AreEqual(steps[n].Tile, s.P, $"step {n}: on its tile");
+                        Assert.AreEqual(n, Clue.StepFor(s, steps.Count), $"still on step {n} while its debt is paid");
+                    }
+                }
+                if (s.Tick == steps[0].BorrowTick + 1) early = s.Clone();
+                int act = k < actions.Count && actions[k].Tick == s.Tick ? actions[k++].Action : Act.None;
+                if (Act.IsBorrow(act))
+                {
+                    int n = borrows.FindIndex(b => b.Tick == s.Tick);
+                    Assert.AreEqual(Act.BorrowTarget(act), steps[n].Obstacle, $"step {n} names borrow {n}'s target");
+                    Assert.Less(steps[n].BorrowTick, steps[n].FreezeTick);
+                    if (n > 0) Assert.Greater(steps[n].BorrowTick, steps[n - 1].FreezeTick, "one loan at a time");
+                }
+                Simulation.Step(d, s, act);
+            }
+            Assert.IsTrue(s.Won);
+            Assert.AreEqual(steps.Count - 1, Clue.StepFor(s, steps.Count), "past the last loan it stays on the last step");
+            Assert.AreEqual(0, Clue.StepFor(early, steps.Count), "a state from the first loan (what a rewind restores) is on step 0");
+        }
+
+        [Test]
+        public void StepWords()
+        {
+            Load();
+            var d = levels.Find(l => l.Id == "4-2");
+            var steps = Clue.Steps(d, solutions["4-2"].actions);
+            Assert.AreEqual(3, steps.Count);
+            Assert.AreEqual("for loan 2 of 3, freeze the laser marked FREEZE NEXT, and be on the tile marked DEBT HERE when its debt falls due.", steps[1].Words(d, 1, 3));
+            Assert.AreEqual(steps[0].Words(d), steps[0].Words(d, 0, 1), "one loan: the words as before");
+            Assert.AreEqual("FREEZE FIRST", Clue.ObstacleLabel(0));
+            Assert.AreEqual("FREEZE NEXT", Clue.ObstacleLabel(2));
+            Assert.AreEqual(-1, Clue.StepFor(Simulation.Create(d), 0), "no steps, no step");
+        }
+
         [Test]
         public void NoBorrowNoClue()
         {
