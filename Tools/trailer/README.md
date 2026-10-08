@@ -6,11 +6,17 @@ Tools/trailer/make_trailer.sh           # record every shot, cut, score, encode,
 Tools/trailer/make_trailer.sh --cut     # re-cut and re-score the clips already recorded
 Tools/trailer/make_trailer.sh --stills  # screenshots only
 Tools/trailer/record.sh --only a,b      # re-record some shots
+Tools/trailer/record.sh --fidelity 2    # record at another Graphics fidelity step (0 Low .. 3 Ultra)
 ```
 
 Outputs: `docs/media/trailer.mp4`, `trailer-poster.jpg`, `teaser.webp` and `screenshots/*.png`.
-Intermediate clips, logs and stems go to `Builds/Trailer/` (gitignored). The scripts need
-ffmpeg, ImageMagick and Blender (its bundled Python provides numpy).
+Intermediate clips, logs and stems go to `Builds/Trailer/` (gitignored; `BS_TRAILER_DIR` picks another
+folder). The scripts need ffmpeg, ImageMagick and Blender (its bundled Python provides numpy).
+
+The game window opens in a private headless KWin (`Tools/nested.sh`, at 1× scale so the window renders
+exactly 1920×1080), never on the desktop; `BS_NESTED=0` opts out. Clips are recorded at Graphics
+fidelity *Ultra*: capture is frame-locked, so the step costs only recording time. The README
+screenshots (`--stills`) use *High*, the game's default look.
 
 ## How it works
 
@@ -41,7 +47,8 @@ ffmpeg, ImageMagick and Blender (its bundled Python provides numpy).
 | `zoom`, `zoomTo`, `zoomTime`, `shiftX`, `lean`, `pan` | Camera: distance, a push-in over time, a sideways shift, a lean toward `[x, y, amount]`, a world pan `[x, z]`. |
 | `captions` | `{at or tick, out or outTick, pos: tl/tr/bl/br, kicker, head, sub, wrap}` caption cards. |
 | `stamps` | `{at, text, sub, band: "hold"}` stamped titles in a band across the top. |
-| `events` | `{at, do: pause / settings / select / adjust, arg}` scripted menu moves. |
+| `events` | `{at, do: pause / settings / select / adjust, arg}` scripted menu moves; `do: fidelity` shows the board at Graphics fidelity step `arg` (0 Low .. 3 Ultra) until the next shot. |
+| `clue`, `ghost`, `fullHud` | Show the level's clue (Pause > *Show a clue*); make the solver's route at par the level's best run and show its violet ghost (race it with a `shift`); show the full play HUD (level title, clock and medal coin, tip, key row), framed clear of it as play is. With `fullHud`, put captions at `br`, the corner the HUD leaves free. |
 | `prompts`, `learned`, `hud`, `muted`, `blur`, `keep` | Show the onboarding prompts (with `learned` bits already retired), show the HUD, silence the board, blur it, keep captions up to the cut. |
 | `stills` | `{at or tick, name}` screenshots for `--stills`. |
 | `transition`, `xfade` | The cut into this shot: any ffmpeg `xfade` transition, and its length (`0` is a hard cut). |

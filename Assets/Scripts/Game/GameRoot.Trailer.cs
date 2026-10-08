@@ -81,6 +81,8 @@ namespace BorrowedSeconds.Game
             Save.ReadOnly = true;
             Save.ids = new string[0];
             Save.best = new int[0];
+            Save.runs = new string[0];
+            Save.runTicks = new int[0];
             Save.learned = ~0;
             DefaultSettings();
             for (int i = 0; i < Catalog.Levels.Count - 4; i++)
@@ -100,6 +102,7 @@ namespace BorrowedSeconds.Game
             Save.focus = 0.2f;
             Save.shake = true;
             Save.reduceFlashing = false;
+            Save.fidelity = fidelityArg; // Settings shows the step the run renders at (-bsFidelity)
             ApplySettings();
         }
 
@@ -116,6 +119,9 @@ namespace BorrowedSeconds.Game
                 Session.ForcedFocus = false;
                 Session.Speed = 1f;
             }
+            forceBestRun = false;
+            clueLevel = -1;
+            ApplyClue();
             trailerBlur = Num(next, "blur", 0f); // already up when the next clip starts
             Hud.SetVisible(MiniJson.Bool(next, "hud", MiniJson.Str(next, "type", "level") == "level"));
             for (int i = 0; i < 30; i++) yield return null;
@@ -136,7 +142,15 @@ namespace BorrowedSeconds.Game
 
             void Backdrop(bool muted, bool inPlay = false)
             {
+                if (MiniJson.Bool(s, "ghost", false))
+                {
+                    // "ghost": the level's best run is the solver's route at par, raced by the replay
+                    var sol = Catalog.SolutionFor(Catalog.Levels[li]);
+                    if (sol != null) Save.Record(levelId, sol.Par, RunLog.Encode(sol.Actions));
+                    forceBestRun = true;
+                }
                 LoadLevel(li);
+                if (forceBestRun) LoadBestRun();
                 acts = ReplayFor(Catalog.Levels[li], s);
                 Session.Autoplay = acts;
                 Session.AllowInput = false;
@@ -189,6 +203,15 @@ namespace BorrowedSeconds.Game
                     Backdrop(MiniJson.Bool(s, "muted", false), true);
                     State = Flow.Playing;
                     break;
+            }
+            if (MiniJson.Bool(s, "clue", false) && Session != null)
+            {
+                // "clue": Pause > Show a clue, as a player would ask for it; it follows the replay's loans
+                var replay = Session.Autoplay;
+                Session.Autoplay = null;
+                clueLevel = li;
+                ApplyClue();
+                Session.Autoplay = replay;
             }
             if (type != "chapter") // the chapter card brings the HUD in itself when it closes
             {
@@ -337,6 +360,9 @@ namespace BorrowedSeconds.Game
                     else if (pause.Visible) { pause.Menu.Selected = arg; Sfx.Play("ui_hover"); }
                     else if (levels.Visible) levels.Select(arg);
                     break;
+                case "fidelity": // the board at another Graphics fidelity step, until the next shot
+                    GraphicsFidelity.Apply(arg, Cam, Env.Sun, Env);
+                    break;
                 case "adjust":
                     if (!settings.Visible) break;
                     var item = settings.Menu.Items[settings.Menu.Selected];
@@ -385,9 +411,10 @@ namespace BorrowedSeconds.Game
             }
             var pan = MiniJson.List(s, "pan");
             if (pan.Count >= 2) Rig.Offset += new Vector3(Num(pan, 0, 0f), 0f, Num(pan, 1, 0f));
-            // stills of a level in play also keep tiles out from under the HUD, as play does (the title and
-            // menus have no HUD to clear); the trailer's own shots keep their framing, so the cut stays reproducible
-            Rig.Frame(board.Bounds, true, stillsRun && withHud ? board.TileTops : null);
+            // stills of a level in play, and shots with the full HUD, also keep tiles out from under the HUD, as
+            // play does (the title and menus have no HUD to clear); other shots keep their own framing
+            bool clearHud = stillsRun || MiniJson.Bool(s, "fullHud", false);
+            Rig.Frame(board.Bounds, true, clearHud && withHud ? board.TileTops : null);
             Rig.Snap();
         }
 

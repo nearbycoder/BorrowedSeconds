@@ -3,7 +3,7 @@
     compose.py [--out docs/media/trailer.mp4] [--mb 36]
 
 Reads Tools/trailer/shots.json for the edit (order, transitions, music, extra sound effects) and
-Builds/Trailer/clips/<shot>.video.mp4 + <shot>.audio.log for the pictures and the game's own sound
+Builds/Trailer/clips/<shot>.video.mp4 + <shot>.audio.log (or $BS_TRAILER_DIR/clips) for the pictures and the game's own sound
 events (Tools/trailer/record.sh makes them). The soundtrack is rebuilt offline:
 
 * effects: every one-shot the game played in each clip, at its exact frame, with the in-game
@@ -30,8 +30,8 @@ sys.path.insert(0, os.path.join(ROOT, "Tools", "demo"))
 from mix import SR, load, lowpass  # noqa: E402
 
 FPS = 60
-CLIPS = os.path.join(ROOT, "Builds", "Trailer", "clips")
-WORK = os.path.join(ROOT, "Builds", "Trailer")
+WORK = os.path.abspath(os.environ.get("BS_TRAILER_DIR") or os.path.join(ROOT, "Builds", "Trailer"))
+CLIPS = os.path.join(WORK, "clips")
 BAR = 4 * 60 / 96  # every music loop is 96 BPM in 4/4
 
 

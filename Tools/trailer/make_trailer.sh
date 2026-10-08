@@ -4,12 +4,13 @@
 #                                             teaser loop and screenshots
 #   Tools/trailer/make_trailer.sh --cut       re-cut from the clips already in Builds/Trailer/clips
 #   Tools/trailer/make_trailer.sh --stills    screenshots only
-# Writes docs/media/trailer.mp4, trailer-poster.jpg, teaser.webp and screenshots/*.png.
+# Writes docs/media/trailer.mp4, trailer-poster.jpg, teaser.webp and screenshots/*.png. Work files go to
+# Builds/Trailer (BS_TRAILER_DIR sets another folder). Clips record at Ultra, stills at High (record.sh).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HERE="$ROOT/Tools/trailer"
 MEDIA="$ROOT/docs/media"
-WORK="$ROOT/Builds/Trailer"
+WORK="$(realpath -m "${BS_TRAILER_DIR:-$ROOT/Builds/Trailer}")"; export BS_TRAILER_DIR="$WORK"
 FONT="$ROOT/Assets/Resources/Fonts/FiraSans-SemiBold.ttf"
 if [ -z "${PYTHON:-}" ]; then
   BL="$(dirname "$(readlink -f "$(command -v blender)")")"
