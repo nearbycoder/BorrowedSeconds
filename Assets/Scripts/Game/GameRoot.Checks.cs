@@ -42,6 +42,7 @@ namespace BorrowedSeconds.Game
             if (Want("ready-hold")) yield return CheckReadyHold(dir, Report);
             if (Want("clue")) yield return CheckClue(dir, Report);
             if (Want("best-ghost")) yield return CheckBestGhost(dir, Report);
+            if (Want("exit-pill")) yield return CheckExitPill(dir, Report);
             if (Want("focus")) yield return CheckFocusPause(dir, Report);
             if (Want("hint")) yield return CheckHint(dir, Report);
             if (Want("ledger-tips")) yield return CheckLedgerTips(dir, Report);
@@ -1388,6 +1389,165 @@ namespace BorrowedSeconds.Game
             report("clue", bad.Count == 0 && kept && hidden && dropped,
                 $"{shown}/{Catalog.Levels.Count} levels marked and labelled through Pause > Show a clue; 1-5: kept through a restart={kept}, hidden from the row={hidden}, dropped on leaving={dropped}"
                 + (bad.Count > 0 ? "; " + string.Join("; ", bad) : ""));
+        }
+
+        /// <summary>
+        /// The exit says why it won't let you leave. On each dial level, a run that reaches the exit
+        /// before the dials latch (the route up to some tick, then straight for the exit; or seeded
+        /// play) stands there with the pill naming the latched count; it goes when the player steps
+        /// off. On 2-1 the route waits on the open exit in debt, and the pill says so. No exit pill
+        /// anywhere else on those runs.
+        /// </summary>
+        IEnumerator CheckExitPill(string dir, System.Action<string, bool, string> report)
+        {
+            promptDemo = true; // the pills, which scripted runs normally hide
+            var bad = new List<string>();
+            var missing = new List<string>();
+            int shown = 0, dialLevels = 0, stray = 0;
+            bool IsExitNote(string t) => t != null && (t.Contains("Exit sealed") || t.Contains("Pay your debt here"));
+            // runs a level on these actions until it stands on the exit with the note it expects
+            IEnumerator Run(int index, List<TimedAction> acts, ExitNote.Kind want, System.Action<bool> done)
+            {
+                var def = Catalog.Levels[index];
+                LoadLevel(index);
+                State = Flow.Playing;
+                Hud.SetVisible(true);
+                Session.IntroTime = 0.2f;
+                Session.Autoplay = acts;
+                Session.Speed = 3f;
+                var run = new RunWatch(Session, 60f);
+                var last = ExitNote.Kind.None;
+                while (run.Alive() && Session.State != LevelSession.Mode.Won && !Session.Cur.Dead)
+                {
+                    yield return null;
+                    var kind = ExitNote.Of(def, Session.Cur, out _);
+                    // a frame's grace: the pill may follow the simulation a frame late
+                    if (kind == ExitNote.Kind.None && last == ExitNote.Kind.None && IsExitNote(Prompts.PlayerNote)) stray++;
+                    last = kind;
+                    if (kind == want) { Session.Paused = true; break; }
+                }
+                yield return new WaitForSecondsRealtime(0.6f); // the pill fades in
+                done(ExitNote.Of(def, Session.Cur, out _) == want);
+            }
+
+            for (int i = 0; i < Catalog.Levels.Count; i++)
+            {
+                var def = Catalog.Levels[i];
+                if (def.Locks.Length == 0) continue;
+                dialLevels++;
+                var acts = FindSealedExit(def, Catalog.SolutionFor(def).Actions);
+                if (acts == null) { missing.Add(def.Id); continue; }
+                bool there = false;
+                yield return Run(i, acts, ExitNote.Kind.Sealed, b => there = b);
+                string want = ExitNote.Line(def, Session.Cur), note = Prompts.PlayerNote;
+                bool ok = there && want.StartsWith("Exit sealed") && note != null && note.Contains("Exit sealed") && note.Contains(want.Substring(want.IndexOf(':')))
+                    && Prompts.PlayerText == note;
+                if (ok) shown++; else bad.Add($"{def.Id}: on the sealed exit={there}, pill \"{note}\", want \"{want}\"");
+                if (def.Id == "4-1" && ok) yield return Shot(dir, "exit-sealed_4-1");
+                // step off: the pill goes
+                if (def.Id == "1-4" && ok)
+                {
+                    int off = -1;
+                    for (int dirn = 0; dirn < 4 && off < 0; dirn++)
+                        if (Simulation.CanEnter(def, Session.Cur, def.Neighbor(def.Exit, dirn))) off = dirn;
+                    acts.Add(new TimedAction(Session.Tick, Act.Move(Mathf.Max(0, off)))); // the replay's cursor is past its last action
+                    Session.Paused = false;
+                    float until = Time.realtimeSinceStartup + 3f;
+                    while (Time.realtimeSinceStartup < until && (Session.Cur.P == def.Exit || Session.Cur.Moving)) yield return null;
+                    yield return null;
+                    yield return null;
+                    if (Session.Cur.P == def.Exit || IsExitNote(Prompts.PlayerNote)) bad.Add($"1-4: stepped off (dir {off}) to tile {Session.Cur.P}, pill \"{Prompts.PlayerNote}\"");
+                }
+            }
+
+            // in debt on the open exit: the route of 2-1 pays there
+            int i21 = Catalog.Levels.FindIndex(l => l.Id == "2-1");
+            bool debtThere = false;
+            yield return Run(i21, Catalog.SolutionFor(Catalog.Levels[i21]).Actions, ExitNote.Kind.InDebt, b => debtThere = b);
+            string debtNote = Prompts.PlayerNote;
+            bool debtOk = debtThere && debtNote != null && debtNote.Contains("Pay your debt here") && debtNote.Contains("you leave as you thaw");
+            if (debtOk) yield return Shot(dir, "exit-debt_2-1");
+            Session.Paused = false;
+            var watch = new RunWatch(Session, 30f);
+            while (watch.Alive() && Session.State != LevelSession.Mode.Won) yield return null;
+            yield return null;
+            yield return null;
+            bool wonClear = Session.State == LevelSession.Mode.Won && !IsExitNote(Prompts.PlayerNote);
+            pendingComplete = null;
+
+            promptDemo = false;
+            StartLevel(0, false);
+            report("exit-pill", bad.Count == 0 && shown == dialLevels - missing.Count && shown >= dialLevels - 1 && debtOk && wonClear && stray == 0,
+                $"{shown}/{dialLevels} dial levels showed the sealed pill with the latched count"
+                + (missing.Count > 0 ? $" (no run found that reaches the sealed exit on {string.Join(", ", missing)})" : "")
+                + $"; 1-4 stepping off cleared it; 2-1 in debt on the exit: \"{debtNote}\" ({debtOk}), gone after the win={wonClear}; exit pills off the exit: {stray}"
+                + (bad.Count > 0 ? "; " + string.Join("; ", bad) : ""));
+        }
+
+        /// <summary>A run that stands on the exit before its dials latch: the solver's route up to
+        /// some tick and then straight for the exit, or else seeded play leaning towards it.</summary>
+        static List<TimedAction> FindSealedExit(LevelDef d, List<TimedAction> route)
+        {
+            // floor distance to the exit, ignoring everything that moves
+            var dist = new int[d.W * d.H];
+            for (int i = 0; i < dist.Length; i++) dist[i] = int.MaxValue;
+            var q = new Queue<int>();
+            dist[d.Exit] = 0;
+            q.Enqueue(d.Exit);
+            while (q.Count > 0)
+            {
+                int t = q.Dequeue();
+                for (int dir = 0; dir < 4; dir++)
+                {
+                    int n = d.Neighbor(t, dir);
+                    if (n < 0 || d.Tiles[n] != Tile.Floor || dist[n] != int.MaxValue) continue;
+                    dist[n] = dist[t] + 1;
+                    q.Enqueue(n);
+                }
+            }
+            int Toward(SimState s)
+            {
+                int best = -1, bd = dist[s.P];
+                for (int dir = 0; dir < 4; dir++) { int n = d.Neighbor(s.P, dir); if (n >= 0 && dist[n] < bd) { bd = dist[n]; best = dir; } }
+                return best;
+            }
+            for (int cut = 0; cut < 2000; cut++)
+            {
+                var s = Simulation.Create(d);
+                var acts = new List<TimedAction>();
+                int k = 0;
+                while (s.Tick < cut + 600 && !s.Dead && !s.Won)
+                {
+                    if (s.P == d.Exit && !s.Moving && !s.ExitOpen) return acts;
+                    int a = Act.None;
+                    if (s.Tick < cut) { if (k < route.Count && route[k].Tick == s.Tick) a = route[k++].Action; }
+                    else if (s.CanActNext && Toward(s) >= 0) a = Act.Move(Toward(s));
+                    if (a != Act.None) acts.Add(new TimedAction(s.Tick, a));
+                    Simulation.Step(d, s, a);
+                }
+                if (s.Won) break;
+            }
+            var rng = new System.Random(11);
+            for (int trial = 0; trial < 3000; trial++)
+            {
+                var s = Simulation.Create(d);
+                var acts = new List<TimedAction>();
+                while (s.Tick < 800 && !s.Dead && !s.Won)
+                {
+                    if (s.P == d.Exit && !s.Moving && !s.ExitOpen) return acts;
+                    int a = Act.None;
+                    if (s.CanActNext)
+                    {
+                        int r = rng.Next(20);
+                        if (r < 11) { int dir = Toward(s); if (dir >= 0) a = Act.Move(dir); }
+                        else if (r < 16) a = Act.Move(rng.Next(4));
+                        else if (r == 16 && d.ObstacleCount > 0) a = Act.Borrow(rng.Next(d.ObstacleCount));
+                    }
+                    if (a != Act.None) acts.Add(new TimedAction(s.Tick, a));
+                    Simulation.Step(d, s, a);
+                }
+            }
+            return null;
         }
 
         /// <summary>

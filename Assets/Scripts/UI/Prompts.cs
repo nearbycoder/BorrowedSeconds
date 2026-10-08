@@ -58,6 +58,8 @@ namespace BorrowedSeconds.UI
 
         /// <summary>The pills' current text (the input bot reads the button names).</summary>
         public string PlayerText => overPlayer.Text.text;
+        /// <summary>What the pill over the player is showing or fading in to (null: it's going); checks read it.</summary>
+        public string PlayerNote { get; private set; }
         public string ObstacleText => overObstacle.Text.text;
 
         /// <summary>Call when a new level starts.</summary>
@@ -101,7 +103,12 @@ namespace BorrowedSeconds.UI
                 var cur = s.Cur;
                 int learned = save.learned;
 
-                if ((learned & Move) == 0)
+                // on an exit that won't let you leave yet, say why (every attempt, not just until learned)
+                string exit = ExitNote.Line(s.Def, cur);
+                int colon = exit.IndexOf(':');
+                if (colon > 0)
+                    playerText = $"<color=#FFD27A>{exit.Substring(0, colon)}</color>{exit.Substring(colon)}";
+                else if ((learned & Move) == 0)
                     playerText = pad ? $"<color=#FFD27A>{input.Pad.Stick}</color>  move" : $"<color=#FFD27A>{input.MoveKeysName()}</color>  or  <color=#FFD27A>arrows</color>  move";
                 else if (rewindHint > 0f && (learned & Rewind) == 0)
                     playerText = $"Hold <color=#FFD27A>{(pad ? input.Pad.West : input.KeyName(KeyAction.Rewind))}</color>  rewind further";
@@ -121,6 +128,7 @@ namespace BorrowedSeconds.UI
                 }
             }
 
+            PlayerNote = playerText;
             var cam = Camera.main;
             Show(overPlayer, playerText, s != null && s.Board != null ? s.Board.Player.WorldPos + Vector3.up * 1.9f : Vector3.zero, cam, dt);
             // over an obstacle that is also aimed (always, on a pad), the pill sits above the HUD's aim tag
