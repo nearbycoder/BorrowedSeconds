@@ -73,7 +73,7 @@
     },
     {
       "name": "clue", "level": "2-4", "seek": 4, "dur": 5.0, "clue": true, "fullHud": true, "zoom": 1.1, "pan": [1.4, -0.4],
-      "stills": [{"tick": 30, "name": "12_clue"}],
+      "stills": [{"tick": 14, "name": "12_clue"}],
       "captions": [{"at": 0.2, "pos": "br", "kicker": "Stuck?", "head": "Ask for a clue.", "sub": "It marks what to freeze first and where to be when the debt falls due.", "wrap": 520}]
     },
     {
@@ -96,7 +96,7 @@
     },
     {
       "name": "ghost", "level": "1-1", "ghost": true, "shift": 52, "seek": 22, "dur": 4.8, "fullHud": true, "zoom": 1.1, "pan": [1.4, -0.4],
-      "stills": [{"tick": 46, "name": "13_best-ghost"}],
+      "stills": [{"tick": 32, "name": "13_best-ghost"}],
       "captions": [{"at": 0.2, "pos": "br", "kicker": "Race your best", "head": "Chase your own ghost.", "sub": "A violet ghost replays your best run. The coin shows the medal still in reach.", "wrap": 520}]
     },
     {
