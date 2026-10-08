@@ -805,3 +805,52 @@ Items run in this order. Scratch output stays in `Builds/r12/`. Every tool run h
 - **Verify:** an EditMode test of the edge rule on every level; autopilot screenshots of every level; `shapes.sh`.
 
 **Not this round:** chapter VIII, replacing 7-4, the unlock rule, rotor aim, the HUD-size and background-mute defaults, *Reset settings*, a start-hold setting, the launcher default, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio peak limit and the mix by ear, human playtesting.
+
+## Round 12 results
+
+All four items shipped on `improvements-12`, plus two fixes that the final checks turned up. Final verification ran on commit `60a209f` (the last code commit; the commit after it changes only docs and images), on the **release** build, with every game window inside the private compositor:
+- **EditMode:** 421/421 (`Tools/test.sh`, `Builds/r12/tests-final`; 42 new).
+- **Autopilot:** 35/35 at exactly par, every level `hud=0` (`Builds/r12/capture-release/autopilot.log`, each tick compared with `solutions.json`).
+- **`checks.sh`:** every check PASS, including the new `fidelity`, `settings-help`, `menus-clear-hud` and `camera-hitch`, the reworked `display` and `fullscreen`, and *Watch solution* 35/35; audio balance median +10.3 dB, worst +5.7 dB, peak 0.84. 596 s in game, 604 s wall, at load 24.7 falling to 22.8 (`Builds/r12/checks-release/checks.log`).
+- **Input bot:** every pass PASS, at load 20.8 (`Builds/r12/inputbot-release/inputbot.log`).
+- **`Tools/shapes.sh`:** four sizes, each level pass (`Builds/r12/shapes`).
+- **`Tools/fidelity.sh`:** same-frame shots of every step and frame times (`Builds/r12/fidelity-release`, `Builds/r12/fidelity-final-1920x1080`, `Builds/r12/fidelity-final-2560x1440`).
+- **Solver:** 1-2 and 4-2 OK (`Builds/r12/validate.log`). No level data changed.
+- **`Tools/docs_check.py`:** clean.
+
+The real save's SHA-256 and mtimes, and the real `~/.config/kwinrc`, `kwinoutputconfig.json` and `kglobalshortcutsrc`, were the same before and after the round (`Builds/r12/save-*`, `kwin-before.sha`). No process from this round's runs was left running. Images are in `docs/media/improvements/round12/`.
+
+| # | Item | Commit | Verification |
+|---|---|---|---|
+| 1 | Graphics fidelity: Low, Medium, High (default), Ultra | `4b85c89`, `60a209f` | `fidelity`: the Settings row steps Low to Ultra, and at each step the URP asset's MSAA, shadow resolution and cascades, the camera's anti-aliasing, the sun's shadow type, the volume's bloom, the SSAO feature's state and settings, Ultra's glow lights (3 on 4-5), the particle multiplier and the watch's texture match the table; each survives a save round trip, a save without the key loads as High, and the row goes back to High. `Tools/fidelity.sh`: the same held frame of 4-5, 2-3 and 3-5 at every step (shots 01–03) and the frame times below. EditMode: four steps from Low to Ultra, High equal to the values the game always had, each step costing at least the one below, a line per step that fits, the old-save default, and bloom kept high-quality. |
+| 2 | Settings explain themselves; Display gets its own page | `4485e6d` (the page itself landed with item 1) | `settings-help`: 19 rows on the two pages each put a line under the list that fits its box, at 1600×900 (and 3072×1728 in an earlier run); the *Graphics fidelity* line names the step and what it changes at each of the four. `display` and `fullscreen` now go through *Settings > Display* and its *Back*. `shapes.sh` shows both at 21:9, 16:9, 16:10 and 4:3. The input bot's Settings footer and Controls row are unchanged. Shot 04. |
+| 3 | Menus clear the HUD | `4568ff6` | `menus-clear-hud`: on 2-1, the HUD's lower half reads 0.00 and the top 0.35 behind *Paused*, *Settings*, *Display*, *Controls* and *How to play*, and both are back at 1.00 after *Resume*; *LOAN READY* fits the ring's inner width. Shot 05 (before and after, same pause screen). |
+| 4 | A finished board | `14baf19` | EditMode: on all 35 levels the trim runs along exactly the tile sides that face void or the map's edge, once each, counted both ways. Autopilot 35/35 at par with `hud=0` (the trim and plinth sit below the floor, so framing is unchanged). Shot 06 (same frame of 4-5 before and after). |
+| – | The camera survives long frames | `ab401c7` | `camera-hitch`: after a punch-in, eight 400 ms frames leave the spring at a peak of 0.025 and the board on screen. The same check on the old spring: a peak of 6.6×10¹⁰. |
+
+**The fidelity steps.** Same held frame of 4-5 (tick 196) at each step: shots 01 and 02. Frame times are the median over six five-second runs per step (4-5, 3-5 and 2-4, each played twice, Low to Ultra then back), vsync off, release build, in the private compositor.
+
+| Step | Shadows | Anti-aliasing | Ambient occlusion | Bloom | Extras | Median frame, 1920×1080 (load 21→16) | Median frame, 2560×1440 (load 16→15) |
+|---|---|---|---|---|---|---|---|
+| Low | hard, 1024, 1 cascade | FXAA | off | quarter size | particles ×0.5, watch texture 384 px 2× MSAA | 10.2 ms (5.1–12.3) | 11.4 ms (9.0–16.1) |
+| Medium | soft, 2048, 2 cascades | 2× MSAA + SMAA medium | half size, fast blur | half size | particles ×0.75, watch 512 px 4× | 12.3 ms (9.2–19.5) | 13.9 ms (11.8–17.7) |
+| High (default, the original look) | soft, 4096, 2 cascades | 4× MSAA + SMAA high | full size, intensity 0.4 | half size | particles ×1, watch 512 px 8× | 12.9 ms (11.3–14.1) | 14.6 ms (10.0–19.1) |
+| Ultra | soft, 8192, 2 cascades | 8× MSAA + SMAA high | full size, intensity 0.9, wider | half size | point lights from the pawn, the exit and lit beams; particles ×1.5; watch 1024 px 8× | 12.5 ms (11.9–22.2) | 15.0 ms (12.3–21.3) |
+
+**Notes and limits.**
+- **The frame times are noisy.** The iGPU was shared with other sessions throughout (earlier runs at load 45–65 were discarded), and single runs of the same step varied by up to 2×. The medians order Low < Medium < High < Ultra at 2560×1440; at 1920×1080 High and Ultra were within the noise of each other. Nothing was measured on a weaker GPU.
+- **SSAO was already on.** The scope said Ultra would add ambient occlusion; the main renderer turned out to have URP's SSAO on all along (intensity 0.4), so it is part of High's look. Low turns it off, Medium halves its resolution, Ultra deepens it. Only settings that need no other shader variant change per step: the sample count is a variant URP strips, so it stays at medium.
+- **No depth of field.** Ultra was planned with a far-only blur on the void. The void sits so close behind the board in depth that a blur leaving the whole board sharp barely reached it (shots looked identical), and URP strips the depth-of-field shaders from builds when no volume profile in the project uses them. It was dropped rather than shipped as an effect that costs time and shows nothing.
+- **Bloom stays high-quality on every step.** Turning bloom's high-quality filtering off on Low and Medium removed the beams' glow in builds, because URP only keeps the bloom variants the project's volume profiles use. Found in the first release shots (`60a209f` fixes it); Low uses quarter-size bloom instead.
+- **The camera fix.** The first full release `checks.sh` (at load 34) failed `aim-reach` with every tile "off screen" and `game-speed` at 10.9 ticks/s: from the chapter-cards check on, the 3D view was black. The camera's punch-in spring was stepped with the raw frame time, which overshoots and grows on frames longer than about 0.15 s and eventually reaches NaN. The bug predates this round; slow frames under load (and slightly heavier level builds with the trim) set it off. Both checks passed alone, and the whole run passed after the fix.
+- **The crystal sparkle changed.** Each sparkle is now a soft round glint at the centre of its cell instead of the whole square cell, which read as blocky pixels on the watch glass and on frozen pieces.
+- **The HUD's lower half also fades behind *Settled*.** The time stays at the top right, dimmed. A faint dark disc in the void below the board, there before this round, wasn't traced.
+- **Settings is no longer full.** The *Display* page has room, and Settings has none to spare (16 rows and the help line).
+- **The trailer wasn't re-cut.** Its settings shot selects rows 1, 7 and 8, which didn't move.
+- **Load.** Release runs waited for a load average under 24 where timing mattered; the machine ran at 15–80 during the round.
+
+**Decisions for the owner.**
+- Still open: chapter VIII's theme, replacing 7-4, the unlock rule, rotor aim, the HUD-size and *Mute in background* defaults, *Reset settings* and a start-hold setting (the *Display* page now has room), whether the clue or the ghost should wait for a few defaults, whether the exit tag retires, the launcher default, the audio peak limit (0.84 this round), the trailer re-cut, Windows Build Support, signing and notarization, a license, and releases.
+- Keep *High* as the default, or pick the step at first launch from the GPU? Ultra's lights and the board's new trim are worth a look on a real screen.
+
+Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including the new look and the Settings lines), a listen to the mix, Graphics fidelity on a weaker GPU, WebGL and touch, Windows (needs the module), why this desktop's XWayland hangs the player, and fractional scaling on the Wayland backend.
