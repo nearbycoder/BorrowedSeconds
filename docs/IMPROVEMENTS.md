@@ -772,3 +772,36 @@ The real save's SHA-256 and mtimes, and the real `~/.config/kwinrc`, `kwinoutput
 - The exit pill shows on every attempt, not just until learned. Keep it that way, or retire it after a few levels like the onboarding pills?
 
 Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including the exit pill, the clue's steps and the ghost's crystals), a listen to the mix, WebGL and touch, Windows (needs the module), why this desktop's XWayland hangs the player, and fractional scaling on the Wayland backend.
+
+## Round 12 scope
+
+Written 2026-10-08 on `improvements-12`, after confirming `main` matched `origin/main` (`cd4ac0b`) with a clean tree. This round's focus is polish: graphics, interface and the feel of a finished release, with a Graphics Fidelity setting required. Gameplay, balance, levels and story don't change. The items come from a baseline menu tour and level captures of the current build (`Builds/r12/menus-before`), which found:
+
+- **There's no graphics setting.** The look is fixed: 4096 soft shadows, 4× MSAA with SMAA, high-quality bloom. Weaker GPUs can only lower *Render resolution*, and nothing uses what a strong GPU could add (ambient occlusion, a deeper void, light from the glowing pieces).
+- **Settings is full and says nothing about its rows.** It has 16 rows and no room for another, and a row like *Render resolution* or *Mute in background* doesn't explain itself.
+- **The HUD shows through every menu window.** The HUD only dims to 25 % behind *Paused*, *Settings* and *How to play*, so the tip panel, the key row and the pocket watch show through and cross the windows' text and buttons (*Back* sits over the tip; the Settings footer over *THAW HERE*). The watch's *LOAN READY* is wider than the ring around it, which cuts its first and last letters.
+- **The board doesn't read against the void.** The plinth under the floor is nearly the void's colour, so a level reads as loose tiles floating in the dark rather than a finished diorama. PLAN §13 planned a brass-trimmed plinth edge that was never built.
+
+Items run in this order. Scratch output stays in `Builds/r12/`. Every tool run has to leave the real save's SHA-256 and mtime unchanged (`Builds/r12/save-before.*`) and the real KWin config unchanged (`Builds/r12/kwin-before.sha`). Every game window opens in the private compositor.
+
+### 1. Graphics fidelity: Low, Medium, High, Ultra
+- **Change:** a *Graphics fidelity* slider with four steps, saved with the other settings. *High* is the default and is exactly today's look. Each step sets shadows (type, resolution, cascades), anti-aliasing (MSAA and SMAA/FXAA), bloom resolution and filtering, the particle count, and the pocket watch's render texture. *Ultra* adds screen-space ambient occlusion, a depth-of-field blur on the void below the board (the board itself stays sharp), point lights from the glowing pieces (the pawn's core, the exit, lit lasers), 8× MSAA, an 8192 shadow map and 1.5× particles. *Low* drops to hard 1024 shadows, FXAA, quarter-resolution bloom and half the particles. *Render resolution* stays a separate control.
+- **Acceptance:** each step reaches URP (MSAA, shadow resolution, the SSAO feature's state, the volume's bloom and depth of field) and survives a save round trip; a save from before this round loads as *High*. Same-frame screenshots of every step show the differences, and the frame time falls from Ultra to Low.
+- **Verify:** a new scripted mode (`Tools/fidelity.sh`) that holds one level on a fixed tick and screenshots it at each step, then measures frame times at each step on three levels with vsync off (with the load noted); a new `fidelity` check in `checks.sh` that steps the row and reads the pipeline; EditMode tests of the step table and the old-save default. Screenshots and a table of the steps, what each changes and its frame time in the results.
+
+### 2. Settings explain themselves, and Display gets its own page
+- **Change:** *Graphics fidelity* takes the *Display* row's place in Settings, and *Display* and *Render resolution* move to a *Display* page opened from the row after it, so every existing setting stays reachable and the main list keeps its 16 rows (the rows after it keep their places). A line under the list says what the selected row does, and for *Graphics fidelity* what the selected step changes.
+- **Acceptance:** every row on both pages has a line that fits the window at 16:9 and 4:3; the page opens and closes with mouse, keyboard and pad; the `display` check passes through the new page.
+- **Verify:** the `display` and `fidelity` checks; the input bot's gamepad pass reads the Settings footer; `Tools/shapes.sh` and screenshots at 1600×900 and 1024×768.
+
+### 3. Menus clear the HUD
+- **Change:** while a menu window is open, the HUD's lower half (the tip, the key row, the watch and its line) fades out instead of dimming to 25 %, and the top corners dim further; they come back when the window closes. The watch's small label fits inside its ring.
+- **Acceptance:** with *Paused*, *Settings*, *Controls* or *How to play* open, the lower HUD's alpha is 0 and no HUD text overlaps the window; after *Resume* the HUD is back at full. *LOAN READY* fits the ring's inner width.
+- **Verify:** a check that opens each window and reads the HUD's alphas, and screenshots before and after.
+
+### 4. A finished board
+- **Change:** a brass trim runs along every outer edge of the board, with a small tick at each tile, and the plinth below gets a lighter, lit face that fades into the void, so the board reads as one diorama piece. Built in code from the level's tiles, with no new imported assets.
+- **Acceptance:** every exposed floor or wall edge on every level gets trim, and no trim sits between two tiles; the autopilot still wins 35/35 at par and every level still frames clear of the HUD.
+- **Verify:** an EditMode test of the edge rule on every level; autopilot screenshots of every level; `shapes.sh`.
+
+**Not this round:** chapter VIII, replacing 7-4, the unlock rule, rotor aim, the HUD-size and background-mute defaults, *Reset settings*, a start-hold setting, the launcher default, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio peak limit and the mix by ear, human playtesting.
