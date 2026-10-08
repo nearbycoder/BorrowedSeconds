@@ -19,7 +19,10 @@ namespace BorrowedSeconds.View
         /// <summary>This obstacle just killed the player: the hover ghost glows red through the death pause.</summary>
         public bool Culprit;
         static readonly Color CulpritGlow = new Color(2.4f, 0.28f, 0.36f, 0.5f);
-        float hl, culprit;
+        /// <summary>The clue (pause menu) names this obstacle as the route's first borrow: its hover ghost glows gold.</summary>
+        public bool Clue;
+        static readonly Color ClueGlow = new Color(2.2f, 1.5f, 0.45f, 0.45f);
+        float hl, culprit, clue;
         Material ghostMat;
         Color ghostBase;
 
@@ -28,14 +31,20 @@ namespace BorrowedSeconds.View
         {
             hl = Smooth(hl, Highlight && !frozen ? 1f : 0f, 18f, dt);
             culprit = Smooth(culprit, Culprit ? 1f : 0f, 18f, dt);
-            float show = Mathf.Max(hl, culprit);
+            clue = Smooth(clue, Clue && !frozen ? 1f : 0f, 8f, dt);
+            float show = Mathf.Max(Mathf.Max(hl, culprit), clue);
             ghost.SetActive(show > 0.02f);
             if (ghostMat == null)
             {
                 ghostMat = ghost.GetComponent<Renderer>().sharedMaterial;
                 ghostBase = ghostMat.GetColor("_Color");
             }
-            if (show > 0.02f) ghostMat.SetColor("_Color", Color.Lerp(ghostBase, CulpritGlow * (0.85f + 0.15f * Mathf.Sin(time * 6f)), culprit));
+            if (show > 0.02f)
+            {
+                // the aim's own colour wins over the clue's gold; a culprit's red wins over both
+                var c = Color.Lerp(ghostBase, ClueGlow * (0.8f + 0.2f * Mathf.Sin(time * 2.5f)), clue * (1f - hl));
+                ghostMat.SetColor("_Color", Color.Lerp(c, CulpritGlow * (0.85f + 0.15f * Mathf.Sin(time * 6f)), culprit));
+            }
             return show;
         }
 

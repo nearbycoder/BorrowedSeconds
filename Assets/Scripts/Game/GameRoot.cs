@@ -136,7 +136,7 @@ namespace BorrowedSeconds.Game
             title = new TitleScreen(root, () => Go(Continue), () => Go(() => ShowLevels(Save.lastLevel), 0.7f), () => OpenHowTo(Flow.Title), () => OpenSettings(Flow.Title), Quit,
                 () => Save.ids.Length == 0 ? "Begin" : Save.finished ? "Replay" : "Continue");
             levels = new LevelSelectScreen(root, Catalog, Save, i => Go(() => StartLevel(i, true)), () => Go(ShowTitle, 0.7f));
-            pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); }, WatchFromPause,
+            pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); }, ToggleClue, WatchFromPause,
                 () => { pause.Hide(); Go(() => ShowLevels(LevelIndex)); }, () => OpenSettings(Flow.Paused), () => OpenHowTo(Flow.Paused), () => { pause.Hide(); Go(ShowTitle); });
             settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, () => { ApplyDisplay(true); Save.Save(); }, CloseSettings, OpenControls, EraseProgress);
             controls = new ControlsScreen(root, () => Input.Keys, BindKey, ResetKeys, CloseControls);
@@ -288,6 +288,7 @@ namespace BorrowedSeconds.Game
 
         void ShowTitle()
         {
+            clueLevel = -1;
             State = Flow.Title;
             levels.Hide();
             title.Show();
@@ -315,6 +316,7 @@ namespace BorrowedSeconds.Game
 
         void ShowLevels(int focus)
         {
+            clueLevel = -1;
             State = Flow.Levels;
             title.Hide();
             levels.Show(focus);
@@ -354,6 +356,8 @@ namespace BorrowedSeconds.Game
             Rig.ShiftX = 0f;
             Rig.Zoom = 1f;
             LoadLevel(index);
+            if (clueLevel != index) clueLevel = -1; // a clue lasts while you stay on its level, restarts included
+            ApplyClue();
             Save.lastLevel = index;
             Save.Save();
             var def = Catalog.Levels[index];
@@ -389,6 +393,37 @@ namespace BorrowedSeconds.Game
             return (chapter - 1) % 4 < 2 ? "music_a" : "music_b";
         }
 
+        // ---------------------------------------------------------------- the clue
+
+        /// <summary>The level whose clue is showing (-1: none). Leaving the level drops it.</summary>
+        int clueLevel = -1;
+        static readonly Clue NoClue = new Clue(-1, -1, -1, -1);
+        Clue clue = NoClue;
+
+        /// <summary>Pause > Show a clue / Hide the clue: toggles the clue and goes back to the level.</summary>
+        void ToggleClue()
+        {
+            clueLevel = clueLevel == LevelIndex ? -1 : LevelIndex;
+            Sfx.Play(clueLevel >= 0 ? "ui_click" : "ui_back");
+            Resume();
+            ApplyClue();
+        }
+
+        /// <summary>Marks the clue on the board, labels it and spells it out in the tip (none while
+        /// watching the solution, which shows everything anyway).</summary>
+        void ApplyClue()
+        {
+            if (Session == null) return;
+            var sol = Catalog.SolutionFor(Session.Def);
+            bool show = clueLevel == LevelIndex && State != Flow.Watching && Session.Autoplay == null && sol != null;
+            clue = show ? Clue.For(Session.Def, sol.Actions) : NoClue;
+            if (!clue.Valid) clue = NoClue;
+            Session.Board.SetClue(clue.Obstacle, clue.Tile);
+            Hud.SetClue(clue.Obstacle, clue.Tile);
+            pause.SetClueShown(clue.Valid);
+            RefreshTip(false);
+        }
+
         void WatchFromPause()
         {
             pause.Hide();
@@ -410,6 +445,7 @@ namespace BorrowedSeconds.Game
             Session.Viewer = true; // Focus slows the replay, Rewind scrubs it back, each borrow is aimed first
             Hud.Watching = true;
             tipOpen = true;
+            ApplyClue(); // off while watching
             RefreshTip(true);
             ShowControlHints();
         }
@@ -441,8 +477,12 @@ namespace BorrowedSeconds.Game
                     + $"{(Input.FocusToggle ? "Press" : "Hold")} <color=#FFD27A>{(Input.UsingGamepad ? pad.LeftTrigger : Input.KeyName(KeyAction.Focus))}</color> to slow it, "
                     + $"hold <color=#FFD27A>{(Input.UsingGamepad ? pad.West : Input.KeyName(KeyAction.Rewind))}</color> to rewind, "
                     + $"<color=#FFD27A>{(Input.UsingGamepad ? pad.East : "Esc")}</color> to stop watching.";
+            else if (attemptDeaths >= NudgeAfterDeaths && !clue.Valid)
+                text += (text.Length > 0 ? "\n" : "") + "<size=20><color=#C9D3F0>Still stuck? Pause for <b>a clue</b>, or <b>Watch solution</b>.</color></size>";
             else if (attemptDeaths >= NudgeAfterDeaths)
                 text += (text.Length > 0 ? "\n" : "") + "<size=20><color=#C9D3F0>Still stuck? Pause and choose <b>Watch solution</b>.</color></size>";
+            if (State != Flow.Watching && clue.Valid)
+                text += (text.Length > 0 ? "\n" : "") + $"<color=#FFD27A><b>Clue:</b></color> {clue.Words(def)}";
             if (slideIn) Hud.SetTip(text); else Hud.SetTipText(text);
         }
 
@@ -733,6 +773,7 @@ namespace BorrowedSeconds.Game
             var def = Catalog.Levels[index];
             Session = new GameObject("Level " + def.Id).AddComponent<LevelSession>();
             Session.Init(def, Input, Cam);
+            clue = NoClue; // StartLevel puts a clue back on its own level
             Session.WaitForStart = !capturing || forceReadyHold; // the board can be read before the clock runs
             Session.Events += OnSimEvents;
             Prompts.ResetLevel();

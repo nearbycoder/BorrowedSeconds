@@ -770,10 +770,12 @@ namespace BorrowedSeconds.Game
             if (!paused || !resumed) Fail($"Start/B pause: paused={paused} resumed={resumed}");
             yield return PadTap(GamepadButton.Start);
             yield return new WaitForSecondsRealtime(0.8f);
-            yield return PadTap(GamepadButton.DpadDown);
-            yield return new WaitForSecondsRealtime(0.15f);
-            yield return PadTap(GamepadButton.DpadDown);
-            yield return new WaitForSecondsRealtime(0.7f);
+            for (int i = 0; i < 3; i++) // Resume, Restart, Show a clue, Watch solution
+            {
+                yield return PadTap(GamepadButton.DpadDown);
+                yield return new WaitForSecondsRealtime(0.15f);
+            }
+            yield return new WaitForSecondsRealtime(0.55f);
             string row = pause.Menu.Items[pause.Menu.Selected].Label;
             // the brass selector plate must have followed the D-pad to that row
             float plateY = pause.Menu.SelectorY, rowY = pause.Menu.Items[pause.Menu.Selected].Rt.anchoredPosition.y - (pause.Menu.RowHeight - 10) * 0.5f;

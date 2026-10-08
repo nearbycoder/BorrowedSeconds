@@ -69,6 +69,12 @@ namespace BorrowedSeconds.UI
         public string RestartLabel = "HOLD R TO RESTART";
         RectTransform restartRoot, restartFill;
         CanvasGroup restartGroup;
+        // the clue's two world labels: over the route's first borrow and over its first debt's tile
+        RectTransform clueObstacleTag, clueTileTag;
+        CanvasGroup clueObstacleGroup, clueTileGroup;
+        int clueObstacle = -1, clueTile = -1;
+        /// <summary>The clue's labels are on (checks read it).</summary>
+        public bool ClueShown => clueObstacle >= 0 || clueTile >= 0;
         // the level waits at tick 0 for the first move (LevelSession.Waiting)
         RectTransform readyRoot;
         CanvasGroup readyGroup;
@@ -242,6 +248,10 @@ namespace BorrowedSeconds.UI
             rewindText.rectTransform.offsetMin = new Vector2(40, 0);
             rewindText.characterSpacing = 22;
 
+            // ---- the clue's labels (Show a clue, in the pause menu)
+            clueObstacleTag = ClueLabel("ClueObstacle", root, "FREEZE FIRST", out clueObstacleGroup);
+            clueTileTag = ClueLabel("ClueTile", root, "DEBT HERE", out clueTileGroup);
+
             // ---- the waiting tag (the focus/rewind tags' spot: either starts the clock or follows it)
             readyRoot = Ui.Rect("ReadyTag", root, new Vector2(0.5f, 1), new Vector2(0.5f, 0.5f), new Vector2(0, -70), new Vector2(420, 64));
             readyGroup = readyRoot.gameObject.AddComponent<CanvasGroup>();
@@ -287,6 +297,7 @@ namespace BorrowedSeconds.UI
         /// <param name="best">The saved best time in ticks, 0 if the level was never settled.</param>
         public void Bind(LevelSession s, LevelCatalog catalog, int best = 0)
         {
+            clueObstacle = clueTile = -1;
             bestTicks = best;
             paceMedal = Medal.None;
             session = s;
@@ -313,6 +324,40 @@ namespace BorrowedSeconds.UI
             introT = 0f;
             lastLoans = s.Cur.Loans;
             wasFrozen = false;
+        }
+
+        RectTransform ClueLabel(string name, Transform root, string text, out CanvasGroup g)
+        {
+            var rt = Ui.Rect(name, root, Vector2.zero, new Vector2(0.5f, 0f), Vector2.zero, new Vector2(170, 38));
+            g = rt.gameObject.AddComponent<CanvasGroup>();
+            g.alpha = 0f;
+            var caret = Ui.Img("Caret", rt, Ui.Diamond, Palette.Gold);
+            Ui.Place(caret.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0, -5), new Vector2(13, 13));
+            var panel = new Panel("Bg", rt, new Vector2(170, 38), Panel.Style.Tag);
+            panel.Rt.anchoredPosition = Vector2.zero;
+            panel.SetRim(Palette.Gold);
+            var t = Ui.Text("Text", rt, text, Ui.Semi, 17, Palette.Gold);
+            Ui.Fill(t.rectTransform);
+            t.characterSpacing = 10;
+            return rt;
+        }
+
+        /// <summary>The clue's labels: over the obstacle to freeze first and over the tile where the
+        /// route's first debt falls due (-1: none).</summary>
+        public void SetClue(int obstacle, int tile)
+        {
+            clueObstacle = obstacle;
+            clueTile = tile;
+        }
+
+        void PlaceClueLabel(RectTransform rt, CanvasGroup g, bool show, Vector3 world, float dt)
+        {
+            g.alpha = Mathf.MoveTowards(g.alpha, show ? 1f : 0f, dt * 6f);
+            if (g.alpha <= 0f) return;
+            var sp = Camera.main.WorldToScreenPoint(world);
+            float scale = canvas.GetComponent<RectTransform>().localScale.x;
+            rt.anchoredPosition = new Vector2(sp.x / scale, sp.y / scale);
+            rt.localScale = Vector3.one * HudLayout.Scale;
         }
 
         string ParText(bool pace) => parTicks <= 0 ? "" : pace ? $"PAR {Ui.Secs(parTicks)}  ·  BEST {Ui.Secs(bestTicks)}" : $"PAR {Ui.Secs(parTicks)}";
@@ -580,6 +625,13 @@ namespace BorrowedSeconds.UI
                 aimText.text = $"<b>FREEZE 3.0s</b>\n<size=15><color=#C9D3F0>repay in {Ui.Secs1(d.Term)}s</color></size>"
                     + (forecast.Length > 0 ? $"\n<size=16>{forecast}</size>" : "");
             }
+
+            // the clue's labels; the aim tag takes the obstacle's spot while it's aimed
+            bool playing = session.State == LevelSession.Mode.Playing || session.State == LevelSession.Mode.Intro;
+            PlaceClueLabel(clueObstacleTag, clueObstacleGroup, playing && clueObstacle >= 0 && !(showAim && aim == clueObstacle) && !s.IsObstacleFrozen(d, Mathf.Max(0, clueObstacle)),
+                clueObstacle >= 0 ? session.Board.ObstacleCenter(clueObstacle) + Vector3.up * 0.9f : Vector3.zero, dt);
+            PlaceClueLabel(clueTileTag, clueTileGroup, playing && clueTile >= 0,
+                clueTile >= 0 ? session.Board.At(clueTile) + Vector3.up * 0.35f : Vector3.zero, dt);
 
             bool showTip = tipText.text.Length > 0 && session.State != LevelSession.Mode.Won;
             // the tip slides in once the title has docked, on a panel sized to its text

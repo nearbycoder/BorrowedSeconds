@@ -40,6 +40,7 @@ namespace BorrowedSeconds.Game
                     yield return CheckDeathReport(dir, id, false, noun, Report);
                 }
             if (Want("ready-hold")) yield return CheckReadyHold(dir, Report);
+            if (Want("clue")) yield return CheckClue(dir, Report);
             if (Want("focus")) yield return CheckFocusPause(dir, Report);
             if (Want("hint")) yield return CheckHint(dir, Report);
             if (Want("ledger-tips")) yield return CheckLedgerTips(dir, Report);
@@ -1205,6 +1206,70 @@ namespace BorrowedSeconds.Game
             report(name, ok, $"died at tick {deathTick}, cause {cause} ({(cause >= 0 ? DeathReport.Noun(def, cause) : "none")}), thawed={thawed}; "
                 + $"banner \"{sub}\"; marked {marked} piece(s), culprit {culprit}; after the pause {markedAfter} marked");
             while (Session.State == LevelSession.Mode.Rewinding && Time.realtimeSinceStartup < deadline) yield return null;
+        }
+
+        /// <summary>
+        /// Pause > Show a clue on every level: the gold mark is on the route's first borrow (and only
+        /// there), the dashed ring on its first debt's tile, both labelled, and the tip says it in
+        /// words. On 1-5 it also lasts through a restart, hides from the same row, and goes when
+        /// you leave the level.
+        /// </summary>
+        IEnumerator CheckClue(string dir, System.Action<string, bool, string> report)
+        {
+            var bad = new List<string>();
+            int shown = 0;
+            int Marked()
+            {
+                int n = 0;
+                foreach (var v in Session.Board.Sliders) if (v.Clue) n++;
+                foreach (var v in Session.Board.Lasers) if (v.Clue) n++;
+                foreach (var v in Session.Board.Rotors) if (v.Clue) n++;
+                return n;
+            }
+            for (int i = 0; i < Catalog.Levels.Count; i++)
+            {
+                var def = Catalog.Levels[i];
+                var want = Clue.For(def, Catalog.SolutionFor(def).Actions);
+                StartLevel(i, false);
+                Session.AllowInput = false;
+                Pause();
+                var row = pause.Menu.Items.Find(it => it.Label == "Show a clue");
+                if (row == null) { bad.Add(def.Id + ": no Show a clue row"); continue; }
+                row.Activate();
+                yield return null;
+                string tip = Hud.TipText;
+                bool ok = State == Flow.Playing && Session.Board.ClueObstacle == want.Obstacle && Session.Board.ClueTile == want.Tile
+                    && Marked() == 1 && Hud.ClueShown && tip.Contains("Clue:") && tip.Contains(want.Words(def))
+                    && pause.Menu.Items.Exists(it => it.Label == "Hide the clue");
+                if (ok) shown++;
+                else bad.Add($"{def.Id}: marked {Session.Board.ClueObstacle}/{want.Obstacle} ({Marked()} piece(s)), ring {Session.Board.ClueTile}/{want.Tile}, labels {Hud.ClueShown}, state {State}");
+                if (def.Id == "2-4" || def.Id == "1-5")
+                {
+                    yield return new WaitForSecondsRealtime(2.5f); // the tip slides in after the title
+                    yield return Shot(dir, $"clue_{def.Id}");
+                }
+            }
+            // 1-5: a restart keeps it, the row hides it, leaving the level drops it
+            int index = Catalog.Levels.FindIndex(l => l.Id == "1-5");
+            StartLevel(index, false);
+            Pause();
+            pause.Menu.Items.Find(it => it.Label == "Show a clue").Activate();
+            StartLevel(index, false);
+            bool kept = Session.Board.ClueTile >= 0 && Hud.TipText.Contains("Clue:");
+            Pause();
+            var hide = pause.Menu.Items.Find(it => it.Label == "Hide the clue");
+            hide?.Activate();
+            bool hidden = hide != null && Session.Board.ClueTile < 0 && Session.Board.ClueObstacle < 0 && Marked() == 0 && !Hud.ClueShown && !Hud.TipText.Contains("Clue:")
+                && pause.Menu.Items.Exists(it => it.Label == "Show a clue");
+            Pause();
+            pause.Menu.Items.Find(it => it.Label == "Show a clue").Activate();
+            pause.Hide();
+            ShowLevels(index);
+            StartLevel(index, false);
+            bool dropped = Session.Board.ClueTile < 0 && !Hud.TipText.Contains("Clue:");
+            report("clue", bad.Count == 0 && kept && hidden && dropped,
+                $"{shown}/{Catalog.Levels.Count} levels marked and labelled through Pause > Show a clue; 1-5: kept through a restart={kept}, hidden from the row={hidden}, dropped on leaving={dropped}"
+                + (bad.Count > 0 ? "; " + string.Join("; ", bad) : ""));
         }
 
         /// <summary>

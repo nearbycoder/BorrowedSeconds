@@ -132,6 +132,49 @@ namespace BorrowedSeconds.View
             foreach (var v in Locks) v.Render(a, b, t, dt, time);
             Exit.Render(a, b, t, dt, time);
             foreach (var list in links) foreach (var l in list) l.Render(dt);
+            if (clueRing != null && clueRing.activeSelf)
+            {
+                clueRing.transform.localRotation = Quaternion.Euler(0, time * 24f, 0);
+                clueMat.SetFloat("_Alpha", 0.75f + 0.25f * Mathf.Sin(time * 2.5f));
+            }
+        }
+
+        /// <summary>The clue's obstacle (-1: none): its hover ghost glows gold.</summary>
+        public int ClueObstacle { get; private set; } = -1;
+        /// <summary>The clue's tile (-1: none): a dashed gold ring, slowly turning, where the route's first debt falls due (the HUD labels it DEBT HERE).</summary>
+        public int ClueTile { get; private set; } = -1;
+        GameObject clueRing;
+        Material clueMat;
+
+        public void SetClue(int obstacle, int tile)
+        {
+            ClueObstacle = obstacle;
+            ClueTile = tile;
+            for (int i = 0; i < Sliders.Count; i++) Sliders[i].Clue = Def.ObstacleIndex(LevelDef.Kind.Slider, i) == obstacle;
+            for (int i = 0; i < Lasers.Count; i++) Lasers[i].Clue = Def.ObstacleIndex(LevelDef.Kind.Laser, i) == obstacle;
+            for (int i = 0; i < Rotors.Count; i++) Rotors[i].Clue = Def.ObstacleIndex(LevelDef.Kind.Rotor, i) == obstacle;
+            if (tile >= 0 && clueRing == null)
+            {
+                // eight short arcs: a dashed ring, a shape no other marker on the board uses
+                clueMat = Mats.Instance("BS_Ring");
+                clueMat.SetColor("_Color", new Color(2.4f, 1.7f, 0.5f, 1f));
+                clueMat.SetColor("_BackColor", new Color(0, 0, 0, 0));
+                clueMat.SetFloat("_Inner", 0.78f);
+                clueMat.SetFloat("_Outer", 0.96f);
+                clueMat.SetFloat("_Fill", 0.075f);
+                clueMat.SetFloat("_Ticks", 0f);
+                clueRing = Shapes.Group("ClueRing", transform);
+                for (int k = 0; k < 8; k++)
+                {
+                    var dash = Shapes.Flat("Dash", clueRing.transform, Vector3.zero, 1.12f, clueMat);
+                    dash.transform.localRotation = Quaternion.Euler(0, k * 45f, 0);
+                }
+            }
+            if (clueRing != null)
+            {
+                clueRing.SetActive(tile >= 0);
+                if (tile >= 0) clueRing.transform.localPosition = At(tile, 0.035f);
+            }
         }
 
         public int Pick(Ray ray)

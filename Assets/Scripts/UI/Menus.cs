@@ -906,13 +906,16 @@ namespace BorrowedSeconds.UI
         public readonly MenuList Menu;
         readonly Action onResume;
 
-        public PauseScreen(Transform canvas, Action onResume, Action onRestart, Action onWatch, Action onLevels, Action onSettings, Action onHowTo, Action onTitle)
-            : base(canvas, "Pause", new Vector2(560, 764), "TIME  STOPPED", "PAUSED", 0.3f)
+        readonly MenuList.Item clueItem;
+
+        public PauseScreen(Transform canvas, Action onResume, Action onRestart, Action onClue, Action onWatch, Action onLevels, Action onSettings, Action onHowTo, Action onTitle)
+            : base(canvas, "Pause", new Vector2(560, 836), "TIME  STOPPED", "PAUSED", 0.3f)
         {
             this.onResume = onResume;
             Menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(0, -186), 420, 72, 32, false);
             Menu.Add("Resume", onResume);
             Menu.Add("Restart", onRestart);
+            clueItem = Menu.Add(ClueLabel(false), onClue);
             Menu.Add("Watch solution", onWatch);
             Menu.Add("Levels", onLevels);
             Menu.Add("Settings", onSettings);
@@ -922,6 +925,15 @@ namespace BorrowedSeconds.UI
         }
 
         public override void Show() { base.Show(); Menu.Selected = 0; }
+
+        static string ClueLabel(bool shown) => shown ? "Hide the clue" : "Show a clue";
+
+        /// <summary>The clue row offers to hide the clue while it's showing.</summary>
+        public void SetClueShown(bool shown)
+        {
+            clueItem.Label = ClueLabel(shown);
+            clueItem.LabelText.text = clueItem.Label;
+        }
 
         protected override void Tick(InputReader input, float dt, bool hasInput)
         {
