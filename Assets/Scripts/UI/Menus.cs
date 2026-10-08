@@ -1323,6 +1323,14 @@ namespace BorrowedSeconds.UI
             ? "<color=#FFD27A>TIME THIEF</color>  within par + 1.0s       <color=#D1DBF2>SILVER</color>  within par + 4.0s"
             : $"<color=#FFD27A>TIME THIEF</color>  {Ui.Secs(parTicks + 20)}s or better       <color=#D1DBF2>SILVER</color>  {Ui.Secs(parTicks + 80)}s or better";
 
+        /// <summary>The ribbon: a first clear, a new best and by how much (to the tick), or the best to beat.</summary>
+        public static string Ribbon(int ticks, int prevBest) => prevBest == 0 ? "FIRST  CLEAR"
+            : ticks < prevBest ? $"NEW  BEST  \u2212{Ui.Secs(prevBest - ticks)}s" : $"BEST  {Ui.Secs(prevBest)}";
+
+        /// <summary>The ribbon as shown, and whether it's up (checks read them).</summary>
+        public string RibbonText => ribbonText.text;
+        public bool RibbonShown => ribbonOn;
+
         /// <summary>The bar label as shown (checks read it).</summary>
         public string BarLabel => barLabel.text;
 
@@ -1342,7 +1350,9 @@ namespace BorrowedSeconds.UI
             Menu.Items[0].Label = isLast ? "Finish" : "Next";
             Menu.Selected = 0;
             ribbonOn = prevBest == 0 || ticks < prevBest;
-            ribbonText.text = prevBest == 0 ? "FIRST  CLEAR" : ticks < prevBest ? "NEW  BEST" : $"BEST  {Ui.Secs(prevBest)}";
+            ribbonText.text = Ribbon(ticks, prevBest);
+            // the ribbon grows to fit what it gained, centred where it always was
+            ribbon.SetSize(new Vector2(Mathf.Max(230f, ribbonText.GetPreferredValues(ribbonText.text).x + 56f), 40f));
             int diff = ticks - parTicks;
             par.text = parTicks > 0 ? $"PAR {Ui.Secs(parTicks)}s   ·   {(diff <= 0 ? "<color=#FFD27A>on par</color>" : "+" + Ui.Secs(diff) + "s")}" : "";
             stamped = false;

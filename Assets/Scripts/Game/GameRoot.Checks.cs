@@ -753,12 +753,45 @@ namespace BorrowedSeconds.Game
                 }
                 complete.Hide();
             }
+            // the ribbon after real wins on 1-1 (the route, at par): a first clear, a new best 0.75 s
+            // under the saved one, and a clear slower than the saved best (no ribbon)
+            int i11 = Catalog.Levels.FindIndex(l => l.Id == "1-1");
+            var d11 = Catalog.Levels[i11];
+            var sol11 = Catalog.SolutionFor(d11);
+            var ribbons = new List<string>();
+            foreach (int prior in new[] { 0, sol11.Par + 15, sol11.Par - 10 })
+            {
+                Save.ids = new string[0]; Save.best = new int[0]; Save.runs = new string[0]; Save.runTicks = new int[0];
+                if (prior > 0) Save.Record(d11.Id, prior);
+                StartLevel(i11, false);
+                Session.IntroTime = 0.2f;
+                Session.Autoplay = sol11.Actions;
+                Session.Speed = 3f;
+                var run = new RunWatch(Session);
+                while (!pendingComplete.HasValue && run.Alive()) yield return null;
+                if (!pendingComplete.HasValue) { bad.Add($"1-1 over a best of {prior}: no win ({run.Why(Session)})"); continue; }
+                var (t, p, prev) = pendingComplete.Value;
+                pendingComplete = null;
+                State = Flow.Complete;
+                complete.Show(t, p, prev, false);
+                string want = prior == 0 ? "FIRST  CLEAR" : prior > t ? $"NEW  BEST  \u2212{UI.Ui.Secs(prior - t)}s" : null;
+                ribbons.Add(complete.RibbonShown ? $"\"{complete.RibbonText}\"" : "none");
+                if (prev != prior || (want == null ? complete.RibbonShown : !complete.RibbonShown || complete.RibbonText != want))
+                    bad.Add($"1-1 won at {t} over a best of {prior} (read {prev}): ribbon {(complete.RibbonShown ? complete.RibbonText : "hidden")}, want {want ?? "hidden"}");
+                if (prior == sol11.Par + 15)
+                {
+                    yield return new WaitForSecondsRealtime(2.8f);
+                    yield return Shot(dir, "settled-new-best_1-1");
+                }
+                complete.Hide();
+            }
+
             State = Flow.Playing;
             JsonUtility.FromJsonOverwrite(original, Save);
             ShowTitle();
             report("medal-pace", bad.Count == 0,
                 $"HUD on {paceLevel}: {steps}; unsettled and watching show none; Ledger targets right on {targets}/{3 * Catalog.Levels.Count} panels; "
-                + $"Settled screen names both medal times on {settled}/{Catalog.Levels.Count}"
+                + $"Settled screen names both medal times on {settled}/{Catalog.Levels.Count}; 1-1's ribbon after a first clear, a best 0.75 s slower and one 0.50 s faster: {string.Join(", ", ribbons)}"
                 + (bad.Count > 0 ? "; " + string.Join("; ", bad.GetRange(0, Mathf.Min(6, bad.Count))) : ""));
         }
 
