@@ -704,3 +704,36 @@ All three items shipped on `improvements-10`. Final verification ran on the **re
 - Round 9 left leftover compositor helpers running on the shared machine (under `Builds/r9/`); they can be stopped by whoever owns that run.
 
 Still open: chapter VIII (owner: theme) and IX–XII, chapter VII's shared idea (7-2/7-4), a trailer re-cut, human playtesting (now including the start hold, the clue and the best-run ghost), a listen to the mix, WebGL and touch, Windows (needs the module), why this desktop's XWayland hangs the player, and fractional scaling on the Wayland backend.
+
+## Round 11 scope
+
+Written 2026-10-08 on `improvements-11`, after confirming `main` matched `origin/main` (`faee7a9`) with a clean tree. These stay out because they wait on the owner or on a playtest: chapter VIII's theme, replacing 7-4, the unlock rule, rotor aim, the HUD-size and *Mute in background* defaults, a second Settings page (and *Reset settings*, and a setting for the start hold), whether the clue or ghost should wait for a few defaults, the launcher default (Wayland or X11), the audio peak limit, the trailer re-cut and a release. WebGL and touch stay deferred. This round read the code for moments where the game knows something the player needs and doesn't say it, and found four:
+
+- **A sealed exit says nothing.** On the 13 levels with gold dials the exit stays shut until every dial is latched. A player who walks onto it early just stands there: nothing says why it won't let them leave, or how many dials are still open. The same goes for arriving in debt: the rules say you pay on the exit and leave as you thaw, but nothing on screen says so.
+- **The *Settled* screen doesn't say what you gained.** A new best shows *NEW BEST* but not by how much, which is the number a player chasing a medal wants.
+- **The clue stops after the first loan.** It marks the route's first borrow and first debt tile. Five levels need more than one loan (1-3, 4-2, 4-5, 7-3 and 7-5, among the hardest in the game), and there a player who follows the clue is left with nothing between it and the full solution.
+- **The best-run ghost walks through things for no visible reason.** It draws only the pawn, so on 1-1 it walks through a block that its run froze but that's moving in yours. Round 10 noted this as a limit.
+
+Items run in this order. Scratch output stays in `Builds/r11/`. Every tool run has to leave the real save's SHA-256 and mtime unchanged (`Builds/r11/save-before.*`), and the real KWin config unchanged (`Builds/r11/kwin-before.sha`). Every game window opens in the private compositor.
+
+### 1. The exit says why you can't leave yet
+- **Change:** standing on a sealed exit shows a pill over the player: *Exit sealed: latch every dial (1 of 2 latched)*. Standing on an open exit with a debt still to pay shows *Pay your debt here: you leave as you thaw*. These show on every attempt, not only until learned, and never in replays.
+- **Acceptance:** on every dial level, the pill shows while the player stands on the sealed exit and names the right count; it's gone once the exit opens or the player steps off. On a level where the route reaches the exit in debt, the debt pill shows. No pill on any other tile.
+- **Verify:** a new `checks.sh` check (`exit-pill`) that puts the player on the exit before the dials latch on each dial level and reads the pill; EditMode tests of the wording; screenshot.
+
+### 2. The *Settled* screen says what you gained
+- **Change:** a new best reads *NEW BEST −0.40s* (by how much it beat the old one).
+- **Acceptance:** the ribbon shows the difference to the saved best, to the tick; a first clear still says *FIRST CLEAR* and a slower clear still shows the best.
+- **Verify:** the `medal-pace` check reads the ribbon after a first clear, a slower clear and a faster clear; screenshot.
+
+### 3. The clue follows your loans
+- **Change:** the clue becomes one step per loan of the solver's route. Before a borrow it marks the obstacle (*FREEZE FIRST*, then *FREEZE NEXT*) and the tile where that loan's debt freezes the route (*DEBT HERE*); once you've borrowed, the obstacle mark goes and the tile stays until you thaw; after you thaw it moves on to the next loan. The step comes from the loans you've taken, so a rewind takes it back. The tip names the step (*loan 2 of 3*). Single-loan levels behave as before, except the obstacle mark goes while your loan is out.
+- **Acceptance:** for every loan of every route, the step's obstacle is that borrow's target and its tile is the route's tile on the tick that loan's debt freezes it (by replay). In game, following the route on each multi-loan level, the mark and ring match the step for the loans taken on every tick.
+- **Verify:** EditMode tests on all 35 levels (each step against a separate replay); the `clue` check extended to play the route on the five multi-loan levels and compare every tick; screenshot.
+
+### 4. The best-run ghost shows what it froze
+- **Change:** while the ghost's run has an obstacle frozen, a violet crystal outline of it is drawn where it froze (a block on its tile, a laser's bar, a rotor's arms), so the ghost's path through it makes sense and you can see where and when your best borrowed.
+- **Acceptance:** on every tick, the outlines shown are exactly the obstacles frozen in the run on that tick, at the run's positions; none show with the ghost off, on a first attempt, or while watching the solution.
+- **Verify:** the `best-ghost` check extended to compare the outlines with the run's frozen obstacles on every tick of 1-1 and of a laser and a rotor level; screenshot.
+
+**Not this round:** chapter VIII, replacing 7-4, the unlock rule, rotor aim, the HUD-size and background-mute defaults, a second Settings page and *Reset settings*, the launcher default, touch controls, WebGL, Windows (module), re-cutting the trailer, the audio peak limit and the mix by ear, human playtesting.
