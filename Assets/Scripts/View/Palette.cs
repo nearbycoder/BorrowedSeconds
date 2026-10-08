@@ -19,6 +19,8 @@ namespace BorrowedSeconds.View
         public static readonly Color Wall = Hex("#323A5C");
         public static readonly Color WallTop = Hex("#4A5582");
         public static readonly Color Plinth = Hex("#232845");
+        public static readonly Color PlinthLit = Hex("#3A4373"); // the plinth's top edge; it fades to dark below
+        public static readonly Color PlinthGlow = Hex("#232A52");
         public static readonly Color Brass = Hex("#C9A15A");
         public static readonly Color Porcelain = Hex("#F4EFE6");
         public static readonly Color Amber = Hex("#FFB547");

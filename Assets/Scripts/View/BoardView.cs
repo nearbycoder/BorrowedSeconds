@@ -150,7 +150,7 @@ namespace BorrowedSeconds.View
         {
             var floorA = Mats.Lit(Palette.FloorA, 0.55f);
             var floorB = Mats.Lit(Palette.FloorB, 0.55f);
-            var plinth = Mats.Lit(Palette.Plinth, 0.25f);
+            var plinth = PlinthMaterial();
             var wall = Mats.Lit(Palette.Wall, 0.3f);
             var wallTop = Mats.Lit(Palette.WallTop, 0.4f);
             var min = new Vector3(float.MaxValue, 0, float.MaxValue);
@@ -178,6 +178,7 @@ namespace BorrowedSeconds.View
                 }
             }
             Bounds = new Bounds((min + max) * 0.5f, max - min + new Vector3(1, 1, 1));
+            BuildTrim();
 
             GameObject model(string name, Vector3 p)
             {
@@ -185,6 +186,71 @@ namespace BorrowedSeconds.View
                 if (m != null) m.transform.localPosition = p;
                 return m;
             }
+        }
+
+        // ---- the board's finish: a brass band round every outer edge, with a tick at each tile
+
+        /// <summary>Every side of a floor or wall tile that faces void or the edge of the map, as (tile, Dirs).
+        /// No edge lies between two tiles.</summary>
+        public static List<(int tile, int dir)> ExposedEdges(LevelDef d)
+        {
+            var list = new List<(int, int)>();
+            for (int y = 0; y < d.H; y++)
+            for (int x = 0; x < d.W; x++)
+            {
+                if (d.Tiles[d.Idx(x, y)] == Tile.Void) continue;
+                for (int dir = 0; dir < 4; dir++)
+                {
+                    int nx = x + Dirs.DX[dir], ny = y + Dirs.DY[dir];
+                    bool outside = nx < 0 || ny < 0 || nx >= d.W || ny >= d.H;
+                    if (outside || d.Tiles[d.Idx(nx, ny)] == Tile.Void) list.Add((d.Idx(x, y), dir));
+                }
+            }
+            return list;
+        }
+
+        /// <summary>How many trim pieces the board has (checks read it).</summary>
+        public int TrimCount { get; private set; }
+
+        const float TrimY = -0.21f;
+
+        void BuildTrim()
+        {
+            var brass = Mats.Lit(Palette.Brass, 0.66f, 0.7f);
+            var trim = Shapes.Group("Trim", statics.transform).transform;
+            foreach (var (tile, dir) in ExposedEdges(Def))
+            {
+                var e = DirVec(dir);
+                bool alongX = dir == Dirs.N || dir == Dirs.S; // the edge runs along x
+                var p = At(tile) + e * 0.515f;
+                Shapes.Box("Band", trim, p + new Vector3(0, TrimY, 0), alongX ? new Vector3(1.03f, 0.09f, 0.035f) : new Vector3(0.035f, 0.09f, 1.03f), brass, false);
+                Shapes.Box("Tick", trim, p + new Vector3(0, TrimY - 0.105f, 0), alongX ? new Vector3(0.04f, 0.14f, 0.03f) : new Vector3(0.03f, 0.14f, 0.04f), brass, false);
+                TrimCount += 2;
+            }
+        }
+
+        static Material plinthMat;
+
+        /// <summary>The plinth's sides: lit slate at the top, fading into the void below (a vertical
+        /// gradient in the base map; the cube's side faces run v = 0 at the bottom to 1 at the top).</summary>
+        static Material PlinthMaterial()
+        {
+            if (plinthMat != null) return plinthMat;
+            var tex = new Texture2D(4, 64, TextureFormat.RGBA32, false) { name = "PlinthGradient", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            var px = new Color[4 * 64];
+            for (int v = 0; v < 64; v++)
+            {
+                float t = v / 63f;
+                float k = Mathf.Lerp(0.18f, 1f, Mathf.Pow(t, 1.6f));
+                for (int u = 0; u < 4; u++) px[v * 4 + u] = new Color(k, k, k, 1f);
+            }
+            tex.SetPixels(px);
+            tex.Apply(false, true);
+            // the sides face away from the sun, so a faint glow on the same gradient keeps them readable
+            plinthMat = new Material(Mats.Emissive(Palette.PlinthLit, Palette.PlinthGlow, 0.3f)) { name = "Plinth" };
+            plinthMat.SetTexture("_BaseMap", tex);
+            plinthMat.SetTexture("_EmissionMap", tex);
+            return plinthMat;
         }
 
         public void Render(SimState a, SimState b, float t, float dt)
