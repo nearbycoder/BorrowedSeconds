@@ -94,6 +94,8 @@ namespace BorrowedSeconds.UI
             public Func<bool> Enabled;
             public Func<float> Fraction;
             public Func<bool> Toggle;
+            /// <summary>What the row does, in a line (Settings shows it under the list).</summary>
+            public Func<string> Help;
             public RectTransform Rt, Content;
             public CanvasGroup Group;
             public TextMeshProUGUI LabelText, ValueText;
@@ -207,6 +209,15 @@ namespace BorrowedSeconds.UI
         bool IsEnabled(Item it) => it.Enabled == null || it.Enabled();
 
         public void Flash() { flash = 1f; }
+        /// <summary>The selected row's description, or "".</summary>
+        public string SelectedHelp => Selected >= 0 && Selected < Items.Count ? Items[Selected].Help?.Invoke() ?? "" : "";
+
+        /// <summary>Gives rows their descriptions by label.</summary>
+        public void Describe(Dictionary<string, Func<string>> help)
+        {
+            foreach (var it in Items)
+                if (help.TryGetValue(it.Label, out var h)) it.Help = h;
+        }
         public float SelectorY => selector.Rt.anchoredPosition.y;
         public float RowHeight => rowH;
 
@@ -309,6 +320,52 @@ namespace BorrowedSeconds.UI
                 if (IsEnabled(Items[Selected])) break;
             }
             Sfx.Play("ui_hover");
+        }
+    }
+
+    /// <summary>
+    /// The line under a settings list that says what the selected row does. A new text drops in
+    /// with a short fade, so moving through the rows reads as one line changing, not flicker.
+    /// </summary>
+    public sealed class HelpLine
+    {
+        readonly TextMeshProUGUI text;
+        readonly CanvasGroup group;
+        string shown = "";
+        float age = 1f;
+        public string Text => shown;
+
+        public HelpLine(Transform parent, Vector2 pos, Vector2 size)
+        {
+            var rt = Ui.Rect("Help", parent, new Vector2(0.5f, 1), new Vector2(0.5f, 1), pos, size);
+            group = rt.gameObject.AddComponent<CanvasGroup>();
+            text = Ui.Text("Text", rt, "", Ui.Regular, 20, new Color(0.84f, 0.87f, 0.97f, 0.92f), TextAlignmentOptions.Top);
+            Ui.Fill(text.rectTransform);
+            text.richText = true;
+            text.textWrappingMode = TextWrappingModes.Normal;
+            text.lineSpacing = 2;
+            var rule = Ui.Img("Rule", rt, null, new Color(Palette.Brass.r, Palette.Brass.g, Palette.Brass.b, 0.35f));
+            Ui.Place(rule.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 0.5f), new Vector2(0, 8), new Vector2(size.x * 0.5f, 1.5f));
+        }
+
+        /// <param name="intro">The window's own entrance (0..1): the line follows it in.</param>
+        public void Update(string next, float dt, float intro)
+        {
+            if (next != shown) { shown = next; text.text = next; age = 0f; }
+            age += dt;
+            float k = Ease.OutCubic(Ease.Clamp(age / 0.18f));
+            group.alpha = k * Ease.Clamp(intro);
+            text.rectTransform.anchoredPosition = new Vector2(0, (1f - k) * 6f);
+        }
+
+        /// <summary>Whether the text fits its box without overflowing (checks read it).</summary>
+        public bool Fits
+        {
+            get
+            {
+                text.ForceMeshUpdate();
+                return text.preferredHeight <= text.rectTransform.rect.height + 0.5f && !text.isTextOverflowing;
+            }
         }
     }
 
@@ -980,7 +1037,7 @@ namespace BorrowedSeconds.UI
             : base(canvas, "Settings", new Vector2(860, 1040), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
         {
             this.onBack = onBack;
-            menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -172), 740, 49, 25, true); // 16 rows clear the footer
+            menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -172), 740, 46, 25, true); // 16 rows and the help line clear the footer
             string Pct(float v) => Mathf.RoundToInt(v * 100) + "%";
             float Step(float v, int d) => Mathf.Clamp01(Mathf.Round((v + d * 0.1f) * 10f) / 10f);
             menu.AddSlider("Master volume", () => save.master, () => Pct(save.master), d => { save.master = Step(save.master, d); apply(); });
@@ -1017,10 +1074,34 @@ namespace BorrowedSeconds.UI
             }, () => EraseArmed ? "<color=#FF8A96>press again to erase</color>" : Time.realtimeSinceStartup < erasedUntil ? "erased" : "medals and times");
             menu.Add("Back", onBack);
             menu.IntroDelay = 0.25f;
+            menu.Describe(new Dictionary<string, Func<string>>
+            {
+                ["Master volume"] = () => "Everything you hear.",
+                ["Music"] = () => "The clockwork score. It dips under the key sounds and muffles while you're frozen.",
+                ["Effects"] = () => "Footsteps, borrows, beams, dials and the menus.",
+                ["Graphics fidelity"] = () => { var st = GraphicsFidelity.For(save.fidelity); return $"<b>{st.Name}.</b> {st.Summary}"; },
+                ["Display"] = () => "Fullscreen or a window size, and the 3D scene's render resolution.",
+                ["HUD size"] = () => "Larger text and panels in play, for small screens. The board re-frames to stay clear.",
+                ["Screen shake"] = () => "The camera kicks when you borrow, freeze and default.",
+                ["Reduce flashing"] = () => "Softens the flashes, ripples and colour splits of borrowing, freezing and rewinding.",
+                ["Focus slow-motion"] = () => "How fast time runs while you hold Focus to aim. Lower is slower.",
+                ["Game speed"] = () => "Slows the whole game for an easier pace. Medals count game time, so they stay fair.",
+                ["Toggle Focus (press, not hold)"] = () => "One press turns Focus on and the next turns it off, instead of holding it.",
+                ["Controller vibration"] = () => "Short rumble pulses on the gamepad when you borrow, the debt falls due, you default or settle.",
+                ["Mute in background"] = () => "Fades the sound out while the game's window isn't in front.",
+                ["Controls"] = () => "Rebind the keyboard. Gamepad buttons stay as they are.",
+                ["Erase progress"] = () => "Clears medals, best times and where to continue. Settings and keys stay. Press twice.",
+                ["Back"] = () => "Close Settings.",
+            });
+            help = new HelpLine(Body, new Vector2(0, -172 - 16 * 46 - 14), new Vector2(720, 56));
             footRow = Ui.Rect("Foot", Body, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 22), new Vector2(700, 34));
             footGroup = footRow.gameObject.AddComponent<CanvasGroup>();
 
         }
+
+        readonly HelpLine help;
+        /// <summary>The line under the list (checks read it).</summary>
+        public HelpLine Help => help;
 
         public override void Show() { base.Show(); menu.Selected = 0; armedUntil = erasedUntil = -1f; }
         public MenuList Menu => menu;
@@ -1035,6 +1116,7 @@ namespace BorrowedSeconds.UI
             if (menu.Selected != EraseRow) armedUntil = -1f; // leaving the row disarms it
             if (hasInput && input.Back) { Sfx.Play("ui_back"); onBack(); return; }
             menu.Update(input, dt, hasInput, a);
+            help.Update(menu.SelectedHelp, dt, (a - 0.5f) * 3f);
         }
     }
 
@@ -1142,7 +1224,7 @@ namespace BorrowedSeconds.UI
         public const int ModeRow = 0, ScaleRow = 1;
 
         public DisplayScreen(Transform canvas, SaveData save, Action apply, Action applyDisplay, Action onBack)
-            : base(canvas, "Display", new Vector2(860, 560), "WINDOW  AND  RESOLUTION", "DISPLAY", 0.35f)
+            : base(canvas, "Display", new Vector2(860, 500), "WINDOW  AND  RESOLUTION", "DISPLAY", 0.35f)
         {
             this.onBack = onBack;
             menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -172), 740, 58, 25, true);
@@ -1161,9 +1243,20 @@ namespace BorrowedSeconds.UI
                 d => { save.renderScale = scales[Mathf.Clamp(DisplayOptions.ScaleStep(save.renderScale) + d, 0, scales.Length - 1)]; apply(); });
             menu.Add("Back", onBack);
             menu.IntroDelay = 0.25f;
+            menu.Describe(new Dictionary<string, Func<string>>
+            {
+                ["Display mode"] = () => "Fullscreen, or a window of one of the sizes that fit this screen.",
+                ["Render resolution"] = () => "Draws the 3D scene smaller and scales it up, for weaker GPUs. Menus and text stay sharp.",
+                ["Back"] = () => "Back to Settings.",
+            });
+            help = new HelpLine(Body, new Vector2(0, -172 - 3 * 58 - 18), new Vector2(720, 56));
             footRow = Ui.Rect("Foot", Body, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 22), new Vector2(700, 34));
             footGroup = footRow.gameObject.AddComponent<CanvasGroup>();
         }
+
+        readonly HelpLine help;
+        /// <summary>The line under the list (checks read it).</summary>
+        public HelpLine Help => help;
 
         public override void Show() { base.Show(); menu.Selected = 0; }
 
@@ -1176,6 +1269,7 @@ namespace BorrowedSeconds.UI
             footGroup.alpha = Ease.OutCubic((a - 0.6f) * 2f);
             if (hasInput && input.Back) { Sfx.Play("ui_back"); onBack(); return; }
             menu.Update(input, dt, hasInput, a);
+            help.Update(menu.SelectedHelp, dt, (a - 0.4f) * 3f);
         }
     }
     // ==================================================================== how to play

@@ -35,7 +35,7 @@ namespace BorrowedSeconds.Game
         IEnumerator CheckFidelity(string dir, System.Action<string, bool, string> report)
         {
             var saved = JsonUtility.ToJson(Save);
-            forceDisplay = true; // ApplySettings uses the save's step, not the scripted run's
+            forceFidelity = true; // ApplySettings uses the save's step, not the scripted run's
             StartLevel(Catalog.Levels.FindIndex(l => l.Id == "4-5"), false);
             Session.Autoplay = Catalog.SolutionFor(Session.Def).Actions;
             Hud.SkipIntro();
@@ -82,10 +82,71 @@ namespace BorrowedSeconds.Game
             CloseSettings();
             Resume();
             JsonUtility.FromJsonOverwrite(saved, Save);
-            forceDisplay = false;
+            forceFidelity = false;
             ApplySettings();
             report("fidelity", all && oldSave && backHigh,
                 $"row {UI.SettingsScreen.FidelityRow} is Graphics fidelity: {isRow}; {string.Join(" | ", steps)}; an old save loads as {GraphicsFidelity.Steps[JsonUtility.FromJson<SaveData>(json).fidelity].Name}: {oldSave}; back to High: {backHigh}");
+        }
+
+        /// <summary>
+        /// Every row of Settings and of its Display page says what it does: selecting each row puts a
+        /// non-empty line under the list that fits its box, and the Graphics fidelity row's line names
+        /// the selected step and what it changes.
+        /// </summary>
+        IEnumerator CheckSettingsHelp(string dir, System.Action<string, bool, string> report)
+        {
+            var saved = JsonUtility.ToJson(Save);
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "2-1"), false);
+            Hud.SkipIntro();
+            yield return new WaitForSecondsRealtime(0.5f);
+            Pause();
+            OpenSettings(Flow.Paused);
+            yield return new WaitForSecondsRealtime(1.2f); // past the window's entrance
+            var bad = new List<string>();
+            int rows = 0;
+            IEnumerator Walk(UI.MenuList menu, UI.HelpLine help, string page)
+            {
+                for (int i = 0; i < menu.Items.Count; i++)
+                {
+                    menu.Selected = i;
+                    yield return null;
+                    yield return null;
+                    rows++;
+                    if (help.Text.Length == 0 || help.Text != menu.Items[i].Help?.Invoke() || !help.Fits) bad.Add($"{page} > {menu.Items[i].Label}: '{help.Text}' fits={help.Fits}");
+                }
+            }
+            yield return Walk(settings.Menu, settings.Help, "Settings");
+            // the fidelity row's line follows the step
+            var row = settings.Menu.Items[UI.SettingsScreen.FidelityRow];
+            settings.Menu.Selected = UI.SettingsScreen.FidelityRow;
+            var lines = new List<string>();
+            bool follows = true;
+            for (int k = 0; k < GraphicsFidelity.Steps.Length; k++)
+            {
+                Save.fidelity = k;
+                yield return null;
+                yield return null;
+                var st = GraphicsFidelity.Steps[k];
+                follows &= settings.Help.Text.Contains(st.Name) && settings.Help.Text.Contains(st.Summary) && settings.Help.Fits;
+                lines.Add(settings.Help.Text.Replace("<b>", "").Replace("</b>", ""));
+            }
+            JsonUtility.FromJsonOverwrite(saved, Save);
+            settings.Menu.Selected = UI.SettingsScreen.FidelityRow;
+            yield return null;
+            yield return Shot(dir, "settings_help");
+            settings.Menu.Items[UI.SettingsScreen.DisplayRow].Activate();
+            yield return new WaitForSecondsRealtime(1.0f);
+            yield return Walk(displayPage.Menu, displayPage.Help, "Display");
+            displayPage.Menu.Selected = UI.DisplayScreen.ScaleRow;
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return Shot(dir, "display_help");
+            CloseDisplay();
+            CloseSettings();
+            Resume();
+            JsonUtility.FromJsonOverwrite(saved, Save);
+            report("settings-help", bad.Count == 0 && follows && rows == settings.Menu.Items.Count + displayPage.Menu.Items.Count,
+                $"{rows} rows on two pages at {Screen.width}x{Screen.height}, each with a line that fits: {bad.Count == 0}{(bad.Count > 0 ? " (" + string.Join("; ", bad) + ")" : "")}; "
+                + $"the fidelity line follows the step: {follows} ({string.Join(" / ", lines)})");
         }
 
         /// <summary>

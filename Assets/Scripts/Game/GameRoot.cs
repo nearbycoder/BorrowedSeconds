@@ -178,12 +178,14 @@ namespace BorrowedSeconds.Game
             LevelSession.GameSpeed = capturing ? 1f : Mathf.Clamp(Save.speed, 0.5f, 1f);
             SetHudScale(capturing && !forceHudScale ? hudScaleArg : Save.hudScale);
             if (!capturing || forceDisplay) DisplayOptions.ApplyRenderScale(Save.renderScale);
-            GraphicsFidelity.Apply(capturing && !forceDisplay ? fidelityArg : Save.fidelity, Cam, Env.Sun, Env);
+            GraphicsFidelity.Apply(capturing && !forceDisplay && !forceFidelity ? fidelityArg : Save.fidelity, Cam, Env.Sun, Env);
             ApplyDisplay(false);
         }
 
         /// <summary>The Graphics fidelity step a scripted run uses (-bsFidelity; High by default).</summary>
         int fidelityArg = GraphicsFidelity.Default;
+        /// <summary>Set by the fidelity check: the save's step applies (forceDisplay would apply its window too).</summary>
+        bool forceFidelity;
 
         bool vibrationWas = true;
         /// <summary>Set by the ready-hold check: scripted runs otherwise start the clock at once.</summary>

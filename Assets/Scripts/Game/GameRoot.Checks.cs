@@ -61,6 +61,7 @@ namespace BorrowedSeconds.Game
             if (Want("aim-reach")) yield return CheckAimReach(dir, Report);
             if (Want("display")) yield return CheckDisplay(dir, Report);
             if (Want("fidelity")) yield return CheckFidelity(dir, Report);
+            if (Want("settings-help")) yield return CheckSettingsHelp(dir, Report);
             if (Want("how-to-play")) yield return CheckHowTo(dir, Report);
             if (Want("erase-progress")) yield return CheckErase(dir, Report);
             if (Want("hud-size")) yield return CheckHudSize(dir, Report);
