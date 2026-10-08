@@ -1,7 +1,7 @@
 {
     "name": "BorrowedSeconds.Tests",
     "rootNamespace": "BorrowedSeconds.Tests",
-    "references": ["BorrowedSeconds.Sim", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+    "references": ["BorrowedSeconds.Sim", "BorrowedSeconds", "Unity.RenderPipelines.Universal.Runtime", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
     "includePlatforms": ["Editor"],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

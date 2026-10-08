@@ -12,6 +12,8 @@ namespace BorrowedSeconds.View
         float tetherT = 1f;
         Vector3 tetherFrom, tetherTo;
         readonly List<RippleFx> ripples = new List<RippleFx>();
+        /// <summary>Multiplies every burst's particle count (Graphics fidelity: 0.5 on Low to 1.5 on Ultra).</summary>
+        public static float Density = 1f;
 
         sealed class RippleFx
         {
@@ -115,6 +117,7 @@ namespace BorrowedSeconds.View
         public void Spray(ParticleSystem ps, Vector3 pos, int count, Color color, float speed, float size, float life, float up = 0.5f, float spread = 1f)
         {
             var ep = new ParticleSystem.EmitParams();
+            count = Mathf.Max(1, Mathf.RoundToInt(count * Density));
             for (int i = 0; i < count; i++)
             {
                 var dir = Random.insideUnitSphere * spread;

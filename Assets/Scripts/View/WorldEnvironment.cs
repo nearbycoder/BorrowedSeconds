@@ -124,6 +124,18 @@ namespace BorrowedSeconds.View
             lens.scale.Override(1f);
         }
 
+        /// <summary>Graphics fidelity: bloom's resolution and filtering.</summary>
+        public void SetFidelity(Game.GraphicsFidelity.Step s)
+        {
+            if (bloom == null) return;
+            bloom.downscale.Override(s.BloomHalfRes ? BloomDownscaleMode.Half : BloomDownscaleMode.Quarter);
+            bloom.highQualityFiltering.Override(s.BloomHighQuality);
+        }
+
+        public bool BloomHighQuality => bloom != null && bloom.highQualityFiltering.value;
+        public BloomDownscaleMode BloomDownscale => bloom != null ? bloom.downscale.value : BloomDownscaleMode.Half;
+
+
         public void PulseBorrow()
         {
             chromaPulse = ReduceFlashing ? 0.4f : 1f;

@@ -32,6 +32,51 @@ namespace BorrowedSeconds.UI
         /// <summary>The UI image showing this stage; the camera only renders while it is visible.</summary>
         public Graphic Viewer;
 
+        static readonly System.Collections.Generic.List<WatchStage> all = new System.Collections.Generic.List<WatchStage>();
+        static float quality = 1f;
+        static int qualityMsaa = 8;
+        int basePixels;
+
+        /// <summary>Graphics fidelity: every watch's texture at <paramref name="scale"/> times its own
+        /// size, with <paramref name="msaa"/> samples (High: 1x, 8 samples, as it always was).</summary>
+        public static void SetQuality(float scale, int msaa)
+        {
+            quality = scale;
+            qualityMsaa = msaa;
+            all.RemoveAll(w => w == null);
+            foreach (var w in all) w.Resample();
+        }
+
+        /// <summary>The first watch's texture size and samples (checks read it).</summary>
+        public static string QualityState
+        {
+            get
+            {
+                all.RemoveAll(w => w == null);
+                return all.Count == 0 || all[0].Texture == null ? "none" : $"{all[0].Texture.width}px {all[0].Texture.antiAliasing}x";
+            }
+        }
+
+        RenderTexture MakeTexture() =>
+            new RenderTexture(Mathf.RoundToInt(basePixels * quality), Mathf.RoundToInt(basePixels * quality), 24, RenderTextureFormat.ARGB32) { antiAliasing = qualityMsaa, name = name + "RT" };
+
+        void Resample()
+        {
+            int px = Mathf.RoundToInt(basePixels * quality);
+            if (Texture != null && Texture.width == px && Texture.antiAliasing == qualityMsaa) return;
+            var old = Texture;
+            Texture = MakeTexture();
+            cam.targetTexture = Texture;
+            if (Viewer is RawImage img) img.texture = Texture;
+            if (old != null) { old.Release(); Destroy(old); }
+        }
+
+        void OnDestroy()
+        {
+            all.Remove(this);
+            if (Texture != null) Texture.Release();
+        }
+
         public static WatchStage Create(Transform parent, int pixels, float distance = 7.4f)
         {
             var go = new GameObject("WatchStage" + count);
@@ -46,7 +91,9 @@ namespace BorrowedSeconds.UI
         void Build(int pixels, float distance)
         {
             EnsureReflections();
-            Texture = new RenderTexture(pixels, pixels, 24, RenderTextureFormat.ARGB32) { antiAliasing = 8, name = name + "RT" };
+            basePixels = pixels;
+            all.Add(this);
+            Texture = MakeTexture();
             var camGo = new GameObject("Cam");
             camGo.transform.SetParent(transform, false);
             camGo.transform.localPosition = new Vector3(0, 0, -distance);

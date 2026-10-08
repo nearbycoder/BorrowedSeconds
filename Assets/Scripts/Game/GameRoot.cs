@@ -46,6 +46,7 @@ namespace BorrowedSeconds.Game
         PauseScreen pause;
         SettingsScreen settings;
         ControlsScreen controls;
+        DisplayScreen displayPage;
         HowToPlayScreen howto;
         CompleteScreen complete;
         ChapterCard card;
@@ -54,7 +55,7 @@ namespace BorrowedSeconds.Game
         float wonAt = -1f, attractTimer;
         int attractIndex;
         bool capturing;
-        static readonly string[] ScriptedFlags = { "-bsCapture", "-bsMenus", "-bsDemo", "-bsInputBot", "-bsChecks", "-bsTrailer", "-bsStills", "-bsFps" };
+        static readonly string[] ScriptedFlags = { "-bsCapture", "-bsMenus", "-bsDemo", "-bsInputBot", "-bsChecks", "-bsTrailer", "-bsStills", "-bsFps", "-bsFidelityShots" };
         static readonly string[] AttractLevels = { "1-5", "3-5", "2-4", "4-1", "3-2" };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -74,6 +75,8 @@ namespace BorrowedSeconds.Game
             // known before the first ApplySettings, so a scripted run never resizes its window
             var argv = System.Environment.GetCommandLineArgs();
             capturing = System.Array.Exists(ScriptedFlags, f => System.Array.IndexOf(argv, f) >= 0);
+            // -bsFidelity 0..3: a scripted run at another Graphics fidelity step (they keep High otherwise)
+            if (int.TryParse(Arg(argv, "-bsFidelity"), out int fid)) fidelityArg = GraphicsFidelity.Clamp(fid);
 
             Cam = Camera.main;
             if (Cam == null)
@@ -139,7 +142,8 @@ namespace BorrowedSeconds.Game
             levels = new LevelSelectScreen(root, Catalog, Save, i => Go(() => StartLevel(i, true)), () => Go(ShowTitle, 0.7f));
             pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); }, ToggleClue, WatchFromPause, ToggleBestRun,
                 () => { pause.Hide(); Go(() => ShowLevels(LevelIndex)); }, () => OpenSettings(Flow.Paused), () => OpenHowTo(Flow.Paused), () => { pause.Hide(); Go(ShowTitle); });
-            settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, () => { ApplyDisplay(true); Save.Save(); }, CloseSettings, OpenControls, EraseProgress);
+            settings = new SettingsScreen(root, Save, () => { ApplySettings(); Save.Save(); }, OpenDisplay, CloseSettings, OpenControls, EraseProgress);
+            displayPage = new DisplayScreen(root, Save, () => { ApplySettings(); Save.Save(); }, () => { ApplyDisplay(true); Save.Save(); }, CloseDisplay);
             controls = new ControlsScreen(root, () => Input.Keys, BindKey, ResetKeys, CloseControls);
             howto = new HowToPlayScreen(root, CloseHowTo);
             complete = new CompleteScreen(root, () => Go(Next), () => { complete.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); },
@@ -174,8 +178,12 @@ namespace BorrowedSeconds.Game
             LevelSession.GameSpeed = capturing ? 1f : Mathf.Clamp(Save.speed, 0.5f, 1f);
             SetHudScale(capturing && !forceHudScale ? hudScaleArg : Save.hudScale);
             if (!capturing || forceDisplay) DisplayOptions.ApplyRenderScale(Save.renderScale);
+            GraphicsFidelity.Apply(capturing && !forceDisplay ? fidelityArg : Save.fidelity, Cam, Env.Sun, Env);
             ApplyDisplay(false);
         }
+
+        /// <summary>The Graphics fidelity step a scripted run uses (-bsFidelity; High by default).</summary>
+        int fidelityArg = GraphicsFidelity.Default;
 
         bool vibrationWas = true;
         /// <summary>Set by the ready-hold check: scripted runs otherwise start the clock at once.</summary>
@@ -232,6 +240,14 @@ namespace BorrowedSeconds.Game
             // -bsRenderScale 0.5: the fps probe measures a lower render resolution
             if (float.TryParse(Arg(args, "-bsRenderScale"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float renderScale))
                 DisplayOptions.ApplyRenderScale(renderScale);
+            string fidelityShots = Arg(args, "-bsFidelityShots");
+            if (fidelityShots != null)
+            {
+                capturing = true;
+                Save.ReadOnly = true;
+                StartCoroutine(FidelityTour(fidelityShots));
+                return;
+            }
             string fps = Arg(args, "-bsFps");
             if (fps != null)
             {
@@ -656,6 +672,19 @@ namespace BorrowedSeconds.Game
             settings.Menu.Selected = SettingsScreen.ControlsRow;
         }
 
+        void OpenDisplay()
+        {
+            settings.Hide();
+            displayPage.Show();
+        }
+
+        void CloseDisplay()
+        {
+            displayPage.Hide();
+            settings.Show();
+            settings.Menu.Selected = SettingsScreen.DisplayRow;
+        }
+
         void BindKey(KeyAction action, UnityEngine.InputSystem.Key key)
         {
             KeyBindings.Assign(Input.Keys, action, key);
@@ -739,13 +768,14 @@ namespace BorrowedSeconds.Game
             Cursors.Set(State == Flow.Playing && Session != null && Session.Aim >= 0 && Session.LoanAvailable && Session.State == LevelSession.Mode.Playing
                 ? Cursors.Kind.Aim : Cursors.Kind.Arrow);
             Prompts.Tick(Session, Save, Input, State == Flow.Playing && Session != null && !Session.Muted && (promptDemo || (!capturing && Session.Autoplay == null)), dt);
-            Env.MenuBlur = Mathf.Max(Mathf.Max(Mathf.Max(levels.BlurNow, pause.BlurNow), trailerBlur), Mathf.Max(Mathf.Max(Mathf.Max(settings.BlurNow, controls.BlurNow), Mathf.Max(complete.BlurNow, howto.BlurNow)), Mathf.Max(card.BlurNow, ending.BlurNow)));
-            Hud.Dim = Mathf.Max(Mathf.Max(pause.BlurNow, howto.BlurNow), Mathf.Max(complete.BlurNow, Mathf.Max(settings.BlurNow, controls.BlurNow)));
+            Env.MenuBlur = Mathf.Max(Mathf.Max(Mathf.Max(levels.BlurNow, pause.BlurNow), trailerBlur), Mathf.Max(Mathf.Max(Mathf.Max(settings.BlurNow, Mathf.Max(controls.BlurNow, displayPage.BlurNow)), Mathf.Max(complete.BlurNow, howto.BlurNow)), Mathf.Max(card.BlurNow, ending.BlurNow)));
+            Hud.Dim = Mathf.Max(Mathf.Max(pause.BlurNow, howto.BlurNow), Mathf.Max(complete.BlurNow, Mathf.Max(settings.BlurNow, Mathf.Max(controls.BlurNow, displayPage.BlurNow))));
             title.Update(Input, dt, top(title));
             levels.Update(Input, dt, top(levels));
             pause.Update(Input, dt, top(pause));
             settings.Update(Input, dt, top(settings));
             controls.Update(Input, dt, top(controls));
+            displayPage.Update(Input, dt, top(displayPage));
             howto.Update(Input, dt, top(howto));
             complete.Update(Input, dt, top(complete));
             card.Update(Input, dt, top(card));
@@ -821,7 +851,7 @@ namespace BorrowedSeconds.Game
         {
             MenuScreen best = null;
             int order = -1;
-            foreach (var s in new MenuScreen[] { title, levels, pause, settings, controls, howto, complete, card, ending })
+            foreach (var s in new MenuScreen[] { title, levels, pause, settings, controls, displayPage, howto, complete, card, ending })
                 if (s.Visible && s.Root.GetSiblingIndex() > order) { order = s.Root.GetSiblingIndex(); best = s; }
             return best;
         }

@@ -973,7 +973,10 @@ namespace BorrowedSeconds.UI
         /// <summary>The key row under the window (checks read it).</summary>
         public string Footer => footText;
 
-        public SettingsScreen(Transform canvas, SaveData save, Action apply, Action applyDisplay, Action onBack, Action onControls, Action erase)
+        /// <summary>Index of the Graphics fidelity row, and of the Display row that opens its page.</summary>
+        public const int FidelityRow = 3, DisplayRow = 4;
+
+        public SettingsScreen(Transform canvas, SaveData save, Action apply, Action onDisplay, Action onBack, Action onControls, Action erase)
             : base(canvas, "Settings", new Vector2(860, 1040), "ADJUST  THE  MECHANISM", "SETTINGS", 0.35f)
         {
             this.onBack = onBack;
@@ -983,18 +986,13 @@ namespace BorrowedSeconds.UI
             menu.AddSlider("Master volume", () => save.master, () => Pct(save.master), d => { save.master = Step(save.master, d); apply(); });
             menu.AddSlider("Music", () => save.music, () => Pct(save.music), d => { save.music = Step(save.music, d); apply(); });
             menu.AddSlider("Effects", () => save.sfx, () => Pct(save.sfx), d => { save.sfx = Step(save.sfx, d); apply(); });
-            // Fullscreen, or a window of a size that fits the desktop (each step applies at once)
-            menu.Add("Display", null, () => DisplayOptions.Label(save, DisplayOptions.Desktop), d =>
-            {
-                var desk = DisplayOptions.Desktop;
-                int n = DisplayOptions.Fitting(desk).Count + 1;
-                DisplayOptions.Choose(save, desk, (DisplayOptions.Choice(save, desk) + d + n) % n);
-                applyDisplay();
-            });
-            var scales = DisplayOptions.RenderScales;
-            menu.AddSlider("Render resolution", () => DisplayOptions.ScaleStep(save.renderScale) / (float)(scales.Length - 1),
-                () => Pct(scales[DisplayOptions.ScaleStep(save.renderScale)]),
-                d => { save.renderScale = scales[Mathf.Clamp(DisplayOptions.ScaleStep(save.renderScale) + d, 0, scales.Length - 1)]; apply(); });
+            // four steps, Low to Ultra (Game.GraphicsFidelity); each applies at once
+            var steps = GraphicsFidelity.Steps;
+            menu.AddSlider("Graphics fidelity", () => GraphicsFidelity.Clamp(save.fidelity) / (float)(steps.Length - 1),
+                () => steps[GraphicsFidelity.Clamp(save.fidelity)].Name.ToUpperInvariant(),
+                d => { save.fidelity = GraphicsFidelity.Clamp(GraphicsFidelity.Clamp(save.fidelity) + d); apply(); });
+            // the window and the render resolution have their own page (DisplayScreen)
+            menu.Add("Display", onDisplay, () => DisplayOptions.Label(save, DisplayOptions.Desktop) + ", " + Pct(DisplayOptions.RenderScales[DisplayOptions.ScaleStep(save.renderScale)]) + "  ›");
             var hud = HudLayout.Sizes;
             menu.AddSlider("HUD size", () => HudLayout.Step(save.hudScale) / (float)(hud.Length - 1), () => Pct(hud[HudLayout.Step(save.hudScale)]),
                 d => { save.hudScale = hud[Mathf.Clamp(HudLayout.Step(save.hudScale) + d, 0, hud.Length - 1)]; apply(); });
@@ -1126,6 +1124,60 @@ namespace BorrowedSeconds.UI
         public void ListenFor(KeyAction action) { menu.Selected = (int)action; listening = (int)action; listenAge = 0f; }
     }
 
+
+    // ==================================================================== display
+
+    /// <summary>Settings > Display: fullscreen or a window size, and the 3D scene's render resolution.</summary>
+    public sealed class DisplayScreen : WindowScreen
+    {
+        readonly MenuList menu;
+        readonly Action onBack;
+        readonly RectTransform footRow;
+        readonly CanvasGroup footGroup;
+        string footText;
+        /// <summary>The key row under the window (checks read it).</summary>
+        public string Footer => footText;
+        public MenuList Menu => menu;
+        /// <summary>Row indices (checks select rows by index).</summary>
+        public const int ModeRow = 0, ScaleRow = 1;
+
+        public DisplayScreen(Transform canvas, SaveData save, Action apply, Action applyDisplay, Action onBack)
+            : base(canvas, "Display", new Vector2(860, 560), "WINDOW  AND  RESOLUTION", "DISPLAY", 0.35f)
+        {
+            this.onBack = onBack;
+            menu = new MenuList(Body, new Vector2(0.5f, 1), new Vector2(-370, -172), 740, 58, 25, true);
+            string Pct(float v) => Mathf.RoundToInt(v * 100) + "%";
+            // Fullscreen, or a window of a size that fits the desktop (each step applies at once)
+            menu.Add("Display mode", null, () => DisplayOptions.Label(save, DisplayOptions.Desktop), d =>
+            {
+                var desk = DisplayOptions.Desktop;
+                int n = DisplayOptions.Fitting(desk).Count + 1;
+                DisplayOptions.Choose(save, desk, (DisplayOptions.Choice(save, desk) + d + n) % n);
+                applyDisplay();
+            });
+            var scales = DisplayOptions.RenderScales;
+            menu.AddSlider("Render resolution", () => DisplayOptions.ScaleStep(save.renderScale) / (float)(scales.Length - 1),
+                () => Pct(scales[DisplayOptions.ScaleStep(save.renderScale)]),
+                d => { save.renderScale = scales[Mathf.Clamp(DisplayOptions.ScaleStep(save.renderScale) + d, 0, scales.Length - 1)]; apply(); });
+            menu.Add("Back", onBack);
+            menu.IntroDelay = 0.25f;
+            footRow = Ui.Rect("Foot", Body, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 22), new Vector2(700, 34));
+            footGroup = footRow.gameObject.AddComponent<CanvasGroup>();
+        }
+
+        public override void Show() { base.Show(); menu.Selected = 0; }
+
+        protected override void Tick(InputReader input, float dt, bool hasInput)
+        {
+            float a = AnimateWindow();
+            string foot = input.UsingGamepad ? $"<b>{input.Pad.Dpad}</b> choose and adjust <b>{input.Pad.East}</b> back"
+                : $"<b>{input.KeyName(KeyAction.Up)} {input.KeyName(KeyAction.Down)}</b> choose <b>{input.KeyName(KeyAction.Left)} {input.KeyName(KeyAction.Right)}</b> adjust <b>Esc</b> back";
+            if (foot != footText) { footText = foot; Kit.Keycaps(footRow, foot, 1f, true); }
+            footGroup.alpha = Ease.OutCubic((a - 0.6f) * 2f);
+            if (hasInput && input.Back) { Sfx.Play("ui_back"); onBack(); return; }
+            menu.Update(input, dt, hasInput, a);
+        }
+    }
     // ==================================================================== how to play
 
     /// <summary>

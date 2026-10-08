@@ -60,6 +60,7 @@ namespace BorrowedSeconds.Game
             if (Want("forecast")) yield return CheckForecast(dir, Report);
             if (Want("aim-reach")) yield return CheckAimReach(dir, Report);
             if (Want("display")) yield return CheckDisplay(dir, Report);
+            if (Want("fidelity")) yield return CheckFidelity(dir, Report);
             if (Want("how-to-play")) yield return CheckHowTo(dir, Report);
             if (Want("erase-progress")) yield return CheckErase(dir, Report);
             if (Want("hud-size")) yield return CheckHudSize(dir, Report);
@@ -277,8 +278,10 @@ namespace BorrowedSeconds.Game
             OpenSettings(Flow.Paused);
             var desk = DisplayOptions.Desktop;
             var fit = DisplayOptions.Fitting(desk);
-            var row = settings.Menu.Items.Find(i => i.Label == "Display");
-            settings.Menu.Selected = settings.Menu.Items.IndexOf(row);
+            settings.Menu.Selected = UI.SettingsScreen.DisplayRow;
+            settings.Menu.Items[UI.SettingsScreen.DisplayRow].Activate(); // Settings > Display opens its page
+            var row = displayPage.Menu.Items[UI.DisplayScreen.ModeRow];
+            displayPage.Menu.Selected = UI.DisplayScreen.ModeRow;
             DisplayOptions.Choose(Save, desk, 1);
             ApplyDisplay(true);
             IEnumerator Until(System.Func<bool> done)
@@ -301,6 +304,7 @@ namespace BorrowedSeconds.Game
             var modes = new List<string>();
             foreach (var r in Screen.resolutions) { string m = $"{r.width}x{r.height}"; if (!modes.Contains(m)) modes.Add(m); }
             string display = $"Display.main system {Display.main.systemWidth}x{Display.main.systemHeight}, rendering {Display.main.renderingWidth}x{Display.main.renderingHeight}, dpi {Screen.dpi:0}";
+            CloseDisplay();
             CloseSettings();
             Resume();
             yield return new WaitForSecondsRealtime(1.5f);
@@ -308,7 +312,8 @@ namespace BorrowedSeconds.Game
 
             Pause();
             OpenSettings(Flow.Paused);
-            settings.Menu.Selected = settings.Menu.Items.IndexOf(row);
+            settings.Menu.Items[UI.SettingsScreen.DisplayRow].Activate();
+            displayPage.Menu.Selected = UI.DisplayScreen.ModeRow;
             row.Adjust(1); // back to the smallest window
             tf = Time.realtimeSinceStartup;
             yield return Until(() => Screen.fullScreenMode == FullScreenMode.Windowed && Screen.width == fit[0].x && Screen.height == fit[0].y);
@@ -322,6 +327,7 @@ namespace BorrowedSeconds.Game
             Screen.SetResolution(w0, h0, FullScreenMode.Windowed);
             float until = Time.realtimeSinceStartup + 3f;
             while ((Screen.width != w0 || Screen.height != h0) && Time.realtimeSinceStartup < until) yield return null;
+            CloseDisplay();
             CloseSettings();
             Resume();
             JsonUtility.FromJsonOverwrite(saved, Save);
@@ -471,15 +477,23 @@ namespace BorrowedSeconds.Game
             OpenSettings(Flow.Paused);
             var desk = DisplayOptions.Desktop;
             var fit = DisplayOptions.Fitting(desk);
-            var row = settings.Menu.Items.Find(i => i.Label == "Display");
-            var scaleRow = settings.Menu.Items.Find(i => i.Label == "Render resolution");
-            bool rows = row != null && scaleRow != null && settings.Menu.Items.IndexOf(row) == 3 && settings.Menu.Items.IndexOf(scaleRow) == 4
+            // Settings > Display (the row after Graphics fidelity) opens a page with the window and the render resolution
+            bool opened = settings.Menu.Items[UI.SettingsScreen.DisplayRow].Label == "Display"
+                && settings.Menu.Items[UI.SettingsScreen.FidelityRow].Label == "Graphics fidelity";
+            settings.Menu.Selected = UI.SettingsScreen.DisplayRow;
+            if (opened) settings.Menu.Items[UI.SettingsScreen.DisplayRow].Activate();
+            yield return null;
+            opened &= displayPage.Visible && !settings.Visible;
+            var row = displayPage.Menu.Items.Find(i => i.Label == "Display mode");
+            var scaleRow = displayPage.Menu.Items.Find(i => i.Label == "Render resolution");
+            bool rows = opened && row != null && scaleRow != null && displayPage.Menu.Items.IndexOf(row) == UI.DisplayScreen.ModeRow
+                && displayPage.Menu.Items.IndexOf(scaleRow) == UI.DisplayScreen.ScaleRow
                 && settings.Menu.Items[UI.SettingsScreen.ControlsRow].Label == "Controls";
             var sizes = new List<string>();
             bool resized = rows;
             if (rows)
             {
-                settings.Menu.Selected = 3;
+                displayPage.Menu.Selected = UI.DisplayScreen.ModeRow;
                 DisplayOptions.Choose(Save, desk, 1);
                 ApplyDisplay(true);
                 for (int k = 1; k <= fit.Count; k++)
@@ -503,7 +517,7 @@ namespace BorrowedSeconds.Game
             float scaleSeen = -1f;
             if (scaleRow != null)
             {
-                settings.Menu.Selected = 4;
+                displayPage.Menu.Selected = UI.DisplayScreen.ScaleRow;
                 for (int i = 0; i < 4; i++) scaleRow.Adjust(-1);
                 scaleSeen = DisplayOptions.CurrentRenderScale;
                 scaled = Mathf.Approximately(Save.renderScale, 0.5f) && Mathf.Approximately(scaleSeen, 0.5f) && scaleRow.Value() == "50%"
@@ -518,6 +532,10 @@ namespace BorrowedSeconds.Game
             while ((Screen.width != w0 || Screen.height != h0) && Time.realtimeSinceStartup < until) yield return null;
             yield return new WaitForSecondsRealtime(1.2f);
             yield return Shot(dir, "display_settings");
+            // Back (Esc) on the page returns to Settings on the Display row
+            displayPage.Menu.Items.Find(i => i.Label == "Back").Activate();
+            bool returned = settings.Visible && !displayPage.Visible && settings.Menu.Selected == UI.SettingsScreen.DisplayRow;
+            rows &= returned;
             CloseSettings();
             Resume();
             yield return new WaitForSecondsRealtime(2.5f);
@@ -529,7 +547,7 @@ namespace BorrowedSeconds.Game
             JsonUtility.FromJsonOverwrite(saved, Save);
             forceDisplay = false;
             report("display", rows && resized && persists && scaled && Mathf.Approximately(restored, 1f),
-                $"desktop {desk.x}x{desk.y}; rows at 3 and 4: {rows}; the Display row stepped the window through {string.Join(", ", sizes)}; "
+                $"desktop {desk.x}x{desk.y}; Settings > Display opens its page with both rows and Back returns to it: {rows}; the Display mode row stepped the window through {string.Join(", ", sizes)}; "
                 + $"saved {persists}; render scale 50% -> URP {scaleSeen:0.00}, saved {scaled}; back to {Screen.width}x{Screen.height} at {restored:0.00}");
         }
 

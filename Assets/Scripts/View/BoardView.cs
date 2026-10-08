@@ -50,6 +50,73 @@ namespace BorrowedSeconds.View
             for (int i = 0; i < d.Rotors.Length; i++) Rotors.Add(new RotorView(this, i));
             Player = new PlayerView(this);
             BuildLinks();
+            BuildGlowLights();
+        }
+
+        // ---- Graphics fidelity Ultra: the glowing pieces light the board around them
+        /// <summary>Set by Game.GraphicsFidelity; the lights are built with every board and only switched.</summary>
+        public static bool GlowLights;
+        Light playerLight, exitLight;
+        Light[] laserLights = new Light[0];
+
+        static Light PointLight(Transform parent, Vector3 local, Color color, float range)
+        {
+            var go = new GameObject("GlowLight");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = local;
+            var l = go.AddComponent<Light>();
+            l.type = LightType.Point;
+            l.color = color;
+            l.range = range;
+            l.shadows = LightShadows.None;
+            l.enabled = false;
+            return l;
+        }
+
+        void BuildGlowLights()
+        {
+            playerLight = PointLight(Player.Root.transform, new Vector3(0, 0.55f, 0), Palette.Amber, 2.6f);
+            exitLight = PointLight(Exit.Root.transform, new Vector3(0, 0.7f, 0), Palette.Gold, 3f);
+            laserLights = new Light[Lasers.Count];
+            for (int i = 0; i < Lasers.Count; i++) laserLights[i] = PointLight(Lasers[i].Root.transform, Vector3.zero, Palette.Coral, 2f);
+        }
+
+        /// <summary>How many glow lights are on (checks read it).</summary>
+        public int GlowLightsOn
+        {
+            get
+            {
+                int n = (playerLight != null && playerLight.enabled ? 1 : 0) + (exitLight != null && exitLight.enabled ? 1 : 0);
+                foreach (var l in laserLights) if (l != null && l.enabled) n++;
+                return n;
+            }
+        }
+
+        void RenderGlowLights(SimState b, float time)
+        {
+            if (playerLight == null) return;
+            bool on = GlowLights;
+            playerLight.enabled = on && !b.Dead;
+            exitLight.enabled = on;
+            if (!on) { foreach (var l in laserLights) l.enabled = false; return; }
+            bool frozen = b.PFrozen > 0;
+            playerLight.color = frozen ? Palette.Ice : Palette.Amber;
+            playerLight.intensity = (frozen ? 1.6f : 1.3f) * (1f + 0.06f * Mathf.Sin(time * 3.1f));
+            exitLight.intensity = b.ExitOpen ? 1.6f + 0.2f * Mathf.Sin(time * 2f) : 0.5f;
+            for (int i = 0; i < laserLights.Length; i++)
+            {
+                bool lit = b.LaserLit[i] && b.LFrozen[i] == 0;
+                bool bar = b.LFrozen[i] > 0 && b.LFrozenLit[i];
+                int len = bar ? b.LFrozenLen[i] : b.BeamLen[i];
+                var l = laserLights[i];
+                l.enabled = (lit || bar) && len > 0;
+                if (!l.enabled) continue;
+                // one light at the middle of the beam, reaching both ends
+                l.transform.localPosition = new Vector3(0, 0.35f, 0.5f + len * 0.5f);
+                l.range = len * 0.5f + 1.6f;
+                l.color = bar ? Palette.Ice : Palette.Coral;
+                l.intensity = (bar ? 0.9f : 1.5f) * (bar ? 1f : 1f + 0.1f * Mathf.Sin(time * 50f));
+            }
         }
 
         // arcs from each plate to the gates and lasers on its channel, fired when it goes down
@@ -131,6 +198,7 @@ namespace BorrowedSeconds.View
             foreach (var v in Gates) v.Render(a, b, t, dt, time);
             foreach (var v in Locks) v.Render(a, b, t, dt, time);
             Exit.Render(a, b, t, dt, time);
+            RenderGlowLights(b, time);
             foreach (var list in links) foreach (var l in list) l.Render(dt);
             if (clueRing != null && clueRing.activeSelf)
             {

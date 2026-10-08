@@ -55,6 +55,7 @@ namespace BorrowedSeconds.EditorTools
                 ConfigureUrp();
                 if (ripple != null) AddRipplePass(ripple);
                 EnsureUi3DRenderer();
+                AddAmbientOcclusion();
                 ConfigurePlayer();
                 BuildScene();
                 BuildFonts();
@@ -133,6 +134,40 @@ namespace BorrowedSeconds.EditorTools
                 EditorUtility.SetDirty(feature);
                 EditorUtility.SetDirty(data);
             }
+        }
+
+        const string AoName = "BS Ambient Occlusion";
+
+        /// <summary>
+        /// Makes sure the main renderer has URP's SSAO (it always has: intensity 0.4, radius 0.3, medium
+        /// samples) and that it is saved active, because URP strips the shader variants of inactive
+        /// features from builds. Graphics fidelity switches it off on Low and sets its quality per step
+        /// at runtime (Game.GraphicsFidelity). Not on the UI3D renderer.
+        /// </summary>
+        static void AddAmbientOcclusion()
+        {
+            const string path = "Assets/Settings/PC_Renderer.asset";
+            var data = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(path);
+            if (data == null) return;
+            var feature = data.rendererFeatures.OfType<ScreenSpaceAmbientOcclusion>().FirstOrDefault();
+            if (feature == null)
+            {
+                feature = ScriptableObject.CreateInstance<ScreenSpaceAmbientOcclusion>();
+                feature.name = AoName;
+                AssetDatabase.AddObjectToAsset(feature, data);
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(feature, out _, out long localId);
+                var so = new SerializedObject(data);
+                var features = so.FindProperty("m_RendererFeatures");
+                var map = so.FindProperty("m_RendererFeatureMap");
+                features.arraySize++;
+                features.GetArrayElementAtIndex(features.arraySize - 1).objectReferenceValue = feature;
+                map.arraySize++;
+                map.GetArrayElementAtIndex(map.arraySize - 1).longValue = localId;
+                so.ApplyModifiedProperties();
+            }
+            feature.SetActive(true);
+            EditorUtility.SetDirty(feature);
+            EditorUtility.SetDirty(data);
         }
 
         const string Ui3DRenderer = "Assets/Settings/UI3D_Renderer.asset";
