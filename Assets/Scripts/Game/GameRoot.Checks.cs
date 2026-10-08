@@ -1354,6 +1354,78 @@ namespace BorrowedSeconds.Game
             if (!oldOk || !unsettled || !watchNone) Fail($"old save loads without a run={oldOk}, unsettled level has none={unsettled}, none while watching={watchNone}");
             else notes.Add("a save from before loads with no ghost; an unsettled level and Watch solution show none");
 
+            // 6. what the run froze: on every drawn tick, the violet crystals are exactly the run's frozen
+            // obstacles, where a separate replay of the run has them (a block, a laser's bar, a rotor's arms)
+            foreach (var id in new[] { "1-1", "4-3", "3-1" })
+            {
+                int li = Catalog.Levels.FindIndex(l => l.Id == id);
+                var ld = Catalog.Levels[li];
+                var lsol = Catalog.SolutionFor(ld);
+                Save.Record(ld.Id, lsol.Par, RunLog.Encode(lsol.Actions));
+                var states = new List<SimState>();
+                var rs = Simulation.Create(ld);
+                int rk = 0;
+                states.Add(rs.Clone());
+                while (!rs.Won && !rs.Dead && rs.Tick < 2000)
+                {
+                    int act = rk < lsol.Actions.Count && lsol.Actions[rk].Tick == rs.Tick ? lsol.Actions[rk++].Action : Act.None;
+                    Simulation.Step(ld, rs, act);
+                    states.Add(rs.Clone());
+                }
+                StartLevel(li, false);
+                Session.IntroTime = 0.2f;
+                Session.Autoplay = lsol.Actions; // the player keeps to the route, so nothing kills them
+                Session.Speed = 2f;
+                int drawn = 0, wrong = 0, frozenTicks = 0, lastT = -1;
+                string firstWrong = null;
+                var watch = new RunWatch(Session);
+                while (watch.Alive() && bestRun != null && Session.State != LevelSession.Mode.Won)
+                {
+                    yield return null;
+                    int t = bestRun.RenderedTick;
+                    if (t == lastT || t < 0 || !BestRunShowing) continue;
+                    lastT = t;
+                    drawn++;
+                    var st = states[Mathf.Min(t, states.Count - 1)];
+                    bool anyFrozen = false;
+                    for (int o = 0; o < ld.ObstacleCount; o++)
+                    {
+                        bool want = st.IsObstacleFrozen(ld, o);
+                        bool got = bestRun.FrozenShown(o, out var pos, out int len, out float ang);
+                        anyFrozen |= want;
+                        bool right = want == got;
+                        if (right && want)
+                            switch (ld.KindOf(o, out int i))
+                            {
+                                case LevelDef.Kind.Slider: right = (pos - Session.Board.Pos(View.BoardView.SliderTile(ld, st, i), 0.43f)).sqrMagnitude < 1e-4f; break;
+                                case LevelDef.Kind.Laser: right = len == (st.LFrozenLit[i] ? st.LFrozenLen[i] : 0); break;
+                                default: right = Mathf.Abs(Mathf.DeltaAngle(ang, View.BoardView.RotorAngle(ld, st, i))) < 0.5f; break;
+                            }
+                        if (!right && wrong++ == 0) firstWrong = $"{id} tick {t} obstacle {o}: run frozen={want}, drawn={got} at {pos} len {len} angle {ang:0}";
+                    }
+                    if (anyFrozen) frozenTicks++;
+                    if (anyFrozen && id != "1-1" && frozenTicks == 20)
+                    {
+                        Session.Paused = true;
+                        yield return new WaitForSecondsRealtime(0.3f);
+                        yield return Shot(dir, $"best-ghost-frozen_{id}");
+                        Session.Paused = false;
+                    }
+                }
+                pendingComplete = null;
+                if (drawn < 30 || frozenTicks == 0 || wrong > 0) Fail($"frozen crystals on {id}: {drawn} ticks drawn, {frozenTicks} with something frozen, {wrong} wrong" + (firstWrong != null ? "; first: " + firstWrong : ""));
+                else notes.Add($"{id}: the run's frozen obstacles drawn right on {drawn}/{drawn} ticks ({frozenTicks} with one frozen)");
+            }
+            // the picture: standing still on 1-1 while the ghost's block is frozen
+            StartLevel(i11, false);
+            Session.IntroTime = 0.2f;
+            Session.Autoplay = new List<TimedAction>();
+            float shotBy = Time.realtimeSinceStartup + 20f;
+            while (Session.Tick < 32 && Time.realtimeSinceStartup < shotBy) yield return null;
+            Session.Paused = true;
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return Shot(dir, "best-ghost-frozen_1-1");
+
             forceBestRun = false;
             Save.ids = ids; Save.best = best; Save.runs = runs; Save.runTicks = runTicks; Save.bestGhost = ghostWas;
             StartLevel(0, false);
