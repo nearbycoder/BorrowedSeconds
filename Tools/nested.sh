@@ -63,6 +63,13 @@ KPID=$!
 trap 'kill -TERM -- "-$KPID" 2> /dev/null || true' TERM INT
 wait "$KPID" || true
 trap - TERM INT
+# D-Bus starts helpers inside the session (ksecretd) that outlive it, one more per run. They carry
+# this run's private data folder in their environment, which nothing outside the run uses, so
+# exactly those are stopped.
+for p in $(pgrep -u "$(id -u)"); do
+  [ "$p" = "$$" ] && continue
+  tr '\0' '\n' < "/proc/$p/environ" 2> /dev/null | grep -qxF "XDG_DATA_HOME=$DIR/data" && kill "$p" 2> /dev/null || true
+done
 rm -f "$INNER"
 code=1
 [ -f "$STATUS" ] && code="$(cat "$STATUS")" && rm -f "$STATUS"
