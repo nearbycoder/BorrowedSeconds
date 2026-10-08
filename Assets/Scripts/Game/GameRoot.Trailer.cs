@@ -235,6 +235,7 @@ namespace BorrowedSeconds.Game
             bool untilWin = MiniJson.Bool(s, "win", false), untilRewound = MiniJson.Bool(s, "death", false);
             float zoom0 = Rig.Zoom, zoomTo = Num(s, "zoomTo", zoom0), zoomTime = Num(s, "zoomTime", 4f);
             float t = 0f, endT = -1f, wonT = -1f;
+            int prevBest = Save.Best(levelId); // the trailer save's best, before this shot's win
             int frame = 0, durFrames = dur > 0f ? Mathf.RoundToInt(dur * 60f) : -1;
             if (Session != null && State != Flow.Card) Session.Paused = false;
 
@@ -296,7 +297,7 @@ namespace BorrowedSeconds.Game
                 if (completeAfter >= 0f && wonT >= 0f && t >= wonT + completeAfter && State == Flow.Playing)
                 {
                     State = Flow.Complete;
-                    complete.Show(Session.Tick, Catalog.SolutionFor(Session.Def)?.Par ?? 0, 0, false);
+                    complete.Show(Session.Tick, Catalog.SolutionFor(Session.Def)?.Par ?? 0, prevBest, false);
                 }
                 if (zoomTo != zoom0 && stillsDir == null) Rig.Zoom = Mathf.Lerp(zoom0, zoomTo, Ease.InOutCubic(t / Mathf.Max(0.01f, zoomTime)));
 
