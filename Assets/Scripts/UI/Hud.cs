@@ -180,8 +180,14 @@ namespace BorrowedSeconds.UI
             watchBig = Ui.Text("Big", watch, "", Ui.Heavy, 40, ink);
             Ui.Place(watchBig.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 6), new Vector2(160, 60));
             watchSmall = Ui.Text("Small", watch, "", Ui.Semi, 16, dim);
-            Ui.Place(watchSmall.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -30), new Vector2(160, 24));
-            watchSmall.characterSpacing = 3; // "LOAN READY" must fit inside the ring
+            // "LOAN READY" must fit inside the ring: the box is the ring's inner width there, and the
+            // text shrinks to fit it rather than running under the ring
+            Ui.Place(watchSmall.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -30), new Vector2(WatchLabelWidth, 24));
+            watchSmall.characterSpacing = 2;
+            watchSmall.textWrappingMode = TextWrappingModes.NoWrap;
+            watchSmall.enableAutoSizing = true;
+            watchSmall.fontSizeMin = 11;
+            watchSmall.fontSizeMax = 16;
             termText = Ui.Text("Term", root, "", Ui.Semi, 18, dim);
             Ui.Place(termText.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 6), new Vector2(640, 26));
             termText.textWrappingMode = TextWrappingModes.NoWrap;
@@ -292,7 +298,32 @@ namespace BorrowedSeconds.UI
             bannerFx = TextFx.On(banner, TextFx.Kind.Stamp, 0.045f, 0.2f, 60f);
             bannerSubFx = TextFx.On(bannerSub, TextFx.Kind.Type, 0.015f, 0.2f);
             bannerGroup.alpha = 0;
+
+            // the lower half (tip, key row, watch and its line) sits where menu windows open: it fades
+            // right out behind them instead of showing through (the rest only dims)
+            lower = Ui.Stretch("Lower", root);
+            lower.SetSiblingIndex(1);
+            lowerGroup = lower.gameObject.AddComponent<CanvasGroup>();
+            foreach (var rt in new[] { watch, termText.rectTransform, hintRoot, tipRt }) rt.SetParent(lower, false);
         }
+
+        RectTransform lower;
+        CanvasGroup lowerGroup;
+        /// <summary>The whole HUD's alpha, and its lower half's (checks read them).</summary>
+        public float TopAlpha => group.alpha;
+        public float LowerAlpha => group.alpha * lowerGroup.alpha;
+
+        /// <summary>The watch's small label fits inside the ring (checks read it).</summary>
+        public bool WatchLabelFits
+        {
+            get
+            {
+                watchSmall.ForceMeshUpdate();
+                return watchSmall.textBounds.size.x <= WatchLabelWidth + 0.5f && !watchSmall.isTextOverflowing;
+            }
+        }
+        /// <summary>The ring's inner width at the label's height (units).</summary>
+        const float WatchLabelWidth = 96f;
 
         /// <param name="best">The saved best time in ticks, 0 if the level was never settled.</param>
         public void Bind(LevelSession s, LevelCatalog catalog, int best = 0)
@@ -524,7 +555,8 @@ namespace BorrowedSeconds.UI
         void LateUpdate()
         {
             float dt = Mathf.Min(Clock.Dt, 0.05f); // a loading hitch must not skip the animations
-            group.alpha = Mathf.MoveTowards(group.alpha, shownAlpha * (1f - 0.75f * Dim), dt * 4f);
+            group.alpha = Mathf.MoveTowards(group.alpha, shownAlpha * (1f - 0.65f * Dim), dt * 4f);
+            lowerGroup.alpha = Mathf.MoveTowards(lowerGroup.alpha, 1f - Mathf.Clamp01(Dim * 1.6f), dt * 6f);
             if (session == null || session.Def == null) return;
             var s = session.Cur;
             var d = session.Def;

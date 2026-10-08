@@ -150,6 +150,51 @@ namespace BorrowedSeconds.Game
         }
 
         /// <summary>
+        /// Menu windows clear the HUD: with Paused, Settings, its Display and Controls pages or How to
+        /// play open, the HUD's lower half (tip, key row, watch and its line) is gone and the rest is
+        /// dimmed; after Resume it is all back. The watch's LOAN READY fits inside its ring.
+        /// </summary>
+        IEnumerator CheckMenusClearHud(string dir, System.Action<string, bool, string> report)
+        {
+            StartLevel(Catalog.Levels.FindIndex(l => l.Id == "2-1"), false);
+            Hud.SkipIntro();
+            yield return new WaitForSecondsRealtime(1.2f);
+            bool fits = Hud.WatchLabelFits;
+            float lower0 = Hud.LowerAlpha, top0 = Hud.TopAlpha;
+            var seen = new List<string>();
+            bool ok = lower0 > 0.99f && top0 > 0.99f && fits;
+            IEnumerator Look(string name)
+            {
+                yield return new WaitForSecondsRealtime(0.8f);
+                bool clear = Hud.LowerAlpha < 0.01f && Hud.TopAlpha < 0.4f;
+                ok &= clear;
+                seen.Add($"{name}: lower {Hud.LowerAlpha:0.00}, top {Hud.TopAlpha:0.00}{(clear ? "" : " FAIL")}");
+            }
+            Pause();
+            yield return Look("Paused");
+            yield return Shot(dir, "menus-clear-hud_pause");
+            OpenSettings(Flow.Paused);
+            yield return Look("Settings");
+            yield return Shot(dir, "menus-clear-hud_settings");
+            settings.Menu.Items[UI.SettingsScreen.DisplayRow].Activate();
+            yield return Look("Display");
+            CloseDisplay();
+            settings.Menu.Items[UI.SettingsScreen.ControlsRow].Activate();
+            yield return Look("Controls");
+            CloseControls();
+            CloseSettings();
+            OpenHowTo(Flow.Paused);
+            yield return Look("How to play");
+            CloseHowTo();
+            Resume();
+            yield return new WaitForSecondsRealtime(1.2f);
+            bool back = Hud.LowerAlpha > 0.99f && Hud.TopAlpha > 0.99f;
+            yield return Shot(dir, "menus-clear-hud_resumed");
+            report("menus-clear-hud", ok && back,
+                $"in play: lower {lower0:0.00}, top {top0:0.00}, LOAN READY fits the ring: {fits}; {string.Join("; ", seen)}; after Resume: lower {Hud.LowerAlpha:0.00}, top {Hud.TopAlpha:0.00}");
+        }
+
+        /// <summary>
         /// -bsFidelityShots DIR (Tools/fidelity.sh): for each level in SHOTS, plays its solution to a
         /// fixed tick, holds it there and screenshots the same frame at every step; then, for each level
         /// in TIMED, plays its solution at each step (Low to Ultra, then Ultra to Low) and logs frame

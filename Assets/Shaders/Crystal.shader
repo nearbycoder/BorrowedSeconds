@@ -52,7 +52,10 @@ Shader "BS/Crystal"
                 float rim = pow(1.0 - saturate(dot(n, v)), _RimPower);
                 float3 cell = floor(i.wp * 9.0);
                 float tw = hash(cell);
-                float sparkle = step(0.965, frac(tw + _Time.y * 0.35)) * _Sparkle;
+                // a soft round glint at the cell's centre, not the whole square cell (which read as blocky pixels)
+                float3 inCell = frac(i.wp * 9.0) - 0.5;
+                float glint = saturate(1.0 - length(inCell) * 2.4);
+                float sparkle = step(0.965, frac(tw + _Time.y * 0.35)) * glint * glint * _Sparkle * 2.0;
                 float facet = 0.5 + 0.5 * dot(n, normalize(float3(0.4, 0.9, 0.2)));
                 half3 col = _Color.rgb * (0.6 + 0.6 * facet) + _RimColor.rgb * rim + sparkle * _RimColor.rgb * 0.6;
                 half a = saturate(_Color.a + rim * 0.75 + sparkle * 0.5) * _Fade;

@@ -1116,7 +1116,7 @@ namespace BorrowedSeconds.UI
             if (menu.Selected != EraseRow) armedUntil = -1f; // leaving the row disarms it
             if (hasInput && input.Back) { Sfx.Play("ui_back"); onBack(); return; }
             menu.Update(input, dt, hasInput, a);
-            help.Update(menu.SelectedHelp, dt, (a - 0.5f) * 3f);
+            help.Update(menu.SelectedHelp, dt, (a - 0.9f) * 3f); // after the rows have come in
         }
     }
 

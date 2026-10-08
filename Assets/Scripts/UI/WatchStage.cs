@@ -244,7 +244,7 @@ namespace BorrowedSeconds.UI
             if (frostMat != null)
             {
                 frostMat.SetColor("_Color", Color.Lerp(new Color(0.8f, 0.95f, 1f, 0.05f), new Color(0.55f, 0.95f, 1f, 0.55f), Frost));
-                frostMat.SetFloat("_Sparkle", Mathf.Lerp(0.15f, 1.2f, Frost));
+                frostMat.SetFloat("_Sparkle", Mathf.Lerp(0.05f, 1.2f, Frost));
             }
             cam.enabled = Viewer == null || (Viewer.isActiveAndEnabled && Viewer.canvasRenderer.GetInheritedAlpha() > 0.001f);
         }
