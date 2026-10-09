@@ -6,6 +6,8 @@
 
 <p align="center"><b>Solve compact puzzles by borrowing time from your future self.</b></p>
 
+<p align="center"><a href="https://nearbycoder.github.io/BorrowedSeconds/"><b>▶ Play in your browser</b></a> (an 18 MB download; <a href="#in-your-browser">notes</a>)</p>
+
 <p align="center">
   <img alt="Unity 6000.6.2f1" src="https://img.shields.io/badge/Unity-6000.6.2f1%20URP-222c37?logo=unity&logoColor=white">
   <img alt="Platform: Linux" src="https://img.shields.io/badge/platform-Linux%20x86__64-f6c915?logo=linux&logoColor=black">
@@ -174,11 +176,24 @@ Captured from the release build at the default Graphics fidelity (*High*), 1920�
 
 ## Play it
 
-> **The published release is older than this README.** [v0.1.0](https://github.com/nearbycoder/BorrowedSeconds/releases/tag/v0.1.0) (October 4, 2026) has 30 levels in six chapters and none of the later work: no chapter VII, Graphics fidelity, clue, *Watch solution*, best-run ghost, key rebinding, HUD size, game speed, Display page or `BorrowedSeconds.sh` launcher. To play the game this README describes, [build it from source](#build-from-source). There's no web build.
+> **The published release is older than this README.** [v0.1.0](https://github.com/nearbycoder/BorrowedSeconds/releases/tag/v0.1.0) (October 4, 2026) has 30 levels in six chapters and none of the later work: no chapter VII, Graphics fidelity, clue, *Watch solution*, best-run ghost, key rebinding, HUD size, game speed, Display page or `BorrowedSeconds.sh` launcher. To play the game this README describes, [play it in your browser](#in-your-browser) or [build it from source](#build-from-source).
 
 To run the v0.1.0 release: download `BorrowedSeconds-v0.1.0-linux-x86_64.zip`, unzip it and run `./BorrowedSeconds/BorrowedSeconds.x86_64`, adding `-force-wayland` on a Wayland desktop (the default X11 path can hang at startup; see [known issues](#status-and-known-issues)). If the file manager lost the executable bit, run `chmod +x` on it first.
 
 A zip built from today's source with `Tools/package.sh` adds `BorrowedSeconds.sh`, which picks Unity's native Wayland backend on a Wayland session (`BS_X11=1` uses X11 anyway), and `install-launcher.sh`, which adds the game with its icon to your applications menu (`--uninstall` removes it).
+
+### In your browser
+
+**[nearbycoder.github.io/BorrowedSeconds](https://nearbycoder.github.io/BorrowedSeconds/)** runs today's game, all 35 levels, in a desktop browser with WebGL 2. The first visit downloads about 18 MB (the browser keeps it for later visits). Progress and settings are saved in the browser's storage for that site, separately from a desktop install; clearing the site's data erases them. Keyboard, mouse and gamepads work as on the desktop. There are no touch controls, so phones and tablets aren't supported.
+
+What's different from the desktop build:
+
+- It starts in the page. *Settings > Display mode* switches between *Fullscreen* and *Browser window*; **Esc** also leaves fullscreen (the browser takes that key first). There are no window sizes and no *Quit*.
+- *Graphics fidelity* starts at *Medium* instead of *High*; all four steps work. *Render resolution* scales up with a plain filter instead of FSR, which doesn't run on WebGL.
+- Sound starts after your first click or key press, as browsers require. The low-pass muffle while you're frozen or focusing is missing: Unity's web audio has no filters.
+- There's no controller vibration (the row is hidden), and pad button names come from the name the browser reports, which is less reliable than the desktop's.
+
+It has been tested only in headless Chromium 151 and Firefox 157 on Linux (AMD Radeon 8060S), with `Tools/check-pages.mjs`: it loads to the title with no errors, sound starts after a click, a settings change survives a reload, and level 1-1 is won from the keyboard and stays saved. Safari, Windows and macOS browsers, and weaker GPUs haven't been tried.
 
 **System requirements:** 64-bit Linux (x86_64) and a GPU with OpenGL 4.5. The game starts fullscreen. If it runs slowly, set *Graphics fidelity* to Medium or Low, or lower *Render resolution* in *Settings > Display*. It has only been run on one machine: CachyOS, KDE Plasma on Wayland, AMD Radeon 8060S iGPU. There's no published macOS or Windows build (see below).
 
@@ -194,6 +209,8 @@ Tools/play.sh                     # run it windowed at 1600x900
 Tools/package.sh 0.1.0 linux      # optional: a release zip in Builds/Release/
 ```
 
+For the browser version, `Tools/build-pages.sh` builds the site into `Builds/Pages` (WebGL, Brotli files the page decompresses itself, so it runs from any static host such as GitHub Pages), and `node Tools/check-pages.mjs --local --play` serves it under `/BorrowedSeconds/` and checks it in headless Chromium (`--browser firefox` for Firefox).
+
 Or open the folder in Unity Hub and press Play in `Assets/Scenes/Main.unity`. The scene only holds a camera, a light and a volume; everything else is built at runtime from data. `Tools/unity.sh build-mac` builds a universal macOS app that has never been run on a Mac; `build-windows` needs Unity's Windows Build Support module.
 
 Everything generated is checked in, so none of the following is needed just to build. Every scripted tool keeps Unity's config (and so the save file) in its own output folder, never in `~/.config/unity3d`, and opens its game window in a private headless KWin (`Tools/nested.sh`) when KWin is installed (`BS_NESTED=0` opts out).
@@ -207,6 +224,7 @@ Everything generated is checked in, so none of the following is needed just to b
 | Controls test | `Tools/inputbot.sh` | Wins 1-1 through virtual keyboard, mouse and gamepad devices, and checks rebinding, hold-to-restart, the Focus toggle, controller button names, vibration commands and unplugging the pad. |
 | Screen shapes | `Tools/shapes.sh [dir] [dev] [WxH…]` | The menus and one level at 21:9, 16:9, 16:10 and 4:3, with a contact sheet for each. |
 | Graphics fidelity | `Tools/fidelity.sh [dir] [dev]` | The same held frame at each step, then frame times at each step with vsync off. |
+| Browser build | `Tools/build-pages.sh`, then `node Tools/check-pages.mjs --local --play` | Builds the GitHub Pages site into `Builds/Pages`. The check exits 0 only when the page reaches the title with no errors; `--play` adds sound after a click, settings across a reload and a keyboard win of 1-1. Give it a URL instead of `--local` to check the live site. |
 | Docs check | `python3 Tools/docs_check.py` | Checks every level claim in this README and `docs/PLAN.md` against `levels.json` and `solutions.json`. |
 | 3D models | `blender -b --factory-startup -P ArtSource/build_assets.py` | Writes `Assets/Resources/Models/*.fbx`, `ArtSource/*.blend` and preview renders. `build_ui_assets.py` makes the pocket watch, medal coins, padlock and icon. |
 | Audio | `Tools/audio/synth.sh` (or `sfx`, `music`, or one name) | Every effect and the four music loops, synthesised with numpy (via Blender's bundled Python). |
@@ -227,7 +245,8 @@ Assets/
   Resources/        levels.json + solutions.json, models, audio, fonts, UI renders
   Tests/Editor/     EditMode tests
 ArtSource/          Blender generator scripts, the .blend files they write, preview renders
-Tools/              unity.sh, play.sh, test.sh, validate.sh, capture.sh, checks.sh, inputbot.sh, nested.sh, package.sh
+Tools/              unity.sh, play.sh, test.sh, validate.sh, capture.sh, checks.sh, inputbot.sh, nested.sh, package.sh,
+                    build-pages.sh and check-pages.mjs (the browser version)
   Solver/           .NET 8 console front end for the shared rules and solver
   lab/              Level design files, sweeps and the assembler
   audio/            synth.py: every sound and music loop; balance.py: the mix measurement
@@ -252,6 +271,7 @@ The game is complete and playable from start to finish, but nobody outside devel
 - ⚠️ **The published release is out of date.** v0.1.0 predates every improvement round (see [Play it](#play-it)). Cutting a new release is the owner's call.
 - ⚠️ **Not playtested by humans.** Difficulty and timing margins come from the solver. Newer additions (the start hold, the clue, the best-run ghost, the exit tag, the brass trim, Ultra's lights and the Settings help lines) are verified by script only.
 - ⚠️ **Linux only, one machine.** Everything ran on CachyOS with KDE Plasma (Wayland) on an AMD Radeon 8060S iGPU. The macOS app is built but unsigned and never run on a Mac; Windows needs a Unity module that isn't installed. Graphics fidelity has not been tried on a weaker GPU.
+- ⚠️ **The browser version is checked by script in two headless browsers only** (see [In your browser](#in-your-browser)). Nobody has played it in a normal browser window yet, and it has no touch controls.
 - ⚠️ **Unity's X11 path hangs at startup on the development desktop** (KDE Plasma on Wayland, through XWayland). `BorrowedSeconds.sh` avoids it by starting the native Wayland backend; the v0.1.0 zip has no script, so add `-force-wayland`. How common the hang is elsewhere isn't known.
 - ⚠️ **Fullscreen is softer on the Wayland backend at fractional scaling.** At 125 % the game renders fullscreen at the logical size and the compositor scales it up ([comparison](docs/media/improvements/round9/04_scaling-125.png)). Only 125 % was tried.
 - ⚠️ **Controllers and rumble were tested on virtual devices.** PlayStation and Switch button names need hidraw access on Linux, which some distributions restrict; without it the hints use Xbox names. Nobody has felt the vibration pulses.
