@@ -123,7 +123,8 @@ namespace BorrowedSeconds.UI
                 {
                     obstacle = pad && s.Aim >= 0 && !s.Cur.IsObstacleFrozen(s.Def, s.Aim) ? s.Aim : NearestFree(s);
                     if (obstacle >= 0)
-                        obstacleText = pad ? $"<color=#FFD27A>{input.Pad.South}</color>  freeze it  ·  <color=#FFD27A>{input.Pad.Shoulders}</color>  aim"
+                        obstacleText = input.UsingTouch ? "<color=#FFD27A>Borrow</color>  freeze it  ·  <color=#FFD27A>tap</color> another to aim"
+                                     : pad ? $"<color=#FFD27A>{input.Pad.South}</color>  freeze it  ·  <color=#FFD27A>{input.Pad.Shoulders}</color>  aim"
                                            : "<color=#FFD27A>Hover</color> + <color=#FFD27A>click</color>  freeze it";
                 }
             }

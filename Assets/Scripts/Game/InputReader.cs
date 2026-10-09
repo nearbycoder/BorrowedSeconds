@@ -25,6 +25,9 @@ namespace BorrowedSeconds.Game
         { Family = "PlayStation", South = "Cross", East = "Circle", West = "Square", North = "Triangle", Shoulders = "L1/R1", LeftTrigger = "L2", Select = "Select", Start = "Start" };
         public static readonly PadNames Nintendo = new PadNames
         { Family = "Nintendo", South = "B", East = "A", West = "Y", North = "X", Shoulders = "L/R", LeftTrigger = "ZL", Select = "\u2212", Start = "+" };
+        /// <summary>The browser build's on-screen controls on a phone or tablet, by the names on their buttons.</summary>
+        public static readonly PadNames Touch = new PadNames
+        { Family = "Touch", South = "Borrow", East = "Back", West = "Rewind", North = "Restart", Shoulders = "Tap", LeftTrigger = "Focus", Select = "Hint", Start = "Pause", Stick = "D-pad", Dpad = "D-pad" };
 
 #if UNITY_WEBGL && !UNITY_EDITOR
         // a browser hands every pad over in its "standard" layout; only its id string says what it is
@@ -72,6 +75,11 @@ namespace BorrowedSeconds.Game
         public Vector2 Pointer;
         public bool AnyKey;
         public bool UsingGamepad;
+        /// <summary>The browser's on-screen touch controls are in use (WebBridge). They count as a pad as well
+        /// (UsingGamepad, with <see cref="PadNames.Touch"/> names), so aim and hints work as they do on one.</summary>
+        public bool UsingTouch;
+        /// <summary>A tap on the game this frame, at <see cref="Pointer"/>: menus take it as a click, a level as aiming.</summary>
+        public bool Tap;
         /// <summary>Button names for the pad in use (Xbox names until a pad is seen).</summary>
         public PadNames Pad = PadNames.Xbox;
         /// <summary>Focus toggles on each press instead of lasting while held (a Settings option).</summary>
@@ -94,7 +102,9 @@ namespace BorrowedSeconds.Game
             var mouse = Mouse.current;
             var pad = Gamepad.current;
             PressedDir = -1;
-            Borrow = Focus = Rewind = Restart = Pause = Confirm = Back = CycleNext = CyclePrev = Hint = Click = RestartHeld = false;
+            Borrow = Focus = Rewind = Restart = Pause = Confirm = Back = CycleNext = CyclePrev = Hint = Click = RestartHeld = Tap = PointerMoved = false;
+            // the page hides its touch controls itself on a key press or a real mouse; a pad is reported below
+            bool touch = DisplayOptions.Web && WebBridge.TouchActive;
             AnyKey = false;
             Scroll = 0;
             PressedKey = Key.None;
@@ -123,11 +133,14 @@ namespace BorrowedSeconds.Game
                 if (kb.anyKey.wasPressedThisFrame)
                 {
                     UsingGamepad = false;
+                    UsingTouch = false;
                     foreach (var k in kb.allKeys)
                         if (k.wasPressedThisFrame) { PressedKey = k.keyCode; break; }
                 }
             }
-            if (mouse != null)
+            // while the touch controls are up, a touch never reaches the game as a mouse
+            if (mouse != null && touch) lastPointer = mouse.position.ReadValue();
+            else if (mouse != null)
             {
                 Pointer = mouse.position.ReadValue();
                 PointerMoved = (Pointer - lastPointer).sqrMagnitude > 4f;
@@ -175,7 +188,10 @@ namespace BorrowedSeconds.Game
                     || pad.leftShoulder.wasPressedThisFrame || pad.rightShoulder.wasPressedThisFrame;
                 AnyKey |= pad.buttonSouth.wasPressedThisFrame || pad.startButton.wasPressedThisFrame;
                 if (padAny) UsingGamepad = true;
+                if (padAny && touch) { WebBridge.OtherInput(); touch = false; }
             }
+            if (touch) PollTouch(held, down);
+            else if (UsingTouch) { UsingTouch = false; UsingGamepad = false; }
             // Focus as read from the devices is "held"; in toggle mode each fresh press flips it instead
             bool focusDown = Focus;
             if (FocusToggle && focusDown && !focusWasDown) focusLatched = !focusLatched;
@@ -197,6 +213,43 @@ namespace BorrowedSeconds.Game
             float best = -1f;
             for (int d = 0; d < 4; d++)
                 if (held[d] && heldSince[d] > best) { best = heldSince[d]; HeldDir = d; }
+        }
+
+        /// <summary>The on-screen controls, as one more pad: the d-pad, Borrow, Focus and Rewind (held), Restart
+        /// (held), Hint, Pause, Back and OK, and taps on the game.</summary>
+        void PollTouch(bool[] held, bool[] down)
+        {
+            UsingTouch = true;
+            UsingGamepad = true;
+            Pad = PadNames.Touch;
+            int h = WebBridge.Held, p = WebBridge.Pressed;
+            bool Is(int bits, int b) => (bits & b) != 0;
+            int[] dirs = { WebBridge.Button.Up, WebBridge.Button.Right, WebBridge.Button.Down, WebBridge.Button.Left };
+            for (int d = 0; d < 4; d++)
+            {
+                // a tap shorter than a frame is still a press (the page latches it until read)
+                if (Is(h, dirs[d])) held[d] = true;
+                if (Is(p, dirs[d])) down[d] = true;
+            }
+            Borrow |= Is(p, WebBridge.Button.Borrow);
+            Focus |= Is(h, WebBridge.Button.Focus);
+            Rewind |= Is(h, WebBridge.Button.Rewind);
+            Restart |= Is(p, WebBridge.Button.Restart);
+            RestartHeld |= Is(h, WebBridge.Button.Restart);
+            Hint |= Is(p, WebBridge.Button.Hint);
+            Pause |= Is(p, WebBridge.Button.Pause) || Is(p, WebBridge.Button.Back); // Back is Esc: it pauses, too
+            Back |= Is(p, WebBridge.Button.Back);
+            Confirm |= Is(p, WebBridge.Button.Confirm);
+            CycleNext |= Is(p, WebBridge.Button.AimNext);
+            AnyKey |= p != 0;
+            if (WebBridge.TakeTap(out var at))
+            {
+                Pointer = at;
+                PointerMoved = true; // a tap selects what it lands on, as a mouse moved there would
+                Click = true;
+                Tap = true;
+                AnyKey = true;
+            }
         }
 
         void Read(Keyboard kb, KeyAction a, KeyControl arrow, int dir, bool[] held, bool[] down)

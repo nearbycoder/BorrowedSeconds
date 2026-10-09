@@ -69,8 +69,9 @@ namespace BorrowedSeconds.Game
         };
 
         /// <summary>High on the desktop; Medium in a browser, where WebGL costs more and many players
-        /// are on laptops (the Settings line says which step is the default).</summary>
-        public static readonly int Default = DisplayOptions.Web ? 1 : 2;
+        /// are on laptops; Low on a phone or tablet, whose browser tab has far less memory (no MSAA, a
+        /// quarter of the shadow map) and a slower GPU (the Settings line says which step is the default).</summary>
+        public static readonly int Default = DisplayOptions.Web ? (WebBridge.TouchFirst ? 0 : 1) : 2;
 
         public static int Clamp(int step) => Mathf.Clamp(step, 0, Steps.Length - 1);
 

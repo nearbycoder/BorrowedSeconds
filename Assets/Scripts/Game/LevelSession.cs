@@ -189,7 +189,7 @@ namespace BorrowedSeconds.Game
         {
             int hovered = -1;
             if (cam != null && !input.UsingGamepad) hovered = PickAt(input.Pointer);
-            if (input.PointerMoved) pointerAim = true;
+            if (input.PointerMoved && !input.UsingTouch) pointerAim = true; // a tap aims below, by what it lands on
             // Tab, Q/E, LB/RB or the mouse wheel (down: next, up: previous) step through the obstacles,
             // starting from the one the pointer aims at, else the nearest
             bool next = input.CycleNext || input.Scroll < 0, prev = input.CyclePrev || input.Scroll > 0;
@@ -202,6 +202,13 @@ namespace BorrowedSeconds.Game
                     cycleIndex = from < 0 ? Nearest() : (from + (next ? 1 : n - 1)) % n;
                 }
                 pointerAim = false;
+            }
+            // a tap on a piece (or its track, lane or sweep) aims at it and the aim stays when the finger lifts,
+            // so the forecast over it can be read; Borrow then freezes it
+            if (input.Tap && cam != null)
+            {
+                int tapped = PickAt(input.Pointer);
+                if (tapped >= 0) { cycleIndex = tapped; pointerAim = false; }
             }
             if (pointerAim && hovered >= 0) Aim = hovered;
             else if (!pointerAim && cycleIndex >= 0) Aim = cycleIndex;

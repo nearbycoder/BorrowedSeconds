@@ -26,11 +26,14 @@ namespace BorrowedSeconds.Game
         public bool muteBackground = true;      // the mix fades out while the window is in the background
         public int windowW, windowH;            // window size when not fullscreen (DisplayOptions); 0 = pick one
         public float renderScale = 1f;          // the 3D scene's render resolution (DisplayOptions.RenderScales)
-        public float hudScale = 1f;             // HUD size: 1, 1.25 or 1.5 (View.HudLayout)
+        public float hudScale = DefaultHudScale; // HUD size: 1, 1.25 or 1.5 (View.HudLayout)
         public int fidelity = GraphicsFidelity.Default; // Graphics fidelity: 0 Low .. 3 Ultra; saves from before it load as High
         public string[] runs = new string[0];   // a run's actions per level id (Sim.RunLog text), "" = none; the best-run ghost replays it
         public int[] runTicks = new int[0];     // that run's time in ticks
         public bool bestGhost = true;           // a settled level shows a ghost of the saved run (pause menu)
+
+        /// <summary>100 %, or 150 % on a phone's small screen in the browser build.</summary>
+        public static float DefaultHudScale => DisplayOptions.Web && WebBridge.Phone ? 1.5f : 1f;
 
         public static SaveData Load()
         {

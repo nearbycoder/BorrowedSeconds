@@ -70,6 +70,8 @@ namespace BorrowedSeconds.Game
             DontDestroyOnLoad(gameObject);
             QualitySettings.vSyncCount = 1;
             Application.targetFrameRate = 144;
+            LogWebMemory("at start");
+            WebLightFonts();
             Catalog = new LevelCatalog();
             Save = SaveData.Load();
             // known before the first ApplySettings, so a scripted run never resizes its window
@@ -77,6 +79,7 @@ namespace BorrowedSeconds.Game
             capturing = System.Array.Exists(ScriptedFlags, f => System.Array.IndexOf(argv, f) >= 0);
             // -bsFidelity 0..3: a scripted run at another Graphics fidelity step (they keep High otherwise)
             if (int.TryParse(Arg(argv, "-bsFidelity"), out int fid)) fidelityArg = GraphicsFidelity.Clamp(fid);
+            WebAwake();
 
             Cam = Camera.main;
             if (Cam == null)
@@ -114,7 +117,7 @@ namespace BorrowedSeconds.Game
         /// title's replays, Watch solution or a scripted run) and Controller vibration is on.</summary>
         void Buzz(float low, float high, float seconds)
         {
-            if (!Save.vibration || !Input.UsingGamepad || State != Flow.Playing || Session == null || Session.Muted) return;
+            if (!Save.vibration || !Input.UsingGamepad || Input.UsingTouch || State != Flow.Playing || Session == null || Session.Muted) return;
             if (capturing && !botDrivesFlow) return;
             rumble.Pulse(UnityEngine.InputSystem.Gamepad.current, low, high, seconds);
         }
@@ -296,6 +299,7 @@ namespace BorrowedSeconds.Game
             ShowTitle();
             if (DisplayOptions.Web)
                 Debug.Log($"[Web] title screen; Graphics fidelity {GraphicsFidelity.For(Save.fidelity).Name}, master volume {Mathf.RoundToInt(Save.master * 100)}%, {Save.ids.Length} levels cleared, {SystemInfo.graphicsDeviceVersion}");
+            LogWebMemory("at the title");
         }
 
         static string Arg(string[] args, string name)
@@ -405,6 +409,7 @@ namespace BorrowedSeconds.Game
                 State = Flow.Playing;
                 Hud.SetVisible(true);
                 if (DisplayOptions.Web) Debug.Log($"[Web] level {def.Id} ready");
+                LogWebMemory("in " + def.Id);
             }
         }
 
@@ -574,6 +579,7 @@ namespace BorrowedSeconds.Game
         {
             if (string.IsNullOrEmpty(Session.Def.Hint)) return;
             tipOpen = !tipOpen;
+            if (DisplayOptions.Web) Debug.Log($"[Web] tip {(tipOpen ? "unfolded" : "folded")}");
             Sfx.Play(tipOpen ? "ui_click" : "ui_back", 0.7f);
             RefreshTip(false);
         }
@@ -786,6 +792,7 @@ namespace BorrowedSeconds.Game
             complete.Update(Input, dt, top(complete));
             card.Update(Input, dt, top(card));
             ending.Update(Input, dt, top(ending));
+            WebUpdate();
 
             if (Session == null) return;
             UpdateClueStep();
@@ -845,7 +852,8 @@ namespace BorrowedSeconds.Game
             // real time, not the clamped menu dt: a hold must take 0.6 s even at a low frame rate
             if (restartArmed && Input.RestartHeld) restartHeld += Mathf.Min(Clock.Dt, 0.25f);
             else restartArmed = false;
-            Hud.RestartLabel = $"HOLD {(Input.UsingGamepad ? Input.Pad.North : Input.KeyName(KeyAction.Restart))} TO RESTART".ToUpperInvariant();
+            Hud.RestartLabel = Input.UsingTouch ? "KEEP HOLDING TO RESTART"
+                : $"HOLD {(Input.UsingGamepad ? Input.Pad.North : Input.KeyName(KeyAction.Restart))} TO RESTART".ToUpperInvariant();
             Hud.RestartHold = restartArmed ? restartHeld / RestartHoldSeconds : -1f;
             if (!restartArmed || restartHeld < RestartHoldSeconds) return false;
             restartArmed = false;
@@ -930,7 +938,9 @@ namespace BorrowedSeconds.Game
             hintsPad = Input.Pad;
             var p = Input.Pad;
             Hud.ReadyLabel = hintsForPad ? $"move or press {p.South} to start" : "move or click to start";
-            if (State == Flow.Watching)
+            if (Input.UsingTouch)
+                Hud.SetHints(""); // the on-screen buttons say what they do
+            else if (State == Flow.Watching)
                 Hud.SetHints(hintsForPad
                     ? $"<b>{p.LeftTrigger}</b> slow     <b>{p.West}</b> rewind     <b>{p.East}</b> stop watching"
                     : $"<b>{Input.KeyName(KeyAction.Focus)}</b> slow     <b>{Input.KeyName(KeyAction.Rewind)}</b> rewind     <b>Esc</b> stop watching");

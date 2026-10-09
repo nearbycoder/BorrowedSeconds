@@ -119,6 +119,9 @@ namespace BorrowedSeconds.View
                     hit |= x >= bottomLeft.x && x <= bottomLeft.z && y <= bottomLeft.w;
                     hit |= x >= cw + clock.x && y >= ch + clock.y;
                     hit |= x >= cw * 0.5f + watch.x && x <= cw * 0.5f + watch.z && y <= watch.w;
+                    // the on-screen touch buttons, bottom right and top right (the d-pad is in bottomLeft)
+                    hit |= x >= cw - HudLayout.TouchRight.x && y <= HudLayout.TouchRight.y;
+                    hit |= x >= cw - HudLayout.TouchTop.x && y >= ch - HudLayout.TouchTop.y;
                 }
                 if (hit) n++;
             }

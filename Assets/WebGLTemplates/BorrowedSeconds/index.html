@@ -2,20 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{{{ PRODUCT_NAME }}}</title>
     <meta name="description" content="Freeze anything for three seconds. Then pay them back. A deterministic puzzle game about borrowing time from your future self.">
     <meta name="theme-color" content="#0D1020">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
     <link rel="icon" type="image/png" href="icon-64.png">
     <link rel="apple-touch-icon" href="icon-180.png">
     <style>
       html, body { margin: 0; height: 100%; overflow: hidden; background: #0D1020; color: #F6F1E7;
                    font: 16px/1.45 "Fira Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-                   overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
+                   overscroll-behavior: none; user-select: none; -webkit-user-select: none;
+                   -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+      body { position: fixed; inset: 0; touch-action: none; }
       #game { position: fixed; inset: 0; }
-      #unity-canvas { width: 100%; height: 100%; display: block; background: #0D1020; outline: none; }
+      #unity-canvas { width: 100%; height: 100%; display: block; background: #0D1020; outline: none; touch-action: none; }
       .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-                 gap: 18px; text-align: center; padding: 24px; box-sizing: border-box;
+                 gap: 18px; text-align: center; padding: 24px; box-sizing: border-box; z-index: 3;
                  background: radial-gradient(ellipse at 50% 40%, #1A2040 0%, #0D1020 70%); }
       .logo { display: flex; align-items: center; gap: 22px; }
       .logo img { width: 96px; height: 96px; }
@@ -26,18 +31,132 @@
       #progress div { width: 0; height: 100%; background: #C9A15A; transition: width 0.2s; }
       #status { color: #8A92B0; font-size: 14px; min-height: 1.4em; max-width: 640px; }
       #status.error { color: #FF6A7A; font-size: 16px; }
-      #status a { color: #7CF4FF; }
+      #status a, #status button { color: #7CF4FF; }
+      #status button { font: inherit; background: none; border: 1px solid #7CF4FF; border-radius: 8px; padding: 8px 16px; margin-top: 10px; }
       .keys { color: #6E7698; font-size: 13px; max-width: 640px; }
+      .note { color: #FFD27A; font-size: 14px; max-width: 640px; }
+      @media (max-height: 460px) { .overlay { gap: 10px; } .logo img { width: 64px; height: 64px; } .tagline { display: none; } }
+
+      /* On-screen controls: phones and tablets only (body.touch-on), drawn over the game in its brass and ice */
+      #touch { position: fixed; inset: 0; z-index: 2; display: none; touch-action: none; }
+      body.touch-on #touch { display: block; }
+      #touch .group { position: absolute; display: none; }
+      #touch[data-mode="level"] .m-level, #touch[data-mode="watching"] .m-watching, #touch[data-mode="menu"] .m-menu,
+      #touch[data-mode="title"] .m-title, #touch[data-mode="ledger"] .m-ledger { display: block; }
+      /* the title's menu is on the left: its d-pad goes right, beside OK */
+      #touch[data-mode="title"] .group.left { left: auto; right: calc(env(safe-area-inset-right, 0px) + 112px); width: var(--pad); }
+      #touch .btn { position: absolute; box-sizing: border-box; border-radius: 50%; display: flex; flex-direction: column;
+                    align-items: center; justify-content: center; gap: 1px; color: #F6F1E7;
+                    background: rgba(13, 16, 32, 0.66); border: 2px solid rgba(201, 161, 90, 0.9);
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+                    font: 700 10px/1 "Fira Sans", system-ui, -apple-system, sans-serif; letter-spacing: 0.12em; text-transform: uppercase;
+                    transition: background 0.08s, border-color 0.08s, box-shadow 0.08s, transform 0.08s; }
+      #touch .btn svg { width: 46%; height: 46%; fill: currentColor; }
+      #touch .btn.held { background: rgba(201, 161, 90, 0.42); border-color: #FFD27A; transform: scale(0.94);
+                         box-shadow: 0 0 16px rgba(255, 210, 122, 0.65), inset 0 0 0 1px rgba(0, 0, 0, 0.35); }
+      #touch .btn.ice { border-color: rgba(124, 244, 255, 0.95); color: #DFFBFF; }
+      #touch .btn.ice.held { background: rgba(124, 244, 255, 0.36); border-color: #BFFAFF; box-shadow: 0 0 18px rgba(124, 244, 255, 0.7); }
+      #touch .btn.pill { border-radius: 24px; flex-direction: row; gap: 6px; font-size: 12px; padding: 0 16px 0 10px; }
+      #touch .btn.pill svg { width: 22px; height: 22px; }
+      /* left: the d-pad, and Focus beside it so one thumb holds it while the other aims and borrows */
+      #touch .left { left: calc(env(safe-area-inset-left, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+                     width: calc(var(--pad) + 76px); height: var(--pad); }
+      #touch { --pad: clamp(138px, 34vmin, 184px); }
+      #dpad { position: absolute; left: 0; bottom: 0; width: var(--pad); height: var(--pad); border-radius: 50%;
+              background: radial-gradient(circle, rgba(13, 16, 32, 0.5) 0%, rgba(13, 16, 32, 0.66) 62%);
+              border: 2px solid rgba(201, 161, 90, 0.75); box-sizing: border-box; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45); }
+      #dpad .arrow { position: absolute; width: 36%; height: 36%; display: flex; align-items: center; justify-content: center;
+                     color: rgba(246, 241, 231, 0.9); border-radius: 12px; transition: background 0.08s, color 0.08s; }
+      #dpad .arrow svg { width: 52%; height: 52%; fill: currentColor; }
+      #dpad .arrow.held { background: rgba(255, 210, 122, 0.4); color: #FFF4DA; box-shadow: 0 0 12px rgba(255, 210, 122, 0.55); }
+      #dpad [data-key="up"] { left: 32%; top: 2%; }
+      #dpad [data-key="down"] { left: 32%; bottom: 2%; }
+      #dpad [data-key="left"] { left: 2%; top: 32%; }
+      #dpad [data-key="right"] { right: 2%; top: 32%; }
+      #dpad .hub { position: absolute; left: 41%; top: 41%; width: 18%; height: 18%; border-radius: 50%;
+                   border: 2px solid rgba(201, 161, 90, 0.6); box-sizing: border-box; }
+      #touch:not([data-mode="level"]) .m-only-level { display: none; }
+      #touch .left .focus { left: calc(var(--pad) + 10px); bottom: calc(var(--pad) * 0.42); width: 62px; height: 62px; }
+      #touch .left.m-watching .focus { left: 0; bottom: 0; }
+      /* right: Borrow under the thumb, Rewind and Restart around it; OK in menus */
+      #touch .right { right: calc(env(safe-area-inset-right, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+                      width: 158px; height: 150px; }
+      #touch .right .borrow, #touch .right .ok { right: 0; bottom: 0; width: 84px; height: 84px; font-size: 11px; }
+      #touch .right .rewind { right: 94px; bottom: 0; width: 62px; height: 62px; }
+      #touch .right .restart { right: 14px; bottom: 96px; width: 58px; height: 58px; font-size: 8px; letter-spacing: 0.05em; }
+      #touch .right.m-watching .rewind { right: 0; }
+      /* top right, under the clock: Hint and Pause */
+      #touch .top { right: calc(env(safe-area-inset-right, 0px) + 14px); top: calc(env(safe-area-inset-top, 0px) + max(92px, 18vh));
+                    width: 116px; height: 52px; }
+      #touch .top .hint { right: 62px; top: 0; width: 52px; height: 52px; }
+      #touch .top .pause { right: 0; top: 0; width: 52px; height: 52px; }
+      /* top left in menus: Back (Esc) */
+      #touch .back-group { left: calc(env(safe-area-inset-left, 0px) + 14px); top: calc(env(safe-area-inset-top, 0px) + 12px);
+                           width: 120px; height: 48px; }
+      #touch .back-group .back { left: 0; top: 0; height: 48px; min-width: 104px; }
+      #touch .watching-back { left: calc(env(safe-area-inset-left, 0px) + 14px); top: calc(env(safe-area-inset-top, 0px) + max(92px, 18vh));
+                              width: 120px; height: 48px; }
+      #touch .watching-back .back { left: 0; top: 0; height: 48px; min-width: 104px; }
+
+      /* portrait on a phone or tablet: the board and menus are laid out for landscape */
+      #rotate { position: fixed; inset: 0; z-index: 4; display: none; flex-direction: column; align-items: center; justify-content: center;
+                gap: 18px; padding: 32px; box-sizing: border-box; text-align: center; background: #0D1020; color: #F6F1E7; }
+      #rotate svg { width: 96px; height: 96px; }
+      #rotate b { font-size: 20px; letter-spacing: 0.06em; }
+      #rotate span { color: #B9C0D8; font-size: 15px; max-width: 320px; }
+      @media (orientation: portrait) { body.touch-first #rotate { display: flex; } }
     </style>
   </head>
   <body>
     <div id="game"><canvas id="unity-canvas" tabindex="-1"></canvas></div>
+    <div id="touch" data-mode="none" aria-hidden="true">
+      <div class="group left m-level m-menu m-title">
+        <div id="dpad">
+          <div class="arrow" data-key="up"><svg viewBox="0 0 24 24"><path d="M12 5l8 11H4z"/></svg></div>
+          <div class="arrow" data-key="right"><svg viewBox="0 0 24 24"><path d="M19 12L8 20V4z"/></svg></div>
+          <div class="arrow" data-key="down"><svg viewBox="0 0 24 24"><path d="M12 19L4 8h16z"/></svg></div>
+          <div class="arrow" data-key="left"><svg viewBox="0 0 24 24"><path d="M5 12l11-8v16z"/></svg></div>
+          <div class="hub"></div>
+        </div>
+        <div class="btn focus m-only-level" data-key="focus"><svg viewBox="0 0 24 24"><path d="M6 2h12v5l-4 5 4 5v5H6v-5l4-5-4-5zm2 2v2.3l4 5 4-5V4zm4 9.7l-4 5V20h8v-1.3z"/></svg>Focus</div>
+      </div>
+      <div class="group left m-watching">
+        <div class="btn focus" data-key="focus"><svg viewBox="0 0 24 24"><path d="M6 2h12v5l-4 5 4 5v5H6v-5l4-5-4-5zm2 2v2.3l4 5 4-5V4zm4 9.7l-4 5V20h8v-1.3z"/></svg>Focus</div>
+      </div>
+      <div class="group right m-level">
+        <div class="btn ice borrow" data-key="borrow"><svg viewBox="0 0 24 24"><path d="M12 2l7.5 4.5v9L12 22l-7.5-6.5v-9zm0 2.4L6.5 7.6v6.9L12 19.3l5.5-4.8V7.6z"/><path d="M12 7l3 2v4l-3 3-3-3V9z"/></svg>Borrow</div>
+        <div class="btn rewind" data-key="rewind"><svg viewBox="0 0 24 24"><path d="M11 6v12L2 12zm10 0v12l-9-6z"/></svg>Rewind</div>
+        <div class="btn restart" data-key="restart"><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-7.7 10h2.1A6 6 0 1 0 12 6v3L7.5 5 12 1z"/></svg>Restart</div>
+      </div>
+      <div class="group right m-watching">
+        <div class="btn rewind" data-key="rewind"><svg viewBox="0 0 24 24"><path d="M11 6v12L2 12zm10 0v12l-9-6z"/></svg>Rewind</div>
+      </div>
+      <div class="group right m-menu m-title">
+        <div class="btn ok" data-key="confirm"><svg viewBox="0 0 24 24"><path d="M9.5 16.2L4.8 11.5 3.4 12.9l6.1 6.1L21 7.5l-1.4-1.4z"/></svg>OK</div>
+      </div>
+      <div class="group top m-level">
+        <div class="btn hint" data-key="hint"><svg viewBox="0 0 24 24"><path d="M12 2a6.5 6.5 0 0 0-6.5 6.5h2.6a3.9 3.9 0 1 1 5.7 3.4c-1.3.8-2.5 1.9-2.5 3.9v.7h2.6v-.5c0-1 .5-1.5 1.5-2.1A6.5 6.5 0 0 0 12 2zm-1.4 16.3h2.8V21h-2.8z"/></svg></div>
+        <div class="btn pause" data-key="pause"><svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg></div>
+      </div>
+      <div class="group back-group m-menu m-ledger">
+        <div class="btn pill back" data-key="back"><svg viewBox="0 0 24 24"><path d="M15.4 5.4L14 4l-8 8 8 8 1.4-1.4L8.8 12z"/></svg>Back</div>
+      </div>
+      <div class="group watching-back m-watching">
+        <div class="btn pill back" data-key="back"><svg viewBox="0 0 24 24"><path d="M15.4 5.4L14 4l-8 8 8 8 1.4-1.4L8.8 12z"/></svg>Stop</div>
+      </div>
+    </div>
+    <div id="rotate">
+      <svg viewBox="0 0 64 64" fill="none" stroke="#C9A15A" stroke-width="3" stroke-linejoin="round"><rect x="8" y="20" width="48" height="28" rx="5"/><path d="M14 14a22 22 0 0 1 30-6M44 4l1 5-5 1" stroke="#7CF4FF"/></svg>
+      <b>Turn your device sideways</b>
+      <span>Borrowed Seconds plays in landscape. The game waits for you.</span>
+    </div>
     <div id="loading" class="overlay">
       <div class="logo"><img src="icon-180.png" alt=""><div class="words">BORROWED<span>SECONDS</span></div></div>
       <div class="tagline">Freeze anything for three seconds. Then pay them back.</div>
       <div id="progress"><div></div></div>
       <div id="status">Loading…</div>
-      <div class="keys">Move WASD / arrows · Borrow click / Space · Focus hold Shift or right mouse · Rewind Z · Pause Esc / P · Gamepad works too</div>
+      <div id="note" class="note" hidden></div>
+      <div class="keys" id="keys">Move WASD / arrows · Borrow click / Space · Focus hold Shift or right mouse · Rewind Z · Pause Esc / P · Gamepad works too</div>
     </div>
     <script>
       var canvas = document.querySelector("#unity-canvas");
@@ -55,10 +174,14 @@
         statusEl.innerHTML = html;
       }
       function esc(text) { var d = document.createElement("div"); d.textContent = text; return d.innerHTML; }
+      var reloadButton = "<br><button type=\"button\" onclick=\"location.reload()\">Reload</button>";
 
       function showBanner(msg, type) {
-        if (type === "error") fail("Something went wrong: " + esc(msg) + "<br>Reload the page to try again.");
-        else console.warn(msg);
+        if (type !== "error") { console.warn(msg); return; }
+        // a phone's browser has far less memory than a desktop's: say so, rather than leave a dead page
+        if (/out of memory|memory access out of bounds|allocation failed|Cannot enlarge memory/i.test(msg))
+          fail("The browser ran out of memory for the game. Close other tabs and reload; it starts with lighter graphics next time." + reloadButton);
+        else fail("Something went wrong: " + esc(msg) + "<br>Reload the page to try again." + reloadButton);
       }
 
       // Unity's web player needs WebGL 2 and WebAssembly; say so plainly instead of failing silently
@@ -66,10 +189,32 @@
         try { return !!document.createElement("canvas").getContext("webgl2"); } catch (e) { return false; }
       }
 
-      // render at the screen's pixel density up to a 4K budget, never below one pixel per CSS pixel
-      var maxPixels = 3840 * 2160;
+      // ---- phones and tablets: a touch-first device has a coarse pointer and no fine one (mouse, trackpad)
+      var touchFirst = !!(window.matchMedia && matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches);
+      var phone = Math.min(screen.width, screen.height) < 500;
+      if (touchFirst) document.body.classList.add("touch-first");
+      // A tab the browser killed (iOS does when a page uses too much memory) reloads with its session storage kept:
+      // the flag set while the game runs is still there, so this start goes lighter (Game.WebBridge.Recovered)
+      var recovered = false;
+      try {
+        recovered = sessionStorage.getItem("bs-running") === "1";
+        sessionStorage.setItem("bs-running", "1");
+        window.addEventListener("pagehide", function () { sessionStorage.removeItem("bs-running"); });
+        window.addEventListener("pageshow", function () { sessionStorage.setItem("bs-running", "1"); });
+      } catch (e) { }
+      if (recovered) {
+        var note = document.querySelector("#note");
+        note.textContent = "The last visit closed unexpectedly, most likely out of memory: starting with lighter graphics.";
+        note.hidden = false;
+      }
+      if (touchFirst) document.querySelector("#keys").textContent =
+        "D-pad to move · tap a piece to aim · Borrow freezes it · hold Focus to slow time · hold Rewind to turn it back";
+
+      // render at the screen's pixel density up to a 4K budget, never below one pixel per CSS pixel; a phone or
+      // tablet gets at most 2x and a 1080p budget: render targets grow with every pixel, and its tab has little memory
+      var maxPixels = touchFirst ? 1920 * 1080 : 3840 * 2160;
       function pixelRatio() {
-        var dpr = window.devicePixelRatio || 1;
+        var dpr = Math.min(window.devicePixelRatio || 1, touchFirst ? 2 : 8);
         var css = Math.max(1, window.innerWidth * window.innerHeight);
         return Math.max(1, Math.min(dpr, Math.sqrt(maxPixels / css)));
       }
@@ -77,6 +222,161 @@
       // right mouse is Focus: no context menu over the game; a click gives the canvas the keyboard
       canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
       canvas.addEventListener("pointerdown", function () { canvas.focus(); });
+      // the browser can take the GPU's memory back (a phone under pressure): say so instead of showing a frozen frame
+      canvas.addEventListener("webglcontextlost", function () {
+        fail("The browser took back the game's graphics memory. Your progress is saved: reload to keep playing." + reloadButton);
+      });
+
+      // ---- the on-screen controls (Assets/Plugins/WebGL/BorrowedSecondsWeb.jslib reads window.bsTouch)
+      (function () {
+        var root = document.querySelector("#touch");
+        var dpad = document.querySelector("#dpad");
+        var bits = { up: 1, right: 2, down: 4, left: 8, borrow: 16, focus: 32, rewind: 64, restart: 128, hint: 256,
+                     pause: 512, back: 1024, confirm: 2048 };
+        var modes = ["none", "menu", "title", "level", "watching", "ledger"];
+        var active = touchFirst, presses = 0, tap = -1, zones = null;
+        var fingers = {}; // pointerId -> { key, el } for a button, { dpad: dir } for the d-pad, { tap: x, y, t } on the game
+        function setActive(on) {
+          if (active === on) return;
+          active = on;
+          document.body.classList.toggle("touch-on", on);
+          if (!on) release();
+          zones = null;
+        }
+        function release() {
+          fingers = {};
+          var held = root.querySelectorAll(".held");
+          for (var i = 0; i < held.length; i++) held[i].classList.remove("held");
+        }
+        document.body.classList.toggle("touch-on", active);
+        function held() {
+          var h = 0;
+          for (var id in fingers) {
+            var f = fingers[id];
+            if (f.key) h |= bits[f.key];
+            if (f.dir) h |= bits[f.dir];
+          }
+          return h;
+        }
+        function dpadDir(x, y) {
+          var r = dpad.getBoundingClientRect();
+          var dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height / 2);
+          if (dx * dx + dy * dy < Math.pow(r.width * 0.12, 2)) return null; // the hub: no direction
+          return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+        }
+        function showDir(dir) {
+          var arrows = dpad.querySelectorAll(".arrow");
+          for (var i = 0; i < arrows.length; i++) {
+            var on = false;
+            for (var id in fingers) if (fingers[id].dir === arrows[i].dataset.key) on = true;
+            arrows[i].classList.toggle("held", on);
+          }
+        }
+        root.addEventListener("pointerdown", function (e) {
+          setActive(true);
+          e.preventDefault();
+          var el = e.target.closest ? e.target.closest("[data-key]") : null;
+          var inPad = e.target.closest && e.target.closest("#dpad");
+          if (inPad) {
+            var dir = dpadDir(e.clientX, e.clientY);
+            fingers[e.pointerId] = { dpad: true, dir: dir };
+            if (dir) presses |= bits[dir];
+            showDir();
+          } else if (el && !inPad) {
+            fingers[e.pointerId] = { key: el.dataset.key, el: el };
+            presses |= bits[el.dataset.key];
+            el.classList.add("held");
+          } else {
+            fingers[e.pointerId] = { tap: true, x: e.clientX, y: e.clientY, t: Date.now() };
+          }
+          try { root.setPointerCapture(e.pointerId); } catch (err) { }
+        });
+        root.addEventListener("pointermove", function (e) {
+          var f = fingers[e.pointerId];
+          if (!f) return;
+          e.preventDefault();
+          if (f.dpad) {
+            // a thumb slides round the d-pad: each new direction is a new press
+            var dir = dpadDir(e.clientX, e.clientY);
+            if (dir !== f.dir) { f.dir = dir; if (dir) presses |= bits[dir]; showDir(); }
+          }
+        });
+        function end(e) {
+          var f = fingers[e.pointerId];
+          if (!f) return;
+          delete fingers[e.pointerId];
+          if (f.el && !Object.keys(fingers).some(function (id) { return fingers[id].el === f.el; })) f.el.classList.remove("held");
+          if (f.dpad) showDir();
+          // a tap on the game (not a drag): where, in the canvas's pixels from its bottom left
+          if (f.tap && e.type === "pointerup" && Math.abs(e.clientX - f.x) < 20 && Math.abs(e.clientY - f.y) < 20 && Date.now() - f.t < 800) {
+            var r = canvas.getBoundingClientRect();
+            var px = Math.round((f.x - r.left) * canvas.width / Math.max(1, r.width));
+            var py = Math.round((r.bottom - f.y) * canvas.height / Math.max(1, r.height));
+            if (px >= 0 && py >= 0 && px < 32768 && py < 65536) tap = px * 65536 + py;
+          }
+        }
+        root.addEventListener("pointerup", end);
+        root.addEventListener("pointercancel", end);
+        root.addEventListener("lostpointercapture", end);
+        root.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+        // a touch anywhere brings the controls up; a key or a real mouse puts them away (the game reports a pad)
+        window.addEventListener("pointerdown", function (e) {
+          if (e.pointerType === "touch" || e.pointerType === "pen") setActive(true);
+          else if (e.pointerType === "mouse") setActive(false);
+        }, true);
+        window.addEventListener("pointermove", function (e) {
+          if (e.pointerType === "mouse" && (e.movementX || e.movementY)) setActive(false);
+        }, true);
+        window.addEventListener("touchstart", function () { setActive(true); }, { capture: true, passive: true });
+        window.addEventListener("keydown", function () { setActive(false); }, true);
+        // no page scroll, pinch zoom or double-tap zoom over the game
+        document.addEventListener("touchmove", function (e) { if (e.cancelable) e.preventDefault(); }, { passive: false });
+        document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
+        document.addEventListener("dblclick", function (e) { e.preventDefault(); });
+
+        // turning to portrait mid-level pauses it; the page asks to turn back
+        var portrait = window.matchMedia && matchMedia("(orientation: portrait)");
+        function onTurn() { if (touchFirst && portrait && portrait.matches && root.dataset.mode === "level") presses |= bits.pause; zones = null; }
+        if (portrait && portrait.addEventListener) portrait.addEventListener("change", onTurn);
+        window.addEventListener("resize", function () { zones = null; });
+
+        function measure() {
+          var W = Math.max(1, window.innerWidth), H = Math.max(1, window.innerHeight);
+          var z = [0, 0, 0, 0, 0, 0];
+          if (active) {
+            var groups = root.querySelectorAll(".group");
+            for (var i = 0; i < groups.length; i++) {
+              var g = groups[i];
+              if (getComputedStyle(g).display === "none") continue;
+              var r = g.getBoundingClientRect();
+              if (g.classList.contains("left")) { z[0] = Math.max(z[0], r.right / W); z[1] = Math.max(z[1], (H - r.top) / H); }
+              if (g.classList.contains("right")) { z[2] = Math.max(z[2], (W - r.left) / W); z[3] = Math.max(z[3], (H - r.top) / H); }
+              if (g.classList.contains("top")) { z[4] = Math.max(z[4], (W - r.left) / W); z[5] = Math.max(z[5], r.bottom / H); }
+            }
+          }
+          return z;
+        }
+
+        window.bsTouch = {
+          get active() { return active; },
+          flags: function () { return (touchFirst ? 1 : 0) | (phone ? 2 : 0) | (recovered ? 4 : 0); },
+          held: function () { return active ? held() : 0; },
+          takePresses: function () { var p = presses; presses = 0; return active ? p : 0; },
+          takeTap: function () { var t = tap; tap = -1; return active ? t : -1; },
+          setMode: function (m) {
+            var name = modes[m] || "none";
+            if (root.dataset.mode === name) return;
+            root.dataset.mode = name;
+            release(); // a hold, a press or a tap doesn't carry into another screen
+            presses = 0;
+            tap = -1;
+            zones = null;
+          },
+          deactivate: function () { setActive(false); },
+          zone: function (i) { if (!zones) zones = measure(); return zones[i] || 0; },
+        };
+      })();
 
       var buildUrl = "Build";
       var config = {
@@ -104,7 +404,7 @@
 
       if (typeof WebAssembly !== "object" || !webgl2()) {
         fail("This browser can't run Borrowed Seconds: it needs <b>WebGL 2</b> and WebAssembly.<br>" +
-             "Try a current Chrome, Edge or Firefox, and check that hardware acceleration is on. " +
+             "Try a current Chrome, Edge, Firefox or Safari, and check that hardware acceleration is on. " +
              "Or get the desktop build from <a href=\"" + repo + "\">GitHub</a>.");
       } else {
         var script = document.createElement("script");
@@ -120,7 +420,9 @@
             document.body.dataset.state = "running";
             canvas.focus();
           }).catch(function (message) {
-            fail("The game couldn't start: " + esc(String(message)) + "<br>Reload the page to try again.");
+            if (/memory/i.test(String(message)))
+              fail("The browser ran out of memory starting the game. Close other tabs and reload; it starts with lighter graphics next time." + reloadButton);
+            else fail("The game couldn't start: " + esc(String(message)) + "<br>Reload the page to try again." + reloadButton);
           });
         };
         script.onerror = function () {

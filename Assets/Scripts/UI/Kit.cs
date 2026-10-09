@@ -261,6 +261,19 @@ namespace BorrowedSeconds.UI
             Ui.Place(knobGlow.rectTransform, new Vector2(0, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(56, 56));
         }
 
+        /// <summary>For a tap at <paramref name="screen"/>: -1 left of the knob, +1 right of it, 0 left of the
+        /// track (on the row's label, which only selects the row).</summary>
+        public int StepToward(Vector2 screen)
+        {
+            var c = root.parent.GetComponentInParent<Canvas>();
+            var cam = c != null && c.renderMode != RenderMode.ScreenSpaceOverlay ? c.worldCamera : null;
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, cam, out var local)) return 1;
+            // the knob sits x from the track's left end
+            float x = local.x - root.rect.xMin;
+            if (x < -24f) return 0;
+            return x < knob.anchoredPosition.x ? -1 : 1;
+        }
+
         public void Update(float value01, float hl, float dt, float alpha)
         {
             float x = pos.Step(Mathf.Clamp01(value01), dt) * w;

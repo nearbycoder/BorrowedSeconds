@@ -60,6 +60,16 @@ namespace BorrowedSeconds.UI
         protected virtual float FadeOut => 7f;
         protected abstract void Tick(InputReader input, float dt, bool hasInput);
 
+        /// <summary>The screen's rows, if it has a list (the browser checks tap them by name).</summary>
+        public virtual MenuList List => null;
+        /// <summary>What can be tapped on the screen, by name: its rows (the level select adds its cards).</summary>
+        public virtual void Targets(List<(string name, RectTransform rt)> into)
+        {
+            if (List != null) foreach (var it in List.Items) into.Add((it.Label, it.Rt));
+        }
+        /// <summary>How long the screen has been showing.</summary>
+        public float ShownFor => Age;
+
         protected static Image Shade(Transform parent, float alpha)
         {
             var img = Ui.Img("Shade", parent, null, new Color(0.02f, 0.025f, 0.06f, alpha));
@@ -249,10 +259,13 @@ namespace BorrowedSeconds.UI
                     Sfx.Play("ui_hover");
                 }
                 bool click = input.Click && hover >= 0 && hover == Selected;
+                if (click) cur = Items[Selected]; // a tap selects and presses its row at once
                 if ((input.Confirm || click) && IsEnabled(cur))
                 {
+                    // a tap on a slider steps it toward the side of the knob it lands on
+                    int step = input.Tap && click && cur.Slider != null ? cur.Slider.StepToward(input.Pointer) : 1;
                     if (cur.Activate != null) { cur.Activate(); fired = true; Sfx.Play("ui_click"); }
-                    else if (cur.Adjust != null) { cur.Adjust(1); Sfx.Play("ui_tick"); }
+                    else if (cur.Adjust != null && step != 0) { cur.Adjust(step); Sfx.Play("ui_tick"); }
                     cur.Punch = 1f;
                     flash = 1f;
                 }
@@ -445,6 +458,8 @@ namespace BorrowedSeconds.UI
 
         }
 
+        public override MenuList List => Menu;
+
         public override void Show()
         {
             base.Show();
@@ -487,7 +502,8 @@ namespace BorrowedSeconds.UI
             float r = Ease.OutExpo((a - 1.15f) / 0.7f);
             rule.localScale = new Vector3(r, 1, 1);
             fxTag.Age = a - 1.25f;
-            string prompt = input.UsingGamepad ? $"<b>{input.Pad.Dpad}</b> choose <b>{input.Pad.South}</b> confirm"
+            string prompt = input.UsingTouch ? "<b>Tap</b> a row, or <b>D-pad</b> choose <b>OK</b> confirm"
+                : input.UsingGamepad ? $"<b>{input.Pad.Dpad}</b> choose <b>{input.Pad.South}</b> confirm"
                 : $"<b>{input.KeyName(KeyAction.Up)} {input.KeyName(KeyAction.Down)}</b> choose <b>Space</b> confirm";
             if (prompt != promptText) { promptText = prompt; Kit.Keycaps(promptRow, prompt); }
             promptGroup.alpha = Ease.Clamp((a - 2.2f) * 2f);
@@ -508,6 +524,8 @@ namespace BorrowedSeconds.UI
         {
             var input = GameRoot.I.Input;
             var p = input.Pad;
+            if (input.UsingTouch)
+                return (pages > 1 ? "<b>Tap</b> a tab to turn the page " : "") + (open ? "<b>Tap</b> a level to play <b>Back</b> back" : "<b>Back</b> back");
             if (input.UsingGamepad)
                 return (pages > 1 ? $"<b>{p.Shoulders}</b> page " : "") + (open ? $"<b>{p.South}</b> play <b>{p.East}</b> back" : $"<b>{p.East}</b> back");
             string turn = pages > 1 ? $"<b>{input.KeyName(KeyAction.AimPrev)} {input.KeyName(KeyAction.AimNext)}</b> page " : "";
@@ -553,6 +571,14 @@ namespace BorrowedSeconds.UI
         float infoAge;
         const int Cols = 5;
         public override float Blur => 1f;
+
+        /// <summary>The cards on the page showing, by level id, and the other pages' tabs.</summary>
+        public override void Targets(List<(string name, RectTransform rt)> into)
+        {
+            for (int i = 0; i < cards.Count; i++)
+                if (cards[i].Page == page && cards[i].Rt.gameObject.activeSelf) into.Add((catalog.Levels[i].Id, cards[i].Rt));
+            for (int pg = 0; pg < tabs.Count; pg++) into.Add(("page " + (pg + 1), tabs[pg].Panel.Rt));
+        }
 
         public LevelSelectScreen(Transform canvas, LevelCatalog catalog, SaveData save, Action<int> onPick, Action onBack) : base(canvas, "LevelSelect")
         {
@@ -983,6 +1009,7 @@ namespace BorrowedSeconds.UI
         }
 
         public override void Show() { base.Show(); Menu.Selected = 0; }
+        public override MenuList List => Menu;
 
         static string ClueLabel(bool shown) => shown ? "Hide the clue" : "Show a clue";
 
@@ -1111,11 +1138,13 @@ namespace BorrowedSeconds.UI
 
         public override void Show() { base.Show(); menu.Selected = 0; armedUntil = erasedUntil = -1f; }
         public MenuList Menu => menu;
+        public override MenuList List => menu;
 
         protected override void Tick(InputReader input, float dt, bool hasInput)
         {
             float a = AnimateWindow();
-            string foot = input.UsingGamepad ? $"<b>{input.Pad.Dpad}</b> choose and adjust <b>{input.Pad.East}</b> back"
+            string foot = input.UsingTouch ? "<b>Tap</b> a row, or either side of a slider's knob <b>Back</b> back"
+                : input.UsingGamepad ? $"<b>{input.Pad.Dpad}</b> choose and adjust <b>{input.Pad.East}</b> back"
                 : $"<b>{input.KeyName(KeyAction.Up)} {input.KeyName(KeyAction.Down)}</b> choose <b>{input.KeyName(KeyAction.Left)} {input.KeyName(KeyAction.Right)}</b> adjust <b>Esc</b> back";
             if (foot != footText) { footText = foot; Kit.Keycaps(footRow, foot, 1f, true); }
             footGroup.alpha = Ease.OutCubic((a - 0.8f) * 2f);
@@ -1167,6 +1196,7 @@ namespace BorrowedSeconds.UI
         }
 
         public MenuList Menu => menu;
+        public override MenuList List => menu;
         public bool Listening => listening >= 0;
 
         public override void Show() { base.Show(); menu.Selected = 0; listening = -1; Say(""); }
@@ -1180,6 +1210,7 @@ namespace BorrowedSeconds.UI
             notice.text = Notice;
             notice.alpha = Notice.Length > 0 ? Mathf.Clamp01(3f - noticeT * 0.6f) : 0f;
             string foot = listening >= 0 ? (input.UsingGamepad ? $"press a key  <b>{input.Pad.East}</b> cancel" : "<b>Esc</b> cancel")
+                : input.UsingTouch ? "Keys for a keyboard  <b>Back</b> back"
                 : input.UsingGamepad ? $"<b>{input.Pad.Dpad}</b> choose <b>{input.Pad.South}</b> rebind <b>{input.Pad.East}</b> back"
                 : "<b>↑ ↓</b> choose <b>Enter</b> rebind <b>Esc</b> back";
             if (foot != footText) { footText = foot; Kit.Keycaps(footRow, foot, 1f, true); }
@@ -1226,6 +1257,7 @@ namespace BorrowedSeconds.UI
         /// <summary>The key row under the window (checks read it).</summary>
         public string Footer => footText;
         public MenuList Menu => menu;
+        public override MenuList List => menu;
         /// <summary>Row indices (checks select rows by index).</summary>
         public const int ModeRow = 0, ScaleRow = 1;
 
@@ -1270,7 +1302,8 @@ namespace BorrowedSeconds.UI
         protected override void Tick(InputReader input, float dt, bool hasInput)
         {
             float a = AnimateWindow();
-            string foot = input.UsingGamepad ? $"<b>{input.Pad.Dpad}</b> choose and adjust <b>{input.Pad.East}</b> back"
+            string foot = input.UsingTouch ? "<b>Tap</b> a row, or either side of a slider's knob <b>Back</b> back"
+                : input.UsingGamepad ? $"<b>{input.Pad.Dpad}</b> choose and adjust <b>{input.Pad.East}</b> back"
                 : $"<b>{input.KeyName(KeyAction.Up)} {input.KeyName(KeyAction.Down)}</b> choose <b>{input.KeyName(KeyAction.Left)} {input.KeyName(KeyAction.Right)}</b> adjust <b>Esc</b> back";
             if (foot != footText) { footText = foot; Kit.Keycaps(footRow, foot, 1f, true); }
             footGroup.alpha = Ease.OutCubic((a - 0.6f) * 2f);
@@ -1298,6 +1331,7 @@ namespace BorrowedSeconds.UI
             + "<b><color=#FFD27A>Medals.</color></b> Par is the solver's best time. Within par + 1 s is gold, <i>Time Thief</i>.";
 
         readonly MenuList menu;
+        public override MenuList List => menu;
         readonly Action onBack;
         readonly RectTransform rulesBox, keysBox, footRow;
         readonly CanvasGroup rulesGroup, keysGroup, footGroup;
@@ -1342,6 +1376,15 @@ namespace BorrowedSeconds.UI
         {
             var p = input.Pad;
             string focus = input.FocusToggle ? "press" : "hold";
+            if (input.UsingTouch)
+                return "<b>D-pad</b> move one tile; hold to keep walking\n"
+                    + "<b>Tap</b> a piece or its track to aim at it\n"
+                    + "<b>Borrow</b> freeze it for 3 s\n"
+                    + $"<b>Focus</b> {focus}: slows time to aim\n"
+                    + "<b>Rewind</b> hold: turn time back\n"
+                    + "<b>Restart</b> tap (hold after 3 s)\n"
+                    + "<b>Hint</b> show or fold the hint\n"
+                    + "<b>Pause</b> the menu";
             if (input.UsingGamepad)
                 return $"<b>{p.Stick}</b> or <b>{p.Dpad}</b> move one tile; hold to keep walking\n"
                     + $"<b>{p.Shoulders}</b> aim at the next obstacle\n"
@@ -1383,7 +1426,7 @@ namespace BorrowedSeconds.UI
             rulesGroup.alpha = content;
             keysGroup.alpha = Ease.OutCubic((a - 0.4f) * 2.5f);
             rulesBox.anchoredPosition = new Vector2(80 - 30f * (1f - content), -186);
-            string foot = input.UsingGamepad ? $"<b>{input.Pad.East}</b> back" : "<b>Esc</b> back";
+            string foot = input.UsingTouch ? "<b>Back</b> back" : input.UsingGamepad ? $"<b>{input.Pad.East}</b> back" : "<b>Esc</b> back";
             if (foot != footText) { footText = foot; Kit.Keycaps(footRow, foot, 1f, true); }
             footGroup.alpha = Ease.OutCubic((a - 0.8f) * 2f);
             if (hasInput && (input.Back || input.Pause)) { Sfx.Play("ui_back"); onBack(); return; }
@@ -1396,6 +1439,7 @@ namespace BorrowedSeconds.UI
     public sealed class CompleteScreen : MenuScreen
     {
         public readonly MenuList Menu;
+        public override MenuList List => Menu;
         readonly Panel window, ribbon;
         readonly TextMeshProUGUI title, time, par, ribbonText, barLabel;
         readonly TextFx titleFx;

@@ -23,6 +23,13 @@ namespace BorrowedSeconds.View
         public const float Margin = 56f;
         const float HintRow = 44f;
 
+        /// <summary>The browser's on-screen touch controls in a level (Game.WebBridge), in canvas units: the d-pad
+        /// from the bottom-left corner and the buttons from the bottom-right one (width, height), and the pause and
+        /// hint buttons from the top-right one. Zero while they aren't showing. The camera frames the board clear of
+        /// them, and the tip sits above the d-pad (the key hints give way to the buttons).</summary>
+        public static Vector2 TouchLeft, TouchRight, TouchTop;
+        public static bool Touch => TouchLeft.y > 0f;
+
         public static int Step(float scale)
         {
             int k = 0;
@@ -38,7 +45,7 @@ namespace BorrowedSeconds.View
         public static float HintY(int row) => 34f + row * HintRow * Scale;
 
         /// <summary>Bottom of the tip, above the key hints.</summary>
-        public static float TipY => HintY(TwoRows ? 2 : 1) + 6f * Scale;
+        public static float TipY => Touch ? TouchLeft.y + 16f : HintY(TwoRows ? 2 : 1) + 6f * Scale;
 
         /// <summary>The tip's text width in its own (scaled) units: 620 at 100 %, narrower above so
         /// the panel ends short of the watch.</summary>
@@ -48,7 +55,9 @@ namespace BorrowedSeconds.View
         /// the level title, and the key hints with a tip of up to two lines (three above 100 %, where
         /// it wraps narrower).</summary>
         public static Vector4 TitleBox => new Vector4(0f, -170f * Scale, 720f * Scale, 0f);
-        public static Vector4 BottomLeftBox(float canvasWidth) => TwoRows
+        public static Vector4 BottomLeftBox(float canvasWidth) => Touch
+            ? new Vector4(0f, 0f, Mathf.Max(TouchLeft.x, Mathf.Min(760f * Scale, Margin + Room(canvasWidth))), TipY + (2 * 34f + 28f) * Scale)
+            : TwoRows
             ? new Vector4(0f, 0f, Margin + Room(canvasWidth), TipY + (3 * 34f + 28f) * Scale)
             : new Vector4(0f, 0f, 760f, 180f);
         /// <summary>The clock, from the top-right corner.</summary>
