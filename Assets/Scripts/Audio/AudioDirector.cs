@@ -103,7 +103,7 @@ namespace BorrowedSeconds.Audio
             if (src == null) { idx = 0; src = I.pool[0]; }
             src.clip = list[Random.Range(0, list.Count)];
             src.volume = volume * I.Effects * I.Master;
-            src.pitch = pitch;
+            if (src.pitch != pitch) src.pitch = pitch; // see Update: a browser warns on each write
             I.poolLp[idx].enabled = world;
             src.Play();
             Log?.WriteLine($"S {F(now)} {src.clip.name} {F(src.volume)} {F(pitch)} {(world ? 1 : 0)}");
@@ -165,7 +165,9 @@ namespace BorrowedSeconds.Audio
             float cutoff = Mathf.Lerp(22000f, 600f, Muffle);
             cutoff = Mathf.Min(cutoff, Mathf.Lerp(22000f, 2400f, Focus));
             foreach (var lp in deckLp) lp.cutoffFrequency = cutoff;
-            foreach (var d in decks) d.pitch = MusicPitch * Mathf.Lerp(1f, 0.94f, Muffle);
+            // only on a change: in a browser every pitch write on a compressed clip logs a warning
+            float pitch = MusicPitch * Mathf.Lerp(1f, 0.94f, Muffle);
+            foreach (var d in decks) if (d.pitch != pitch) d.pitch = pitch;
             float sfxCut = Mathf.Lerp(22000f, 1400f, Muffle);
             foreach (var lp in poolLp) lp.cutoffFrequency = sfxCut;
             if (Log != null)

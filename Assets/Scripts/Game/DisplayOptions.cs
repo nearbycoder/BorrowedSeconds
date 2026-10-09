@@ -12,6 +12,14 @@ namespace BorrowedSeconds.Game
     /// </summary>
     public static class DisplayOptions
     {
+        /// <summary>The browser build: a page can't be resized or quit, and fullscreen is the
+        /// browser's, granted only from a click or key press (Tools/build-pages.sh).</summary>
+#if UNITY_WEBGL && !UNITY_EDITOR
+        public static readonly bool Web = true;
+#else
+        public static readonly bool Web = false;
+#endif
+
         /// <summary>Window sizes on offer (16:9); only those that fit the desktop are listed.</summary>
         static readonly Vector2Int[] Windows =
         {
@@ -53,12 +61,16 @@ namespace BorrowedSeconds.Game
         /// <summary>The Display row's choices: 0 is fullscreen, then each window size that fits.</summary>
         public static int Choice(SaveData save, Vector2Int desktop)
         {
+            if (Web) return Screen.fullScreen ? 0 : 1;
             if (save.fullscreen) return 0;
             return Fitting(desktop).IndexOf(WindowSize(save, desktop)) + 1;
         }
 
         public static void Choose(SaveData save, Vector2Int desktop, int choice)
         {
+            // in a browser the choices are fullscreen and the page; the save keeps the last choice
+            // but a reload always starts in the page (fullscreen needs a click or key press)
+            if (Web) { save.fullscreen = choice % 2 == 0; return; }
             var fit = Fitting(desktop);
             choice = Mathf.Clamp(choice, 0, fit.Count);
             save.fullscreen = choice == 0;
@@ -67,6 +79,7 @@ namespace BorrowedSeconds.Game
 
         public static string Label(SaveData save, Vector2Int desktop)
         {
+            if (Web) return Screen.fullScreen ? "Fullscreen" : "Browser window"; // Esc leaves fullscreen without asking the game
             if (save.fullscreen) return "Fullscreen";
             var w = WindowSize(save, desktop);
             return $"Window {w.x}×{w.y}";
@@ -79,6 +92,12 @@ namespace BorrowedSeconds.Game
         /// </summary>
         public static void Apply(SaveData save, bool chosen)
         {
+            if (Web)
+            {
+                // the page fills the browser window; only a choice made by a key press or click may go fullscreen
+                if (chosen) Screen.fullScreen = save.fullscreen;
+                return;
+            }
             var desktop = Desktop;
             if (save.fullscreen)
             {
@@ -108,7 +127,8 @@ namespace BorrowedSeconds.Game
             if (Application.isEditor) return;
             if (!(GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset urp)) return;
             urp.renderScale = RenderScales[ScaleStep(scale)];
-            urp.upscalingFilter = UpscalingFilterSelection.FSR;
+            // FSR's shader doesn't run on WebGL, and URP drops all post-processing when it's missing
+            urp.upscalingFilter = Web ? UpscalingFilterSelection.Linear : UpscalingFilterSelection.FSR;
         }
 
         public static float CurrentRenderScale =>

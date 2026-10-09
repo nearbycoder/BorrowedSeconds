@@ -438,7 +438,7 @@ namespace BorrowedSeconds.UI
             Menu.Add("Levels", onLevels);
             Menu.Add("How to play", onHowTo);
             Menu.Add("Settings", onSettings);
-            Menu.Add("Quit", onQuit);
+            if (onQuit != null) Menu.Add("Quit", onQuit); // none in a browser, where the tab is closed instead
 
             promptRow = Ui.Rect("Prompt", Root, new Vector2(0, 0), new Vector2(0, 0), new Vector2(126, 50), new Vector2(900, 34));
             promptGroup = promptRow.gameObject.AddComponent<CanvasGroup>();
@@ -1016,10 +1016,11 @@ namespace BorrowedSeconds.UI
         readonly RectTransform footRow;
         readonly CanvasGroup footGroup;
 
-        /// <summary>Index of the Controls row (scripted tours select rows by index).</summary>
-        public const int ControlsRow = 13;
+        /// <summary>Index of the Controls row (scripted tours select rows by index); the browser build
+        /// has no Controller vibration row (browsers don't pass rumble to the game).</summary>
+        public static readonly int ControlsRow = DisplayOptions.Web ? 12 : 13;
         /// <summary>Index of the Erase progress row.</summary>
-        public const int EraseRow = ControlsRow + 1;
+        public static readonly int EraseRow = ControlsRow + 1;
         /// <summary>How long Erase progress stays armed for its second press.</summary>
         public const float EraseWindow = 4f;
         // real time (the menus' dt is clamped per frame, so it runs slow at a low frame rate)
@@ -1062,7 +1063,7 @@ namespace BorrowedSeconds.UI
             menu.AddSlider("Game speed", () => SpeedStep() / (float)(speeds.Length - 1), () => Pct(speeds[SpeedStep()]),
                 d => { save.speed = speeds[Mathf.Clamp(SpeedStep() + d, 0, speeds.Length - 1)]; apply(); });
             menu.AddToggle("Toggle Focus (press, not hold)", () => save.focusToggle, () => { save.focusToggle = !save.focusToggle; apply(); });
-            menu.AddToggle("Controller vibration", () => save.vibration, () => { save.vibration = !save.vibration; apply(); });
+            if (!DisplayOptions.Web) menu.AddToggle("Controller vibration", () => save.vibration, () => { save.vibration = !save.vibration; apply(); });
             menu.AddToggle("Mute in background", () => save.muteBackground, () => { save.muteBackground = !save.muteBackground; apply(); });
             menu.Add("Controls", onControls, () => "keyboard  ›");
             // two presses: the first arms it for a few seconds, the second erases
@@ -1079,8 +1080,13 @@ namespace BorrowedSeconds.UI
                 ["Master volume"] = () => "Everything you hear.",
                 ["Music"] = () => "The clockwork score. It dips under the key sounds and muffles while you're frozen.",
                 ["Effects"] = () => "Footsteps, borrows, beams, dials and the menus.",
-                ["Graphics fidelity"] = () => { var st = GraphicsFidelity.For(save.fidelity); return $"<b>{st.Name}.</b> {st.Summary}"; },
-                ["Display"] = () => "Fullscreen or a window size, and the 3D scene's render resolution.",
+                ["Graphics fidelity"] = () =>
+                {
+                    var st = GraphicsFidelity.For(save.fidelity);
+                    return $"<b>{st.Name}.</b> {st.Summary}" + (GraphicsFidelity.Clamp(save.fidelity) == GraphicsFidelity.Default ? " The default." : "");
+                },
+                ["Display"] = () => DisplayOptions.Web ? "Fullscreen or the browser window, and the 3D scene's render resolution."
+                    : "Fullscreen or a window size, and the 3D scene's render resolution.",
                 ["HUD size"] = () => "Larger text and panels in play, for small screens. The board re-frames to stay clear.",
                 ["Screen shake"] = () => "The camera kicks when you borrow, freeze and default.",
                 ["Reduce flashing"] = () => "Softens the flashes, ripples and colour splits of borrowing, freezing and rewinding.",
@@ -1093,7 +1099,7 @@ namespace BorrowedSeconds.UI
                 ["Erase progress"] = () => "Clears medals, best times and where to continue. Settings and keys stay. Press twice.",
                 ["Back"] = () => "Close Settings.",
             });
-            help = new HelpLine(Body, new Vector2(0, -172 - 16 * 46 - 14), new Vector2(720, 56));
+            help = new HelpLine(Body, new Vector2(0, -172 - menu.Items.Count * 46 - 14), new Vector2(720, 56));
             footRow = Ui.Rect("Foot", Body, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 22), new Vector2(700, 34));
             footGroup = footRow.gameObject.AddComponent<CanvasGroup>();
 
@@ -1233,7 +1239,7 @@ namespace BorrowedSeconds.UI
             menu.Add("Display mode", null, () => DisplayOptions.Label(save, DisplayOptions.Desktop), d =>
             {
                 var desk = DisplayOptions.Desktop;
-                int n = DisplayOptions.Fitting(desk).Count + 1;
+                int n = DisplayOptions.Web ? 2 : DisplayOptions.Fitting(desk).Count + 1;
                 DisplayOptions.Choose(save, desk, (DisplayOptions.Choice(save, desk) + d + n) % n);
                 applyDisplay();
             });
@@ -1245,7 +1251,8 @@ namespace BorrowedSeconds.UI
             menu.IntroDelay = 0.25f;
             menu.Describe(new Dictionary<string, Func<string>>
             {
-                ["Display mode"] = () => "Fullscreen, or a window of one of the sizes that fit this screen.",
+                ["Display mode"] = () => DisplayOptions.Web ? "Fullscreen, or the page in the browser window. Esc also leaves fullscreen."
+                    : "Fullscreen, or a window of one of the sizes that fit this screen.",
                 ["Render resolution"] = () => "Draws the 3D scene smaller and scales it up, for weaker GPUs. Menus and text stay sharp.",
                 ["Back"] = () => "Back to Settings.",
             });

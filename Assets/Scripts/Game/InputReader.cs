@@ -26,6 +26,19 @@ namespace BorrowedSeconds.Game
         public static readonly PadNames Nintendo = new PadNames
         { Family = "Nintendo", South = "B", East = "A", West = "Y", North = "X", Shoulders = "L/R", LeftTrigger = "ZL", Select = "\u2212", Start = "+" };
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // a browser hands every pad over in its "standard" layout; only its id string says what it is
+        // (Chrome: "DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)",
+        // Firefox: "054c-0ce6-Sony Interactive Entertainment Wireless Controller")
+        public static PadNames For(Gamepad pad)
+        {
+            string id = (pad?.description.product ?? "").ToLowerInvariant();
+            if (id.Contains("054c") || id.Contains("sony") || id.Contains("dualsense") || id.Contains("dualshock"))
+                return id.Contains("0ce6") || id.Contains("0df2") || id.Contains("dualsense") ? DualSense : DualShock4;
+            if (id.Contains("057e") || id.Contains("nintendo") || id.Contains("pro controller")) return Nintendo;
+            return Xbox;
+        }
+#else
         public static PadNames For(Gamepad pad) => pad switch
         {
             UnityEngine.InputSystem.DualShock.DualSenseGamepadHID => DualSense,
@@ -34,6 +47,7 @@ namespace BorrowedSeconds.Game
             UnityEngine.InputSystem.Switch.SwitchProController => Nintendo,
             _ => Xbox,
         };
+#endif
 
         /// <summary>Replaces {South}, {East}, {West}, {North}, {Shoulders}, {LeftTrigger}, {Select}, {Start} in a tip.</summary>
         public string Fill(string text) => string.IsNullOrEmpty(text) || text.IndexOf('{') < 0 ? text : text

@@ -896,9 +896,11 @@ namespace BorrowedSeconds.Game
             if (botPad != null) InputSystem.DisableDevice(botPad);
             var kinds = new (string name, System.Func<Gamepad> add, PadNames want)[]
             {
+#if !UNITY_WEBGL || UNITY_EDITOR // the HID pad layouts aren't in the browser build's Input System
                 ("DualSense", () => InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualSenseGamepadHID>("BotDualSense"), PadNames.DualSense),
                 ("DualShock 4", () => InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualShock4GamepadHID>("BotDualShock4"), PadNames.DualShock4),
                 ("Switch Pro", () => InputSystem.AddDevice<UnityEngine.InputSystem.Switch.SwitchProControllerHID>("BotSwitchPro"), PadNames.Nintendo),
+#endif
                 ("plain gamepad", () => InputSystem.AddDevice<Gamepad>("BotPlainPad"), PadNames.Xbox),
             };
             int learned = Save.learned;

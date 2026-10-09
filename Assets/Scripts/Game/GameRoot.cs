@@ -137,7 +137,7 @@ namespace BorrowedSeconds.Game
             menuCanvas = Ui.MakeCanvas("MenuCanvas", 20, transform);
             Wipe = Transition.Create(transform);
             var root = menuCanvas.transform;
-            title = new TitleScreen(root, () => Go(Continue), () => Go(() => ShowLevels(Save.lastLevel), 0.7f), () => OpenHowTo(Flow.Title), () => OpenSettings(Flow.Title), Quit,
+            title = new TitleScreen(root, () => Go(Continue), () => Go(() => ShowLevels(Save.lastLevel), 0.7f), () => OpenHowTo(Flow.Title), () => OpenSettings(Flow.Title), DisplayOptions.Web ? null : Quit,
                 () => Save.ids.Length == 0 ? "Begin" : Save.finished ? "Replay" : "Continue");
             levels = new LevelSelectScreen(root, Catalog, Save, i => Go(() => StartLevel(i, true)), () => Go(ShowTitle, 0.7f));
             pause = new PauseScreen(root, Resume, () => { pause.Hide(); Go(() => StartLevel(LevelIndex, false), 0.6f); }, ToggleClue, WatchFromPause, ToggleBestRun,
@@ -294,6 +294,8 @@ namespace BorrowedSeconds.Game
                 return;
             }
             ShowTitle();
+            if (DisplayOptions.Web)
+                Debug.Log($"[Web] title screen; Graphics fidelity {GraphicsFidelity.For(Save.fidelity).Name}, master volume {Mathf.RoundToInt(Save.master * 100)}%, {Save.ids.Length} levels cleared, {SystemInfo.graphicsDeviceVersion}");
         }
 
         static string Arg(string[] args, string name)
@@ -395,12 +397,14 @@ namespace BorrowedSeconds.Game
                     Session.IntroTime = 0.35f;
                     Session.AllowInput = true;
                     Hud.SetVisible(true);
+                    if (DisplayOptions.Web) Debug.Log($"[Web] level {def.Id} ready");
                 });
             }
             else
             {
                 State = Flow.Playing;
                 Hud.SetVisible(true);
+                if (DisplayOptions.Web) Debug.Log($"[Web] level {def.Id} ready");
             }
         }
 
@@ -901,6 +905,12 @@ namespace BorrowedSeconds.Game
             };
             Session.RewindChanged += on => { if (on && !Session.Muted) Sfx.Play("rewind", 0.8f); };
             Session.Won += OnWon;
+            if (DisplayOptions.Web)
+            {
+                // the browser checks (Tools/check-pages.mjs) read these from the console
+                Session.Died += _ => { if (State == Flow.Playing) Debug.Log($"[Web] {def.Id} defaulted at tick {Session.Tick}"); };
+                Session.Won += () => { if (State == Flow.Playing) Debug.Log($"[Web] {def.Id} settled in {Session.Tick} ticks"); };
+            }
             Session.BorrowDenied += _ => { Rig.Shake(0.06f); if (!Session.Muted) Sfx.Play("denied", 0.7f); };
             Rig.Frame(Session.Board.Bounds, true, Session.Board.TileTops);
             Hud.Bind(Session, Catalog, Save.Best(def.Id));

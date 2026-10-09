@@ -57,7 +57,7 @@ namespace BorrowedSeconds.Game
             {
                 Name = "High", SoftShadows = true, ShadowResolution = 4096, Cascades = 2, Msaa = 4, Antialiasing = Aa.SmaaHigh,
                 BloomHalfRes = true, BloomHighQuality = true, AoIntensity = 0.4f, AoRadius = 0.3f, Particles = 1f, WatchTexture = 1f, WatchMsaa = 8,
-                Summary = "Soft 4096 shadows, ambient occlusion, 4× MSAA with SMAA, full bloom. The default.",
+                Summary = "Soft 4096 shadows, ambient occlusion, 4× MSAA with SMAA, full bloom.",
             },
             new Step
             {
@@ -68,7 +68,9 @@ namespace BorrowedSeconds.Game
             },
         };
 
-        public const int Default = 2;
+        /// <summary>High on the desktop; Medium in a browser, where WebGL costs more and many players
+        /// are on laptops (the Settings line says which step is the default).</summary>
+        public static readonly int Default = DisplayOptions.Web ? 1 : 2;
 
         public static int Clamp(int step) => Mathf.Clamp(step, 0, Steps.Length - 1);
 
