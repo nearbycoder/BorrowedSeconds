@@ -11,6 +11,8 @@ SITE="$ROOT/Builds/Pages"
 mkdir -p "$(dirname "$LOG")"
 rm -rf "$SITE"
 start=$(date +%s)
+# the web build's Burst step leaves its generated plugin in Data/ at the project root
+had_data=0; [ -e "$ROOT/Data" ] && had_data=1
 # the log is capped at 512 MB (a build stuck logging in a loop must not fill the disk); not with
 # ulimit -f, which also stops the editor writing its own larger Library files
 status=0
@@ -19,6 +21,10 @@ if [ "$status" != 0 ] || ! grep -q "\[Build\] WebGL Succeeded" "$LOG"; then
   grep -E "\[Build\]|error" "$LOG" | tail -20 >&2 || true
   echo "web build failed (see $LOG)" >&2
   exit 1
+fi
+if [ "$had_data" = 0 ] && [ -d "$ROOT/Data" ]; then
+  rm -f "$ROOT/Data/Plugins/lib_burst_generated.cpp" "$ROOT/Data/Plugins/lib_burst_generated.wasm"
+  rmdir "$ROOT/Data/Plugins" "$ROOT/Data" 2> /dev/null || true
 fi
 [ -f "$SITE/index.html" ] || { echo "no index.html in $SITE (see $LOG)" >&2; exit 1; }
 touch "$SITE/.nojekyll"
