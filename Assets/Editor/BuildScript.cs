@@ -35,6 +35,38 @@ namespace BorrowedSeconds.EditorTools
         [MenuItem("Borrowed Seconds/Build Windows Player")]
         public static void BuildWindows() => Build(BuildTarget.StandaloneWindows64, "Builds/Windows/BorrowedSeconds.exe", false);
 
+        /// <summary>
+        /// The browser build for GitHub Pages (Tools/build-pages.sh) -> Builds/Pages. Brotli with the
+        /// loader's JavaScript decompression fallback, since Pages can't send Content-Encoding headers;
+        /// no threads (no SharedArrayBuffer, so no COOP/COEP headers needed); the page is
+        /// Assets/WebGLTemplates/BorrowedSeconds. Switches the editor back to Linux afterwards, so the
+        /// desktop tools (checks, tests) keep the target they expect.
+        /// </summary>
+        [MenuItem("Borrowed Seconds/Build Web Player (GitHub Pages)")]
+        public static void BuildWeb()
+        {
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
+            PlayerSettings.WebGL.decompressionFallback = true;
+            PlayerSettings.WebGL.template = "PROJECT:BorrowedSeconds";
+            PlayerSettings.WebGL.threadsSupport = false;
+            PlayerSettings.WebGL.dataCaching = true;
+            PlayerSettings.WebGL.nameFilesAsHashes = false;
+            PlayerSettings.WebGL.showDiagnostics = false;
+            PlayerSettings.WebGL.debugSymbolMode = WebGLDebugSymbolMode.Off;
+            PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
+            // smaller code: UnityEditor.WebGL.UserBuildSettings lives in the web support module, so
+            // reach it by reflection (as BuildMac does) to keep this compiling without that module
+            var web = System.Type.GetType("UnityEditor.WebGL.UserBuildSettings, UnityEditor.WebGL.Extensions");
+            var opt = web?.GetProperty("codeOptimization");
+            if (opt != null) opt.SetValue(null, System.Enum.Parse(opt.PropertyType, "DiskSizeLTO"));
+            else Debug.LogWarning("[Build] web code optimization setting not found; building with the default");
+            AssetDatabase.SaveAssets();
+            bool ok = Build(BuildTarget.WebGL, "Builds/Pages", false, BuildTargetGroup.WebGL, exit: false);
+            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.StandaloneLinux64)
+                EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Standalone, BuildTarget.StandaloneLinux64);
+            if (Application.isBatchMode) EditorApplication.Exit(ok ? 0 : 1);
+        }
+
         const string BundleId = "com.nearbycoder.borrowedseconds";
         /// <summary>Rendered by ArtSource/build_ui_assets.py (the "icon" group).</summary>
         const string IconPath = "Assets/Icon/BorrowedSeconds.png";
@@ -53,13 +85,13 @@ namespace BorrowedSeconds.EditorTools
             AssetDatabase.SaveAssets();
         }
 
-        static void Build(BuildTarget target, string path, bool dev)
+        static bool Build(BuildTarget target, string path, bool dev, BuildTargetGroup group = BuildTargetGroup.Standalone, bool exit = true)
         {
-            if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Standalone, target))
+            if (!BuildPipeline.IsBuildTargetSupported(group, target))
             {
                 Debug.LogError($"[Build] {target} Failed: build support for this platform isn't installed (add it in Unity Hub)");
-                if (Application.isBatchMode) EditorApplication.Exit(1);
-                return;
+                if (Application.isBatchMode && exit) EditorApplication.Exit(1);
+                return false;
             }
             if (PlayerSettings.GetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone) != BundleId)
                 PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone, BundleId);
@@ -73,7 +105,8 @@ namespace BorrowedSeconds.EditorTools
             });
             var summary = report.summary;
             Debug.Log($"[Build] {target} {summary.result}: {summary.totalSize / (1024 * 1024)} MB, {summary.totalErrors} errors, {summary.totalTime} -> {path}");
-            if (Application.isBatchMode) EditorApplication.Exit(summary.result == BuildResult.Succeeded ? 0 : 1);
+            if (Application.isBatchMode && exit) EditorApplication.Exit(summary.result == BuildResult.Succeeded ? 0 : 1);
+            return summary.result == BuildResult.Succeeded;
         }
     }
 }

@@ -9,6 +9,7 @@
 #   Tools/unity.sh build-linux     batch-build Builds/Linux/BorrowedSeconds.x86_64
 #   Tools/unity.sh build-mac       batch-build Builds/macOS/BorrowedSeconds.app (universal, unsigned)
 #   Tools/unity.sh build-windows   batch-build Builds/Windows/BorrowedSeconds.exe (needs Windows Build Support)
+#   Tools/unity.sh build-web       batch-build the browser version into Builds/Pages (Tools/build-pages.sh wraps it)
 set -euo pipefail
 UNITY="${UNITY:-$HOME/Unity/Hub/Editor/6000.6.2f1/Editor/Unity}"
 PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -45,8 +46,13 @@ case "${1:-open}" in
     exec "$UNITY" -batchmode -nographics -quit -projectPath "$PROJECT" \
       -executeMethod BorrowedSeconds.EditorTools.BuildScript.BuildWindows -logFile "${2:--}"
     ;;
+  build-web)
+    # -buildTarget imports for the web up front; BuildWeb switches the editor back to Linux after
+    exec "$UNITY" -batchmode -nographics -quit -projectPath "$PROJECT" -buildTarget WebGL \
+      -executeMethod BorrowedSeconds.EditorTools.BuildScript.BuildWeb -logFile "${2:--}"
+    ;;
   *)
-    echo "usage: $0 [open|batch <Method> [log]|build-linux|build-mac|build-windows [log]]" >&2
+    echo "usage: $0 [open|batch <Method> [log]|build-linux|build-mac|build-windows|build-web [log]]" >&2
     exit 2
     ;;
 esac
