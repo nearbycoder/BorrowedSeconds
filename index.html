@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <title>Borrowed Seconds</title>
+    <meta name="description" content="Freeze anything for three seconds. Then pay them back. A deterministic puzzle game about borrowing time from your future self.">
+    <meta name="theme-color" content="#0D1020">
+    <link rel="icon" type="image/png" href="icon-64.png">
+    <link rel="apple-touch-icon" href="icon-180.png">
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #0D1020; color: #F6F1E7;
+                   font: 16px/1.45 "Fira Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+                   overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
+      #game { position: fixed; inset: 0; }
+      #unity-canvas { width: 100%; height: 100%; display: block; background: #0D1020; outline: none; }
+      .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                 gap: 18px; text-align: center; padding: 24px; box-sizing: border-box;
+                 background: radial-gradient(ellipse at 50% 40%, #1A2040 0%, #0D1020 70%); }
+      .logo { display: flex; align-items: center; gap: 22px; }
+      .logo img { width: 96px; height: 96px; }
+      .words { font-weight: 800; font-size: clamp(34px, 6vw, 72px); line-height: 0.95; letter-spacing: 0.08em; text-align: left; }
+      .words span { display: block; color: #7CF4FF; }
+      .tagline { color: #B9C0D8; font-size: clamp(14px, 1.8vw, 19px); max-width: 640px; }
+      #progress { width: min(440px, 70vw); height: 6px; border-radius: 3px; background: #1E2440; overflow: hidden; }
+      #progress div { width: 0; height: 100%; background: #C9A15A; transition: width 0.2s; }
+      #status { color: #8A92B0; font-size: 14px; min-height: 1.4em; max-width: 640px; }
+      #status.error { color: #FF6A7A; font-size: 16px; }
+      #status a { color: #7CF4FF; }
+      .keys { color: #6E7698; font-size: 13px; max-width: 640px; }
+    </style>
+  </head>
+  <body>
+    <div id="game"><canvas id="unity-canvas" tabindex="-1"></canvas></div>
+    <div id="loading" class="overlay">
+      <div class="logo"><img src="icon-180.png" alt=""><div class="words">BORROWED<span>SECONDS</span></div></div>
+      <div class="tagline">Freeze anything for three seconds. Then pay them back.</div>
+      <div id="progress"><div></div></div>
+      <div id="status">Loading…</div>
+      <div class="keys">Move WASD / arrows · Borrow click / Space · Focus hold Shift or right mouse · Rewind Z · Pause Esc / P · Gamepad works too</div>
+    </div>
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+      var statusEl = document.querySelector("#status");
+      var bar = document.querySelector("#progress div");
+      var repo = "https://github.com/nearbycoder/BorrowedSeconds";
+
+      // the page's state, for Tools/check-pages.mjs: loading, running or error
+      document.body.dataset.state = "loading";
+      function fail(html) {
+        document.body.dataset.state = "error";
+        document.querySelector("#loading").style.display = "flex";
+        document.querySelector("#progress").style.display = "none";
+        statusEl.className = "error";
+        statusEl.innerHTML = html;
+      }
+      function esc(text) { var d = document.createElement("div"); d.textContent = text; return d.innerHTML; }
+
+      function showBanner(msg, type) {
+        if (type === "error") fail("Something went wrong: " + esc(msg) + "<br>Reload the page to try again.");
+        else console.warn(msg);
+      }
+
+      // Unity's web player needs WebGL 2 and WebAssembly; say so plainly instead of failing silently
+      function webgl2() {
+        try { return !!document.createElement("canvas").getContext("webgl2"); } catch (e) { return false; }
+      }
+
+      // render at the screen's pixel density up to a 4K budget, never below one pixel per CSS pixel
+      var maxPixels = 3840 * 2160;
+      function pixelRatio() {
+        var dpr = window.devicePixelRatio || 1;
+        var css = Math.max(1, window.innerWidth * window.innerHeight);
+        return Math.max(1, Math.min(dpr, Math.sqrt(maxPixels / css)));
+      }
+
+      // right mouse is Focus: no context menu over the game; a click gives the canvas the keyboard
+      canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+      canvas.addEventListener("pointerdown", function () { canvas.focus(); });
+
+      var buildUrl = "Build";
+      var config = {
+        arguments: [],
+        dataUrl: buildUrl + "/Pages.data.unityweb",
+        frameworkUrl: buildUrl + "/Pages.framework.js.unityweb",
+        codeUrl: buildUrl + "/Pages.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Borrowed Seconds",
+        productName: "Borrowed Seconds",
+        productVersion: "0.1.0",
+        showBanner: showBanner,
+        devicePixelRatio: pixelRatio(),
+      };
+
+      if (typeof WebAssembly !== "object" || !webgl2()) {
+        fail("This browser can't run Borrowed Seconds: it needs <b>WebGL 2</b> and WebAssembly.<br>" +
+             "Try a current Chrome, Edge or Firefox, and check that hardware acceleration is on. " +
+             "Or get the desktop build from <a href=\"" + repo + "\">GitHub</a>.");
+      } else {
+        var script = document.createElement("script");
+        script.src = buildUrl + "/Pages.loader.js";
+        script.onload = function () {
+          createUnityInstance(canvas, config, function (progress) {
+            bar.style.width = Math.round(100 * progress) + "%";
+            statusEl.textContent = progress < 0.9 ? "Loading… " + Math.round(100 * progress) + "%" : "Winding the watch…";
+          }).then(function (unityInstance) {
+            window.unityInstance = unityInstance;
+            window.addEventListener("resize", function () { unityInstance.Module.devicePixelRatio = pixelRatio(); });
+            document.querySelector("#loading").style.display = "none";
+            document.body.dataset.state = "running";
+            canvas.focus();
+          }).catch(function (message) {
+            fail("The game couldn't start: " + esc(String(message)) + "<br>Reload the page to try again.");
+          });
+        };
+        script.onerror = function () {
+          fail("The game files couldn't be downloaded. Check your connection and reload the page.");
+        };
+        document.body.appendChild(script);
+      }
+    </script>
+  </body>
+</html>
